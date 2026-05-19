@@ -1,7 +1,7 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: N/A (template) → 1.0.0 (initial ratification)
+Version change: 1.0.0 → 1.1.0 (MINOR — Technology Stack section added)
 
 Principles added (all new):
   I.   Spec-First Development
@@ -275,16 +275,133 @@ The spec "Compliance References" section MUST cite each applicable standard.
 
 ---
 
-## Technology Stack Constraints
+## Technology Stack
 
-TODO(TECH_STACK): Primary language, framework, and database not yet specified.
-To be established during the first `/speckit-plan` run. The following
-constraints are already known:
+### Runtime & Language
 
-- **IAM**: Keycloak (OpenID Connect / OAuth 2.0) — non-negotiable.
-- **Multi-tenancy**: Organisation-level data isolation enforced at DB layer.
-- **Script type**: PowerShell (Windows primary development environment).
-- **AI Agent**: Claude Code (spec-kit claude integration).
+- **Java 21 LTS** (Eclipse Temurin) — all backend services
+- **Gradle 8.x** (multi-module build) — single root project, one subproject per service and shared library
+- **Angular 19** (standalone components, Signals API) — frontend SPA
+- **TypeScript 5.x** — frontend language
+
+### Architecture Pattern
+
+**Spring Boot 3.3 Microservices** — one service per ISA-95 functional domain.
+Services communicate synchronously via REST/JSON through the API gateway and
+asynchronously via Apache Kafka domain events.
+
+### Microservices (16 domain services + 2 infrastructure services)
+
+| Service | ISA-95 / Constitution Domain |
+|---|---|
+| `gateway-service` | Spring Cloud Gateway — single external entry point |
+| `admin-service` | Spring Boot Admin — health, metrics, log monitoring |
+| `platform-service` | Multi-organisation framework, system config |
+| `audit-service` | System activity logging (Constitution §V) |
+| `work-order-service` | Work Orders & Scheduling |
+| `shopfloor-service` | Shop Floor Tracking (MTConnect / IPC-2591) |
+| `quality-service` | Quality & Inspection (AS9102, AS9103, QIF) |
+| `receiving-service` | Material Receiving & Inbound Inspection |
+| `inventory-service` | Inventory, Materials & BOM |
+| `engineering-service` | Manufacturing Engineering, Work Instructions, Skills |
+| `gauge-tool-service` | Gauge & Tool Management (calibration) |
+| `document-service` | Document Management (AS9100D §7.5) |
+| `osp-service` | Outside Processing (AS9117) |
+| `ncm-service` | Nonconformance Management (AS9131) |
+| `integration-service` | Inbound/Outbound Integrations (OAGIS, ATA, STEP) |
+| `labour-service` | Labour Resource & Department Tracking |
+| `iam-service` | User security model (delegates to Keycloak) |
+| `scheduler-service` | ISA-88 batch/phase scheduling |
+
+### Shared Libraries (Gradle subprojects under `libs/`)
+
+| Library | Purpose |
+|---|---|
+| `lib-common-domain` | Shared domain types, value objects, ISA-95 model base classes |
+| `lib-common-security` | Keycloak OIDC integration, JWT validation, RBAC utilities |
+| `lib-common-audit` | Hibernate Envers configuration, audit entity base classes |
+| `lib-common-events` | Kafka event schemas (Avro or JSON), topic name constants |
+| `lib-common-test` | Shared test fixtures, Testcontainers base configs |
+
+### Key Frameworks & Libraries (per service)
+
+| Concern | Technology |
+|---|---|
+| Web framework | Spring Boot 3.3 (Spring MVC or WebFlux for reactive services) |
+| API style | REST / JSON — OpenAPI 3.1 spec generated via SpringDoc |
+| Service discovery | Docker Compose DNS (no Eureka) |
+| Persistence | Spring Data JPA + Hibernate 6 |
+| DB migrations | Flyway (each service manages its own schema) |
+| Audit trails | Hibernate Envers (21 CFR Part 11 / AS9100D compliance) |
+| Async messaging | Apache Kafka (KRaft mode — no Zookeeper) |
+| Auth | Keycloak (OpenID Connect / OAuth 2.0) — Spring Security resource server |
+| Monitoring | Spring Boot Admin + Spring Boot Actuator |
+| Testing | JUnit 5, Mockito, Testcontainers (real PostgreSQL + Kafka in tests) |
+| API gateway | Spring Cloud Gateway |
+
+### Frontend Stack
+
+| Concern | Technology |
+|---|---|
+| Framework | Angular 19 (standalone components, no NgModules) |
+| State management | Angular Signals (native — no NgRx) |
+| UI components | PrimeNG |
+| Data grids | AG Grid Community (shop floor / work order views) |
+| HTTP client | Angular HttpClient + OpenAPI-generated TypeScript client |
+| Static hosting | Nginx (Docker container) |
+
+### Infrastructure (Portainer / Docker Compose)
+
+| Container | Purpose |
+|---|---|
+| `postgres` | PostgreSQL 16 — single instance, one schema per service |
+| `kafka` | Apache Kafka (KRaft mode) |
+| `keycloak` | Keycloak 25+ identity provider |
+| `gateway-service` | Spring Cloud Gateway |
+| `admin-service` | Spring Boot Admin |
+| `frontend` | Nginx serving Angular SPA |
+| 16 × domain services | One container per service listed above |
+
+**Total containers**: ~23. Managed via Portainer with Docker Compose stacks.
+
+### Database Isolation
+
+Single PostgreSQL instance. Each service owns one schema named after the
+service (e.g. `work_order`, `quality`, `ncm`). Services MUST NOT query other
+services' schemas directly — cross-domain data access MUST go through the
+owning service's REST API or a Kafka event.
+
+### Service Communication Rules
+
+- **Synchronous**: REST/JSON via Spring Cloud Gateway for external clients;
+  direct service-to-service REST (OpenFeign) only where latency is critical
+  and the call is non-optional.
+- **Asynchronous**: Kafka domain events for all cross-service state changes
+  (e.g. work order completion triggers inventory consumption event).
+- **No shared database queries across service boundaries** — ever.
+
+### Build Structure
+
+```
+MikeMES/                          ← root Gradle project
+├── settings.gradle               ← includes all subprojects
+├── build.gradle                  ← root conventions (Java 21, shared deps)
+├── gradle/libs.versions.toml     ← version catalog (BOM-style)
+├── libs/
+│   ├── lib-common-domain/
+│   ├── lib-common-security/
+│   ├── lib-common-audit/
+│   ├── lib-common-events/
+│   └── lib-common-test/
+├── services/
+│   ├── gateway-service/
+│   ├── admin-service/
+│   ├── platform-service/
+│   ├── audit-service/
+│   ├── work-order-service/
+│   └── ...  (one directory per service)
+└── frontend/
+    └── angular/
 
 ---
 
@@ -327,4 +444,4 @@ constraints are already known:
   justification in the Complexity Tracking section of the plan.
 - This constitution supersedes all other informal conventions and practices.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-19 | **Last Amended**: 2026-05-19
+**Version**: 1.1.0 | **Ratified**: 2026-05-19 | **Last Amended**: 2026-05-20
