@@ -117,6 +117,26 @@
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
 
+## Compliance References *(mandatory — see Constitution §IV)*
+
+<!--
+  List every standard from the Constitution Compliance Register that applies
+  to this feature. Mark N/A for those that genuinely do not apply (with a
+  brief reason). A blank section will block plan approval.
+-->
+
+| Standard | Applicability | Key Requirements for This Feature |
+|---|---|---|
+| AS9100D | [Yes / No / Partial] | |
+| AS9102 (FAI) | [Yes / No / Partial] | |
+| AS9131 (NCM) | [Yes / No / Partial] | |
+| NIST SP 800-171 / CMMC | [Yes / No / Partial] | |
+| 21 CFR Part 11 / Annex 11 | [Yes / No / Partial] | |
+| ISA-95 | [Yes / No / Partial] | |
+| [Other applicable standards] | | |
+
+---
+
 ## Assumptions
 
 <!--

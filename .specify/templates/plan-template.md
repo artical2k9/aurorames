@@ -40,7 +40,22 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Answer each gate with ✅ PASS, ❌ FAIL (+ justification), or N/A.
+
+| Gate | Principle | Status |
+|---|---|---|
+| Does this feature have an approved spec before this plan was created? | I — Spec-First | |
+| Are test tasks listed BEFORE implementation tasks for every user story? | II — TDD | |
+| Is there a defect-registration step for test failures in the task list? | II — TDD | |
+| Has a human reviewed and approved this AI-generated plan? | III — AI-Approved | |
+| Does the spec include a "Compliance References" section? | IV — Compliance by Design | |
+| Are all affected AS / ISA / NIST standards cited and addressed? | IV — Compliance by Design | |
+| Do all data mutations produce an audit log entry? | V — Auditability | |
+| Do new data models map to ISA-95 Part 2 object models (where applicable)? | VI — ISA-95/ISA-88 | |
+| Is authentication delegated to Keycloak (no bespoke auth)? | VII — Security-First | |
+| Is all data scoped by `organisation_id` with no cross-org leakage? | IX — Multi-Org Isolation | |
+| Are integration endpoints idempotent and schema-validated? | VIII — Integration Integrity | |
+| Are shop floor timestamps from source (not synthetic)? | X — Data Accuracy | |
 
 ## Project Structure
 

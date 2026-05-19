@@ -241,12 +241,29 @@ With multiple developers:
 
 ---
 
+## Phase N+1: Compliance Verification & Defect Closure
+
+**Purpose**: Validate all constitution compliance gates are met before feature
+is considered done. Mandatory per Constitution §IV and §II.
+
+- [ ] TXXX Verify Constitution Check gates in plan.md are all ✅ PASS
+- [ ] TXXX [P] Confirm audit log entries exist for all data mutations in this feature
+- [ ] TXXX [P] Confirm all integration endpoints are idempotent (replay test)
+- [ ] TXXX [P] Confirm `organisation_id` scoping on all new data entities
+- [ ] TXXX Confirm all test failures logged as tracked defects are resolved
+- [ ] TXXX Confirm Keycloak RBAC roles/permissions updated if new resources added
+- [ ] TXXX Compliance spot-check: verify applicable standards in spec Compliance References are addressed
+
+---
+
 ## Notes
 
 - [P] tasks = different files, no dependencies
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
-- Verify tests fail before implementing
+- **Tests MUST be written FIRST and confirmed FAILING before implementation**
+- Test failures during development MUST be logged as defects and resolved within this feature
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+- Constitution §II: no feature is "done" while any defect it introduced remains open
