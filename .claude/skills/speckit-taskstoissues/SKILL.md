@@ -109,6 +109,13 @@ Use the `mcp__claude_ai_Atlassian__createJiraIssue` tool.
 2. Create all Stories, setting `customfield_10014` (Epic Link) to the parent Epic key.
 3. Create all Tasks/Bugs, setting parent to the Story key where applicable.
 
+**Check for Jira Epic link (from /speckit-from-jira imports)**:
+Before creating issues, check if `specs/[feature-dir]/jira.json` exists (where
+`feature-dir` is the current feature directory from the prerequisites script).
+If it exists, read `epicKey` from it — all Epics and Stories created in Step 6
+MUST be set as children of that parent Epic using `customfield_10014` (Epic Link)
+or the parent field, so Jira reflects the correct hierarchy.
+
 **Issue fields for every issue**:
 - `summary`: task description (trimmed, max 255 chars)
 - `issuetype`: mapped type from Step 4
@@ -119,6 +126,7 @@ Use the `mcp__claude_ai_Atlassian__createJiraIssue` tool.
   `compliance`, `test`)
 - `priority`: derive from spec priority (P1 → Highest, P2 → High, P3 → Medium,
   unset → Low)
+- `parent` / `customfield_10014`: set to the Epic key from `jira.json` if present
 
 After creating each issue, record the key (e.g. `MES-42`) and map it to the
 original task ID (e.g. `T012`) for the summary report.
