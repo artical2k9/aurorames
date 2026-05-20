@@ -47,4 +47,12 @@
     <suppress checks="VisibilityModifier" files=".*testFixtures.*"/>
     <suppress checks="HideUtilityClassConstructor" files=".*testFixtures.*"/>
 
+    <!--
+      MethodName / VisibilityModifier: Integration test classes (IT suffix) follow the same
+      JUnit 5 conventions as unit test classes — underscore-separated names and non-private
+      @Container / @RegisterExtension fields required by the JUnit/Testcontainers platform.
+    -->
+    <suppress checks="MethodName" files=".*IT\.java"/>
+    <suppress checks="VisibilityModifier" files=".*IT\.java"/>
+
 </suppressions>
