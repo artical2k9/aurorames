@@ -24,4 +24,12 @@
     <suppress checks="HideUtilityClassConstructor" files=".*Config\.java"/>
     <suppress checks="HideUtilityClassConstructor" files=".*Configuration\.java"/>
 
+
+    <!--
+      MethodName: JUnit test methods use underscore-separated naming (given_when_then)
+      which is a widely accepted testing convention but violates the camelCase-only pattern.
+      Suppressed for test sources only.
+    -->
+    <suppress checks="MethodName" files=".*Test\.java"/>
+
 </suppressions>
