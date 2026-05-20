@@ -2,10 +2,12 @@ package com.mikemes.iam.api;
 
 import com.mikemes.iam.api.dto.ErrorResponse;
 import com.mikemes.iam.exception.ActiveRoleAssignmentsException;
+import com.mikemes.iam.exception.DuplicateEmailException;
 import com.mikemes.iam.exception.DuplicateRoleNameException;
 import com.mikemes.iam.exception.PrivilegeNotFoundException;
 import com.mikemes.iam.exception.RoleNotFoundException;
 import com.mikemes.iam.exception.SystemRoleException;
+import com.mikemes.iam.exception.UserNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -20,6 +22,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleRoleNotFound(RoleNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse("not_found", ex.getMessage()));
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("not_found", ex.getMessage()));
+    }
+
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateEmail(DuplicateEmailException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("conflict", ex.getMessage()));
     }
 
     @ExceptionHandler(PrivilegeNotFoundException.class)
