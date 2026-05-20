@@ -32,4 +32,11 @@
     -->
     <suppress checks="MethodName" files=".*Test\.java"/>
 
+    <!--
+      VisibilityModifier: JUnit 5 @RegisterExtension fields (e.g. WireMockExtension) must
+      be non-private for the JUnit platform to access them. The enclosing class is a test
+      class with no public API, so the usual visibility rule does not apply.
+    -->
+    <suppress checks="VisibilityModifier" files=".*Test\.java"/>
+
 </suppressions>
