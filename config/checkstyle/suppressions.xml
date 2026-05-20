@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<!--
+  Checkstyle suppressions for known false-positive patterns in Spring Boot projects.
+  Each entry must document WHY it is safe to suppress.
+-->
+<suppressions>
+
+    <!--
+      HideUtilityClassConstructor: Spring Boot application classes have a static main()
+      method but are also instantiated by the Spring container during application startup.
+      They are NOT utility classes; the rule cannot distinguish this pattern.
+    -->
+    <suppress checks="HideUtilityClassConstructor" files=".*Application\.java"/>
+
+    <!--
+      HideUtilityClassConstructor: Spring @Configuration classes often have only static
+      @Bean factory methods. Spring instantiates them via CGLIB subclassing and requires
+      a no-arg constructor.
+    -->
+    <suppress checks="HideUtilityClassConstructor" files=".*Config\.java"/>
+    <suppress checks="HideUtilityClassConstructor" files=".*Configuration\.java"/>
+
+</suppressions>

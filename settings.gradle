@@ -1,0 +1,26 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+// Auto-provision Java 21 Temurin if not already installed on the host
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
+rootProject.name = 'mikemes'
+
+// Phase 0 — IAM Epic (MES-5)
+include 'libs:lib-common-security'
+include 'services:iam-service'
+
+// Future modules registered here as each Epic is implemented:
+// include 'services:gateway-service'
+// include 'services:audit-service'
+// include 'services:platform-service'
+// include 'libs:lib-common-domain'
+// include 'libs:lib-common-audit'
+// include 'libs:lib-common-events'
+// include 'libs:lib-common-test'

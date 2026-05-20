@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: iam-service
+  datasource:
+    url: ${IAM_DB_URL:jdbc:postgresql://localhost:5432/mikemes}
+    username: ${IAM_DB_USER:iam_user}
+    password: ${IAM_DB_PASSWORD:changeme}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    schemas: iam
+    locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mikemes}
+
+server:
+  port: 8085
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+mikemes:
+  security:
+    iam-service-url: ${IAM_SERVICE_URL:http://localhost:8085}
+    privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL:60}
+    privilege-changes-topic: iam.privilege-changes
