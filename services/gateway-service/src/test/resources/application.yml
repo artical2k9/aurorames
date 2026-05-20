@@ -1,0 +1,16 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # ReactiveJwtDecoder is replaced by @MockBean in GatewaySecurityIT — URI is unused
+          jwk-set-uri: http://localhost:1/jwks
+  cloud:
+    gateway:
+      # Property-based routes cleared; test routes are provided by TestRouteConfig @Bean
+      routes: []
+
+management:
+  endpoint:
+    health:
+      show-details: never
