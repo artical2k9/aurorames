@@ -1,0 +1,105 @@
+services:
+
+  # ── PostgreSQL 16 ────────────────────────────────────────────────────────────
+  # Hosts the `mikemes` database (schema `iam` owned by iam-service).
+  # Keycloak uses its own embedded H2 in dev mode (start-dev below).
+  # For production, provision a separate Keycloak PostgreSQL instance.
+  postgres:
+    image: postgres:16-alpine
+    container_name: mikemes-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mikemes
+      POSTGRES_USER: ${IAM_DB_USER:-iam_user}
+      POSTGRES_PASSWORD: ${IAM_DB_PASSWORD:?IAM_DB_PASSWORD must be set}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${IAM_DB_USER:-iam_user} -d mikemes"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - mikemes-net
+
+  # ── Apache Kafka 3.7 (KRaft — no Zookeeper) ──────────────────────────────────
+  kafka:
+    image: apache/kafka:3.7.1
+    container_name: mikemes-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_IN_SYNC_REPLICAS: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    ports:
+      - "9094:9094"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list > /dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - mikemes-net
+
+  # ── Keycloak 25.0.6 ──────────────────────────────────────────────────────────
+  # Dev mode (H2 embedded). Import mikemes-realm.json on first startup.
+  # After import, set client secrets via the admin console or the post-import
+  # script (see docs/keycloak-post-import.md).
+  #
+  # The http-sender webhook secret (KEYCLOAK_WEBHOOK_SECRET) must be set
+  # in Keycloak after first import:
+  #   Realm Settings → Events → http-sender provider → sharedSecret
+  # Or configure via the Admin REST API (see .env.example for details).
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.6
+    container_name: mikemes-keycloak
+    restart: unless-stopped
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD must be set}
+      KC_LOG_LEVEL: INFO
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "false"
+      KC_HTTP_PORT: 8080
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../keycloak/mikemes-realm.json:/opt/keycloak/data/import/mikemes-realm.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+    networks:
+      - mikemes-net
+
+volumes:
+  postgres-data:
+    driver: local
+  kafka-data:
+    driver: local
+
+networks:
+  mikemes-net:
+    driver: bridge
