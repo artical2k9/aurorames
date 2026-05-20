@@ -149,3 +149,27 @@
 - [Assumption about scope boundaries, e.g., "Mobile support is out of scope for v1"]
 - [Assumption about data/environment, e.g., "Existing authentication system will be reused"]
 - [Dependency on existing system/service, e.g., "Requires access to the existing user profile API"]
+
+---
+
+## Deferred Decisions *(mandatory — do not leave blank)*
+
+<!--
+  Record every conscious decision to exclude functionality from this version.
+  Each row becomes a Jira Story (label: deferred) under this Epic so it
+  appears in the backlog and cannot be forgotten.
+
+  Suggested phases: the programme phase (P2, P3, …) most likely to pick
+  this up, or "Post-GA" if it is a hardening/scaling concern.
+
+  Impact if not addressed: what breaks or degrades if this is never done.
+  This field is what justifies prioritisation in a future sprint.
+
+  If nothing was consciously deferred, write "None — all identified
+  requirements are in scope for this version." A blank section will trigger
+  a plan review question.
+-->
+
+| ID | Deferred Capability | Reason for Deferral | Impact if Never Addressed | Suggested Phase | Jira |
+|---|---|---|---|---|---|
+| DEF-001 | [What was deferred] | [Why — complexity, dependency, low priority, compliance not yet mandated, etc.] | [What breaks or degrades] | [P2 / P3 / Post-GA] | [Story key once created] |

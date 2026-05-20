@@ -249,3 +249,16 @@ A developer creating a new Spring Boot microservice adds the `lib-common-securit
 - **Default privilege baseline**: The seed Flyway migration in iam-service defines the starting role-privilege matrix for the six default roles. This baseline is a reasonable starting point for a single-site aerospace manufacturer; customers are expected to customise it before go-live.
 - **Privilege granularity**: Each module Epic owner is responsible for defining their privilege strings as part of their spec. The IAM spec does not pre-define privileges for domain modules — only for IAM itself (e.g., `iam:users:create`, `iam:roles:manage`, `iam:esig:sign`).
 - **Existing Jira child issues**: None — this is the first spec in the system.
+
+---
+
+## Deferred Decisions *(mandatory — do not leave blank)*
+
+Every row below was a conscious in-scope decision excluded from this version. Each has a corresponding Jira Story (label: `deferred`) under MES-5 so it appears in the backlog and cannot be forgotten during future sprint planning.
+
+| ID | Deferred Capability | Reason for Deferral | Impact if Never Addressed | Suggested Phase | Jira |
+|---|---|---|---|---|---|
+| DEF-001 | Multi-organisation session switching — user switches active org without re-login | Requires session-level org context management in gateway and all services; adds state that conflicts with stateless JWT design; low frequency use case for v1 customer base | Users legitimately working across two organisations must log out and back in to switch context — friction acceptable for v1 but not for shared-service organisations (e.g., a group quality manager) | P3 (after Shop Floor & Work Orders stable) | MES-23 |
+| DEF-002 | Multi-organisation membership — a single user account belongs to more than one organisation simultaneously | One-org-per-user is enforced at Keycloak group level; supporting multiple orgs requires JWT to carry multiple `org_id` values and all services to handle org selection per request | Users who genuinely work across orgs (e.g., group audit manager, shared supplier representative) require separate accounts per org — duplicates credential management overhead | P3 (depends on DEF-001) | MES-24 |
+| DEF-003 | MFA enforced for all users (TOTP/FIDO2 mandatory, not optional) | Keycloak OTP is available but mandating it requires UI guidance, recovery flows, and helpdesk procedures that are out of scope for the initial deployment | CMMC Level 2 IA.3.083 requires MFA for privileged access before certification. Without enforcement, CMMC audit will flag this as a gap | Pre-CMMC certification (P5 or Post-GA) | MES-25 |
+| DEF-004 | Keycloak high-availability (active-active cluster) | Single on-premises Keycloak instance sufficient for initial deployment scale; HA requires Infinispan/JGroups cluster configuration and shared external DB session store | Keycloak downtime prevents all logins across all 18 services simultaneously — a full system outage. Acceptable for development; not acceptable for production SLA | Post-GA (production hardening) | MES-26 |
