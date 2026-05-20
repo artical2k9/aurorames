@@ -15,4 +15,7 @@ public interface RolePrivilegeRepository extends JpaRepository<RolePrivilegeAssi
 
     @Query("SELECT a FROM RolePrivilegeAssignment a WHERE a.orgId = :orgId AND a.revokedAt IS NULL")
     List<RolePrivilegeAssignment> findActiveByOrgId(@Param("orgId") UUID orgId);
+
+    @Query("SELECT COUNT(a) FROM RolePrivilegeAssignment a WHERE a.role.id = :roleId AND a.revokedAt IS NULL")
+    long countActiveByRoleId(@Param("roleId") UUID roleId);
 }
