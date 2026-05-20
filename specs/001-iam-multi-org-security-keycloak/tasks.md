@@ -7,20 +7,39 @@
 
 **TDD rule (Constitution §II)**: Every `[TEST]` task MUST be written and confirmed **RED** before the corresponding `[IMPL]` task begins. Test failures MUST be logged as Jira defects before the next task starts.
 
+**Lint rule (Constitution §II)**: `./gradlew check` (lint + unit tests) MUST pass with zero failures before every commit. Lint violations are defects — log, fix, re-run, then commit.
+
 ---
 
-## Phase 0 — Project Structure Setup
+## Phase 0 — Project Structure Setup & Static Analysis Configuration
 
-**Purpose**: Create Gradle multi-module skeletons so all subsequent tasks have a compile target. No business logic here.
+**Purpose**: Create Gradle multi-module skeletons and wire static analysis so every subsequent phase builds against a lint-enforced baseline. No business logic here.
+
+### Structure
 
 - [ ] T001 Create `libs/lib-common-security/` Gradle subproject with `build.gradle` (Spring Boot BOM, `spring-boot-starter-oauth2-resource-server`, `spring-boot-starter-security`, `caffeine`, `spring-kafka`)
 - [ ] T002 [P] Create `services/iam-service/` Gradle subproject with `build.gradle` (`lib-common-security`, `spring-boot-starter-data-jpa`, `spring-boot-starter-web`, `keycloak-admin-client`, `flyway-core`, `spring-kafka`, `springdoc-openapi-starter-webmvc-ui`)
 - [ ] T003 [P] Register both subprojects in root `settings.gradle`
 - [ ] T004 [P] Create `libs/lib-common-security/src/main/java/com/mikemes/common/security/` and `test/` directory trees (empty `package-info.java` as placeholder)
 - [ ] T005 [P] Create `services/iam-service/src/main/java/com/mikemes/iam/` and `test/` directory trees
-- [ ] T006 Verify `./gradlew :libs:lib-common-security:compileJava :services:iam-service:compileJava` succeeds with empty sources
 
-**Checkpoint ✅**: Both modules compile. No business logic exists yet.
+### Java Static Analysis (Checkstyle + SpotBugs)
+
+- [ ] T007 Add `checkstyle` plugin to root `build.gradle` (applies to all subprojects); create `config/checkstyle/checkstyle.xml` using Google Java Style as the base ruleset, with these project-specific rules enabled: `VisibilityModifier`, `FinalClass`, `HideUtilityClassConstructor`, `MissingJavadocMethod` (warn only on public API), `AvoidStarImport`
+- [ ] T008 [P] Add `com.github.spotbugs` plugin to root `build.gradle`; create `config/spotbugs/exclude.xml` for known false-positive patterns (e.g. JPA entity field access); set `effort = 'max'`, `reportLevel = 'low'` so SpotBugs catches low-confidence issues; configure `spotbugsMain` to fail build on any bug
+- [ ] T009 [P] Configure root `build.gradle` so the Gradle `check` task depends on both `checkstyleMain`, `checkstyleTest`, `spotbugsMain` — meaning `./gradlew check` runs lint + unit tests in one command; `./gradlew build` implicitly runs `check` first
+
+### Angular Static Analysis (ESLint)
+
+- [ ] T009a [P] Run `ng add @angular-eslint/schematics` in `frontend/angular/` to generate `.eslintrc.json` with Angular-recommended rules; add `"no-console": "error"`, `"@typescript-eslint/no-explicit-any": "error"`, `"@typescript-eslint/explicit-function-return-type": "warn"` to the config
+- [ ] T009b [P] Add `"lint": "ng lint --max-warnings=0"` to `frontend/angular/package.json` scripts so `npm run lint` enforces zero-warning policy
+
+### Verification
+
+- [ ] T006 Verify `./gradlew check` succeeds on empty sources (no Java files yet — lint passes trivially; confirms plugin wiring is correct)
+- [ ] T006a [P] Verify `npm run lint` in `frontend/angular/` passes on the generated scaffold
+
+**Checkpoint ✅**: Both Java modules compile; `./gradlew check` runs Checkstyle + SpotBugs + unit tests in one command and passes. Angular ESLint configured and passing. Every subsequent task inherits this lint gate automatically.
 
 ---
 
@@ -378,7 +397,16 @@
 
 ## Phase F — Cross-Cutting & Compliance Verification
 
-**Purpose**: Validate all Constitution compliance gates; close any open defects; update documentation.
+**Purpose**: Validate all Constitution compliance gates (including static analysis), close any open defects, and confirm zero lint violations across the entire Epic before the branch is closed.
+
+### Lint Gate Verification
+
+- [ ] T150a Run `./gradlew check` across all Java subprojects touched in this Epic — `lib-common-security`, `iam-service`, `gateway-service` — with zero Checkstyle violations and zero SpotBugs findings
+- [ ] T150b [P] Run `npm run lint` in `frontend/angular/` — zero ESLint errors; zero ESLint warnings (max-warnings=0 enforced)
+- [ ] T150c [P] Confirm no `@SuppressWarnings` or `eslint-disable` annotations exist in the codebase without a code comment explaining the specific exemption; grep: `git grep -n "@SuppressWarnings\|eslint-disable"` and review each hit
+- [ ] T150d Confirm all lint violations discovered during this Epic were logged as Jira defects and are resolved with a fix-and-retest commit — no outstanding lint defects open
+
+### Test Gate Verification
 
 - [ ] T150 Verify all Constitution Check gates in `plan.md` are ✅ PASS — specifically Gate III (human approval) was the only pending gate
 - [ ] T151 [P] Confirm Hibernate Envers audit entries exist for: role create, role delete, privilege grant, privilege revoke, organisation create — run integration test against real DB
@@ -387,12 +415,15 @@
 - [ ] T154 [P] Confirm all `role`, `role_privilege`, `organisation` queries in iam-service have `WHERE org_id = :orgId` — grep for repository methods lacking org_id filter
 - [ ] T155 Run `./gradlew :libs:lib-common-security:test :services:iam-service:test :services:iam-service:integrationTest` — all tests GREEN; zero failures
 - [ ] T156 Run `./gradlew :services:gateway-service:integrationTest` — all tests GREEN
+
+### Final Sign-Off
+
 - [ ] T157 Validate `quickstart.md` steps 1–8 work end-to-end on a clean machine (no pre-existing containers or volumes)
-- [ ] T158 Confirm all test failures during this Epic were logged as Jira defects and are resolved (Constitution §II)
+- [ ] T158 Confirm all test failures and lint failures during this Epic were logged as Jira defects and are resolved (Constitution §II)
 - [ ] T159 Update `plan.md` Gate III status to ✅ PASS after owner signs off
 - [ ] T160 Final commit and push of feature branch `001-iam-multi-org-security-keycloak`
 
-**Checkpoint ✅**: All gates green; all tests pass; Epic ready for PR review.
+**Checkpoint ✅**: Zero lint violations. Zero test failures. Zero open defects. All compliance gates green. Epic ready for PR review.
 
 ---
 
@@ -421,7 +452,7 @@ Phase C (Keycloak realm + Docker Compose) ────────────�
 
 ### Parallel opportunities within phases
 
-- T001–T005 (Phase 0): all parallelisable
+- T001–T009b (Phase 0): T001 first; T002–T005, T007–T009b parallelisable; T006/T006a after plugin tasks complete
 - T010–T013 (A1 tests): all parallelisable
 - T014–T017 (A1 impl): T014/T015 parallel; T016 depends on T014
 - T030–T033 (A2 tests): all parallelisable
@@ -437,6 +468,9 @@ Phase C (Keycloak realm + Docker Compose) ────────────�
 - `[P]` = parallelisable with other `[P]` tasks in the same phase (different files, no dependency)
 - `[TEST]` tasks MUST be written first and confirmed **RED** before any `[IMPL]` task in the same group
 - Test failures MUST be logged as Jira defects before proceeding to the next `[IMPL]` task
-- Constitution §II: no feature is "done" while any defect it introduced remains open
+- Lint failures are defects — log, fix, re-run `./gradlew check`, then commit
+- `./gradlew check` = Checkstyle + SpotBugs + unit tests — MUST pass before every Java commit
+- `npm run lint` (zero warnings) MUST pass before every Angular commit
+- Constitution §II: no feature is "done" while any defect (test or lint) it introduced remains open
 - Commit after each phase checkpoint — never end the day with uncommitted GREEN tests
-- Gate III (human plan approval) blocks ALL implementation tasks — generator tasks (T001–T006) are the only exception
+- Gate III (human plan approval) blocks ALL implementation tasks — Phase 0 setup tasks are the only exception

@@ -70,6 +70,28 @@ Additional mandatory rules:
 - All manufacturing-data-path code requires integration tests against a real
   database; mocking the persistence layer is not permitted for these paths.
 
+#### Static Analysis & Lint Gate (mandatory)
+
+Static analysis is a first-class quality gate, treated identically to test
+failures. The following tools MUST be configured from Phase 0 of every feature:
+
+- **Java/Spring Boot services**: Checkstyle (style and naming rules) +
+  SpotBugs (bug-pattern detection). Both MUST be wired into the Gradle `check`
+  task so that `./gradlew check` fails on any violation.
+- **Angular/TypeScript frontend**: `@angular-eslint` ESLint configuration.
+  `ng lint` MUST return zero errors before any frontend commit.
+- **Zero-warning policy**: Lint warnings are treated as errors. Suppression
+  annotations (`@SuppressWarnings`, `eslint-disable`) are only permitted with
+  a code comment explaining the specific exemption; blanket suppressions are
+  prohibited.
+- **Lint failures are defects**: Any lint violation discovered during
+  development MUST be logged as a tracked Jira defect, fixed, and the full
+  lint + test suite re-run to confirm zero failures before the fix is
+  committed.
+- **No commit with red lint**: `./gradlew check` (lint + unit tests) MUST
+  pass with zero failures as a pre-condition for every commit on any feature
+  branch. A CI gate MUST enforce this on every push.
+
 ### III. AI-Generated, Human-Approved
 
 Claude Code (or any AI assistant) may generate, refactor, or modify code.
