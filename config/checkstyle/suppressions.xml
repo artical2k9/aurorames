@@ -39,4 +39,12 @@
     -->
     <suppress checks="VisibilityModifier" files=".*Test\.java"/>
 
+    <!--
+      VisibilityModifier / HideUtilityClassConstructor: testFixtures source set holds shared
+      test infrastructure (e.g. KeycloakTestSupport). These classes expose public constants
+      and use public constructors by design so consuming test classes can instantiate them.
+    -->
+    <suppress checks="VisibilityModifier" files=".*testFixtures.*"/>
+    <suppress checks="HideUtilityClassConstructor" files=".*testFixtures.*"/>
+
 </suppressions>
