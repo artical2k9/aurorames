@@ -1,0 +1,9 @@
+<nav>
+  <span>{{ title() }}</span>
+  @if (isLoggedIn) {
+    <button (click)="logout()">Logout</button>
+  } @else {
+    <button (click)="login()">Login</button>
+  }
+</nav>
+<router-outlet />
