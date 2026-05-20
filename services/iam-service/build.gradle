@@ -34,4 +34,5 @@ dependencies {
     testImplementation 'org.testcontainers:kafka'
     testImplementation libs.testcontainers.keycloak
     testImplementation libs.wiremock
+    testImplementation libs.caffeine
 }
