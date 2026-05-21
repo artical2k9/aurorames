@@ -13,6 +13,7 @@ import org.keycloak.representations.idm.ProtocolMapperRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.userprofile.config.UPAttribute;
 import org.keycloak.representations.userprofile.config.UPConfig;
 import org.testcontainers.DockerClientFactory;
 
@@ -136,6 +137,9 @@ public class KeycloakTestSupport implements BeforeAllCallback, AfterAllCallback 
 
         UPConfig upConfig = adminClient.realm(REALM).users().userProfile().getConfiguration();
         upConfig.setUnmanagedAttributePolicy(UPConfig.UnmanagedAttributePolicy.ENABLED);
+        UPAttribute orgIdAttr = new UPAttribute();
+        orgIdAttr.setName("org_id");
+        upConfig.getAttributes().add(orgIdAttr);
         adminClient.realm(REALM).users().userProfile().update(upConfig);
 
         ClientRepresentation client = new ClientRepresentation();
