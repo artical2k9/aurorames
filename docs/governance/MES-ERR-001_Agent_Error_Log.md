@@ -16,4 +16,9 @@
 
 <!-- Add new errors below this line. Oldest at the top, newest at the bottom. -->
 
-<!-- No open (non-promoted) errors at this time. All errors from session 2026-05-20 were promoted directly to the archive and index on log creation. -->
+## ERR-MES-019 — ESLint flat config rejects `processor: angular.processInlineTemplates`
+**Date:** 2026-05-20  **Category:** Frontend — ESLint  **Status:** Promoted 2026-05-20
+**Symptom:** `ng lint` failed: `Config (unnamed): Key "processor": Expected an object or a string.` when `processor: angular.processInlineTemplates` was set in `eslint.config.js`.
+**Root cause:** ESLint v9 flat config requires the `processor` field to be either a registered string (`"plugin/name"`) or a plain object with `preprocess`/`postprocess` methods. `angular.processInlineTemplates` as exported by `@angular-eslint/eslint-plugin` v21 is neither — ESLint rejects it.
+**Fix applied:** Removed the `processor` line entirely. All project components use `templateUrl`, so inline template extraction is not needed; external `.html` files are linted in the separate HTML config block.
+**Rule:** In Angular ESLint flat config, do not set `processor: angular.processInlineTemplates` — it is rejected. The inline template processor is only needed for components with inline `template:` strings; if all components use `templateUrl`, omit the processor entirely.

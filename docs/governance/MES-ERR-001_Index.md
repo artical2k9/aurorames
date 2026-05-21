@@ -22,3 +22,4 @@
 | ERR-MES-016 | (seed) | Docker / Config | New env vars must land in both `.env.example` AND compose file in the same PR |
 | ERR-MES-017 | (seed) | Code pattern | When a pattern-based bug surfaces, audit all instances across the codebase before closing |
 | ERR-MES-018 | (seed) | Deployment | WinSCP: always use Binary mode for non-text files; strip base64 newlines before decoding |
+| ERR-MES-019 | 2026-05-20 | Frontend — ESLint | Flat config rejects `processor: angular.processInlineTemplates`; omit it when all components use `templateUrl` |

@@ -241,3 +241,16 @@ assertThat(body).containsKey("ADMIN");
 **Fix applied:** Changed WinSCP session to Binary mode. Also: when downloading files via GitHub API (base64-encoded), strip embedded newlines before decoding — `base64 -d` on raw API output fails if newlines are present.
 
 **Rule:** WinSCP transfers for MikeMES deployments MUST use Binary mode for all non-plaintext files (images, keystores, compiled artifacts, etc.). Set Transfer → Transfer settings → Transfer mode → Binary. Also: when base64-decoding GitHub API file downloads, strip newlines first: `echo "$content" | tr -d '\n' | base64 -d > outfile`.
+
+---
+
+## ERR-MES-019 — ESLint flat config rejects `processor: angular.processInlineTemplates`
+**Date:** 2026-05-20  **Category:** Frontend — ESLint  **Status:** Promoted 2026-05-20
+
+**Symptom:** `ng lint` failed with `Config (unnamed): Key "processor": Expected an object or a string.` when `eslint.config.js` included `processor: angular.processInlineTemplates` inside a `tseslint.config(...)` block.
+
+**Root cause:** ESLint v9 flat config requires the `processor` field to be either a registered string (`"plugin/processor-name"`) or a plain object with `preprocess`/`postprocess` methods. The `processInlineTemplates` export from `@angular-eslint/eslint-plugin` v21 does not conform to either shape — ESLint rejects it at config parse time.
+
+**Fix applied:** Removed the `processor` line entirely from `eslint.config.js`. All components in this project use `templateUrl` (external `.html` files), so there are no inline templates to extract. External HTML files are linted by the separate HTML config block that sets `languageOptions: { parser: angularTemplateParser }`.
+
+**Rule:** In Angular ESLint flat config (`eslint.config.js`), do not set `processor: angular.processInlineTemplates` — ESLint v9 rejects it. The inline template processor is only required when components use the `template:` property (inline templates); if all components use `templateUrl`, omit the processor entirely.
