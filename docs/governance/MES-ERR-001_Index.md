@@ -23,3 +23,5 @@
 | ERR-MES-017 | (seed) | Code pattern | When a pattern-based bug surfaces, audit all instances across the codebase before closing |
 | ERR-MES-018 | (seed) | Deployment | WinSCP: always use Binary mode for non-text files; strip base64 newlines before decoding |
 | ERR-MES-019 | 2026-05-20 | Frontend — ESLint | Flat config rejects `processor: angular.processInlineTemplates`; omit it when all components use `templateUrl` |
+| ERR-MES-024 | 2026-05-21 | Testing — Keycloak | Always assert `r.getStatus() == 201` after KC admin create calls; never use KC to issue JWTs in IT tests — use locally-signed RSA JWTs |
+| ERR-MES-025 | 2026-05-21 | Agent — Confidence Calibration | Flag uncertainty before committing when relying on niche external-service breaking-change behaviour; prefer a local smoke test over a CI run as first verification |
