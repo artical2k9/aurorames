@@ -133,50 +133,6 @@ public class KeycloakTestSupport implements BeforeAllCallback, AfterAllCallback 
         realm.setDirectGrantFlow("direct grant");
         adminClient.realms().create(realm);
 
-        try {
-            String kcToken = adminClient.tokenManager().getAccessTokenString();
-            String profileUrl = container.getAuthServerUrl() + "/admin/realms/" + REALM
-                    + "/users/profile";
-            java.net.http.HttpClient http = java.net.http.HttpClient.newHttpClient();
-            String existingJson = http.send(
-                    java.net.http.HttpRequest.newBuilder()
-                            .uri(java.net.URI.create(profileUrl))
-                            .header("Authorization", "Bearer " + kcToken)
-                            .GET().build(),
-                    java.net.http.HttpResponse.BodyHandlers.ofString()).body();
-            com.fasterxml.jackson.databind.node.ObjectNode cfg =
-                    (com.fasterxml.jackson.databind.node.ObjectNode) MAPPER.readTree(existingJson);
-            cfg.put("unmanagedAttributePolicy", "ENABLED");
-            com.fasterxml.jackson.databind.node.ArrayNode attrs = cfg.withArray("attributes");
-            boolean hasOrgId = false;
-            for (com.fasterxml.jackson.databind.JsonNode attr : attrs) {
-                if ("org_id".equals(attr.path("name").asText())) {
-                    hasOrgId = true;
-                    break;
-                }
-            }
-            if (!hasOrgId) {
-                attrs.addObject().put("name", "org_id");
-            }
-            java.net.http.HttpResponse<String> putResp = http.send(
-                    java.net.http.HttpRequest.newBuilder()
-                            .uri(java.net.URI.create(profileUrl))
-                            .header("Authorization", "Bearer " + kcToken)
-                            .header("Content-Type", "application/json")
-                            .PUT(java.net.http.HttpRequest.BodyPublishers.ofString(
-                                    MAPPER.writeValueAsString(cfg)))
-                            .build(),
-                    java.net.http.HttpResponse.BodyHandlers.ofString());
-            if (putResp.statusCode() / 100 != 2) {
-                throw new IllegalStateException("User Profile update failed: "
-                        + putResp.statusCode() + " — " + putResp.body());
-            }
-        } catch (IllegalStateException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to configure User Profile", e);
-        }
-
         ClientRepresentation client = new ClientRepresentation();
         client.setClientId(CLIENT_ID);
         client.setPublicClient(true);
@@ -233,11 +189,10 @@ public class KeycloakTestSupport implements BeforeAllCallback, AfterAllCallback 
         ProtocolMapperRepresentation mapper = new ProtocolMapperRepresentation();
         mapper.setName("org-id-claim");
         mapper.setProtocol("openid-connect");
-        mapper.setProtocolMapper("oidc-usermodel-attribute-mapper");
+        mapper.setProtocolMapper("oidc-hardcoded-claim-mapper");
         mapper.setConfig(Map.of(
-                "user.attribute", "org_id",
+                "claim.value", "00000000-0000-0000-0000-000000000001",
                 "access.token.claim", "true",
-                "userinfo.token.claim", "false",
                 "claim.name", "org_id",
                 "jsonType.label", "String"));
         return mapper;

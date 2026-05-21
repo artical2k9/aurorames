@@ -286,52 +286,6 @@ class UserControllerIT {
         realm.setDirectGrantFlow("direct grant");
         kcAdmin.realms().create(realm);
 
-        try {
-            String kcToken = kcAdmin.tokenManager().getAccessTokenString();
-            String profileUrl = KEYCLOAK.getAuthServerUrl() + "/admin/realms/" + TEST_REALM
-                    + "/users/profile";
-            java.net.http.HttpClient http = java.net.http.HttpClient.newHttpClient();
-            String existingJson = http.send(
-                    java.net.http.HttpRequest.newBuilder()
-                            .uri(java.net.URI.create(profileUrl))
-                            .header("Authorization", "Bearer " + kcToken)
-                            .GET().build(),
-                    java.net.http.HttpResponse.BodyHandlers.ofString()).body();
-            com.fasterxml.jackson.databind.ObjectMapper mapper =
-                    new com.fasterxml.jackson.databind.ObjectMapper();
-            com.fasterxml.jackson.databind.node.ObjectNode cfg =
-                    (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(existingJson);
-            cfg.put("unmanagedAttributePolicy", "ENABLED");
-            com.fasterxml.jackson.databind.node.ArrayNode attrs = cfg.withArray("attributes");
-            boolean hasOrgId = false;
-            for (com.fasterxml.jackson.databind.JsonNode attr : attrs) {
-                if ("org_id".equals(attr.path("name").asText())) {
-                    hasOrgId = true;
-                    break;
-                }
-            }
-            if (!hasOrgId) {
-                attrs.addObject().put("name", "org_id");
-            }
-            java.net.http.HttpResponse<String> putResp = http.send(
-                    java.net.http.HttpRequest.newBuilder()
-                            .uri(java.net.URI.create(profileUrl))
-                            .header("Authorization", "Bearer " + kcToken)
-                            .header("Content-Type", "application/json")
-                            .PUT(java.net.http.HttpRequest.BodyPublishers.ofString(
-                                    mapper.writeValueAsString(cfg)))
-                            .build(),
-                    java.net.http.HttpResponse.BodyHandlers.ofString());
-            if (putResp.statusCode() / 100 != 2) {
-                throw new IllegalStateException("User Profile update failed: "
-                        + putResp.statusCode() + " — " + putResp.body());
-            }
-        } catch (IllegalStateException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to configure User Profile", e);
-        }
-
         ClientRepresentation client = new ClientRepresentation();
         client.setClientId(TEST_CLIENT);
         client.setPublicClient(true);
@@ -354,9 +308,12 @@ class UserControllerIT {
         ProtocolMapperRepresentation orgMapper = new ProtocolMapperRepresentation();
         orgMapper.setName("org-id-claim");
         orgMapper.setProtocol("openid-connect");
-        orgMapper.setProtocolMapper("oidc-usermodel-attribute-mapper");
-        orgMapper.setConfig(Map.of("user.attribute", "org_id", "access.token.claim", "true",
-                "userinfo.token.claim", "false", "claim.name", "org_id", "jsonType.label", "String"));
+        orgMapper.setProtocolMapper("oidc-hardcoded-claim-mapper");
+        orgMapper.setConfig(Map.of(
+                "claim.value", SYSTEM_ORG_ID.toString(),
+                "access.token.claim", "true",
+                "claim.name", "org_id",
+                "jsonType.label", "String"));
         Response r2 = kcAdmin.realm(TEST_REALM).clients().get(clientUuid)
                 .getProtocolMappers().createMapper(orgMapper);
         r2.close();
