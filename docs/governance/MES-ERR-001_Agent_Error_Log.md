@@ -16,6 +16,20 @@
 
 <!-- Add new errors below this line. Oldest at the top, newest at the bottom. -->
 
+## ERR-MES-020 — `gradlew` missing execute bit breaks Linux CI
+**Date:** 2026-05-21  **Category:** CI — Permissions  **Status:** Open
+**Symptom:** Both Java and SonarCloud CI jobs failed immediately with `Permission denied` (exit 126) on `./gradlew` on ubuntu-latest runner.
+**Root cause:** `gradlew` was committed from Windows where the POSIX execute bit is not tracked by the filesystem. Git stored the file as mode `100644` instead of `100755`. Linux runners cannot execute it.
+**Fix applied:** `git update-index --chmod=+x gradlew` — sets the execute bit in the Git index without changing file content. Committed and pushed; CI re-ran and passed.
+**Rule:** After scaffolding or copying a Gradle project on Windows, always run `git update-index --chmod=+x gradlew` before pushing. Verify with `git ls-files --stage gradlew` — must show `100755`.
+
+## ERR-MES-021 — Branch protection requires GitHub Pro on private repos
+**Date:** 2026-05-21  **Category:** CI — GitHub  **Status:** Open
+**Symptom:** `gh api repos/.../branches/Develop/protection --method PUT` returned HTTP 403: "Upgrade to GitHub Pro or make this repository public to enable this feature."
+**Root cause:** GitHub's branch protection rules API (required status checks, enforce_admins) is gated behind GitHub Pro for private repositories. The free plan does not support this via API or UI.
+**Fix applied:** Not resolvable without plan upgrade. Documented as a known gap. Options: (a) upgrade to GitHub Pro, (b) make the repo public, (c) rely on convention + CI visibility without enforcement.
+**Rule:** Branch protection rules cannot be set programmatically on private repos under GitHub Free. Do not attempt `gh api .../branches/.../protection` — it will 403. Note the limitation in the PR and raise it with the repo owner.
+
 ## ERR-MES-019 — ESLint flat config rejects `processor: angular.processInlineTemplates`
 **Date:** 2026-05-20  **Category:** Frontend — ESLint  **Status:** Promoted 2026-05-20
 **Symptom:** `ng lint` failed: `Config (unnamed): Key "processor": Expected an object or a string.` when `processor: angular.processInlineTemplates` was set in `eslint.config.js`.
