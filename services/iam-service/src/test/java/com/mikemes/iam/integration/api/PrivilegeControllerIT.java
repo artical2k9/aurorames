@@ -7,15 +7,13 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
-import org.keycloak.representations.idm.ClientRepresentation;
-import org.keycloak.representations.idm.CredentialRepresentation;
-import org.keycloak.representations.idm.ProtocolMapperRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
-import org.keycloak.representations.idm.RoleRepresentation;
-import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -24,13 +22,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import jakarta.ws.rs.core.Response;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -42,11 +42,11 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
 @EmbeddedKafka(partitions = 1, topics = {"iam.privilege-changes"})
+@Import(PrivilegeControllerIT.TestJwtDecoderConfig.class)
 class PrivilegeControllerIT {
 
     static final UUID SYSTEM_ORG_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     static final String TEST_REALM = "mikemes-test";
-    static final String TEST_CLIENT = "test-client";
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")
@@ -57,14 +57,34 @@ class PrivilegeControllerIT {
     @Container
     static final KeycloakContainer KEYCLOAK = new KeycloakContainer();
 
+    static final com.nimbusds.jose.jwk.RSAKey TEST_RSA_KEY;
+
+    static {
+        try {
+            TEST_RSA_KEY = new com.nimbusds.jose.jwk.gen.RSAKeyGenerator(2048)
+                    .keyID("test-key").generate();
+        } catch (com.nimbusds.jose.JOSEException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @TestConfiguration
+    static class TestJwtDecoderConfig {
+        @Bean
+        JwtDecoder testJwtDecoder() {
+            try {
+                return NimbusJwtDecoder.withPublicKey(TEST_RSA_KEY.toRSAPublicKey()).build();
+            } catch (com.nimbusds.jose.JOSEException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
-        registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
-                () -> KEYCLOAK.getAuthServerUrl() + "/realms/" + TEST_REALM
-                        + "/protocol/openid-connect/certs");
         registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", () -> "");
         registry.add("keycloak.admin.server-url", KEYCLOAK::getAuthServerUrl);
         registry.add("keycloak.admin.realm", () -> TEST_REALM);
@@ -91,13 +111,28 @@ class PrivilegeControllerIT {
                 .build();
 
         createRealm(kcAdmin);
-        ensureRealmRole(kcAdmin, "ADMIN");
-        ensureRealmRole(kcAdmin, "VIEWER");
-        createTestUser(kcAdmin, "admin-user", "password", "ADMIN");
-        createTestUser(kcAdmin, "viewer-user", "password", "VIEWER");
-        adminToken = fetchToken("admin-user", "password");
-        viewerToken = fetchToken("viewer-user", "password");
+        adminToken = buildToken("ADMIN");
+        viewerToken = buildToken("VIEWER");
         kcAdmin.close();
+    }
+
+    static String buildToken(String role) {
+        try {
+            com.nimbusds.jwt.JWTClaimsSet claims = new com.nimbusds.jwt.JWTClaimsSet.Builder()
+                    .subject("test-user")
+                    .claim("org_id", SYSTEM_ORG_ID.toString())
+                    .claim("roles", List.of(role))
+                    .expirationTime(new Date(System.currentTimeMillis() + 3_600_000L))
+                    .build();
+            com.nimbusds.jwt.SignedJWT jwt = new com.nimbusds.jwt.SignedJWT(
+                    new com.nimbusds.jose.JWSHeader.Builder(
+                            com.nimbusds.jose.JWSAlgorithm.RS256).keyID("test-key").build(),
+                    claims);
+            jwt.sign(new com.nimbusds.jose.crypto.RSASSASigner(TEST_RSA_KEY));
+            return jwt.serialize();
+        } catch (Exception e) {
+            throw new RuntimeException("buildToken failed", e);
+        }
     }
 
     @Test
@@ -267,99 +302,5 @@ class PrivilegeControllerIT {
         realm.setEnabled(true);
         realm.setDirectGrantFlow("direct grant");
         kcAdmin.realms().create(realm);
-
-        ClientRepresentation client = new ClientRepresentation();
-        client.setClientId(TEST_CLIENT);
-        client.setPublicClient(true);
-        client.setDirectAccessGrantsEnabled(true);
-        client.setEnabled(true);
-        Response r = kcAdmin.realm(TEST_REALM).clients().create(client);
-        String clientUuid = extractId(r);
-        r.close();
-
-        ProtocolMapperRepresentation rolesMapper = new ProtocolMapperRepresentation();
-        rolesMapper.setName("roles-claim");
-        rolesMapper.setProtocol("openid-connect");
-        rolesMapper.setProtocolMapper("oidc-usermodel-realm-role-mapper");
-        rolesMapper.setConfig(Map.of("multivalued", "true", "access.token.claim", "true",
-                "userinfo.token.claim", "false", "claim.name", "roles", "jsonType.label", "String"));
-        Response r1 = kcAdmin.realm(TEST_REALM).clients().get(clientUuid)
-                .getProtocolMappers().createMapper(rolesMapper);
-        r1.close();
-
-        ProtocolMapperRepresentation orgMapper = new ProtocolMapperRepresentation();
-        orgMapper.setName("org-id-claim");
-        orgMapper.setProtocol("openid-connect");
-        orgMapper.setProtocolMapper("oidc-hardcoded-claim-mapper");
-        orgMapper.setConfig(Map.of(
-                "claim.value", SYSTEM_ORG_ID.toString(),
-                "access.token.claim", "true",
-                "claim.name", "org_id",
-                "jsonType.label", "String"));
-        Response r2 = kcAdmin.realm(TEST_REALM).clients().get(clientUuid)
-                .getProtocolMappers().createMapper(orgMapper);
-        r2.close();
-    }
-
-    static void ensureRealmRole(Keycloak kcAdmin, String roleName) {
-        try {
-            kcAdmin.realm(TEST_REALM).roles().get(roleName).toRepresentation();
-        } catch (RuntimeException e) {
-            RoleRepresentation role = new RoleRepresentation();
-            role.setName(roleName);
-            kcAdmin.realm(TEST_REALM).roles().create(role);
-        }
-    }
-
-    static void createTestUser(Keycloak kcAdmin, String username, String password, String role) {
-        ensureRealmRole(kcAdmin, role);
-        UserRepresentation user = new UserRepresentation();
-        user.setUsername(username);
-        user.setEnabled(true);
-        user.setEmail(username + "@test.mikemes.local");
-        user.setEmailVerified(true);
-        user.setFirstName("Test");
-        user.setLastName("User");
-        user.setAttributes(Map.of("org_id", List.of(SYSTEM_ORG_ID.toString())));
-        Response r = kcAdmin.realm(TEST_REALM).users().create(user);
-        String userId = extractId(r);
-        r.close();
-
-        CredentialRepresentation cred = new CredentialRepresentation();
-        cred.setType(CredentialRepresentation.PASSWORD);
-        cred.setValue(password);
-        cred.setTemporary(false);
-        kcAdmin.realm(TEST_REALM).users().get(userId).resetPassword(cred);
-
-        RoleRepresentation roleRep = kcAdmin.realm(TEST_REALM).roles().get(role).toRepresentation();
-        kcAdmin.realm(TEST_REALM).users().get(userId).roles().realmLevel().add(List.of(roleRep));
-    }
-
-    static String fetchToken(String username, String password) {
-        try {
-            String body = "grant_type=password&client_id=" + TEST_CLIENT
-                    + "&username=" + username + "&password=" + password;
-            java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(KEYCLOAK.getAuthServerUrl() + "/realms/" + TEST_REALM
-                            + "/protocol/openid-connect/token"))
-                    .header("Content-Type", "application/x-www-form-urlencoded")
-                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString(body))
-                    .build();
-            String response = java.net.http.HttpClient.newHttpClient()
-                    .send(req, java.net.http.HttpResponse.BodyHandlers.ofString()).body();
-            com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper()
-                    .readTree(response).get("access_token");
-            if (node == null) {
-                throw new IllegalStateException("No access_token in response: " + response);
-            }
-            return node.asText();
-        } catch (Exception e) {
-            throw new IllegalStateException("fetchToken failed", e);
-        }
-    }
-
-    private static String extractId(Response response) {
-        String location = response.getHeaderString("Location");
-        return location.substring(location.lastIndexOf('/') + 1);
     }
 }
