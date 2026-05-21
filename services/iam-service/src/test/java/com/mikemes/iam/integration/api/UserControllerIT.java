@@ -330,6 +330,10 @@ class UserControllerIT {
         UserRepresentation user = new UserRepresentation();
         user.setUsername(username);
         user.setEnabled(true);
+        user.setEmail(username + "@test.mikemes.local");
+        user.setEmailVerified(true);
+        user.setFirstName("Test");
+        user.setLastName("User");
         user.setAttributes(Map.of("org_id", List.of(SYSTEM_ORG_ID.toString())));
         Response r = kcAdmin.realm(TEST_REALM).users().create(user);
         String userId = extractId(r);

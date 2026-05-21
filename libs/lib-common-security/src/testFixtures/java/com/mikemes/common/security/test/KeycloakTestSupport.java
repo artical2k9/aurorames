@@ -79,6 +79,10 @@ public class KeycloakTestSupport implements BeforeAllCallback, AfterAllCallback 
         UserRepresentation user = new UserRepresentation();
         user.setUsername(username);
         user.setEnabled(true);
+        user.setEmail(username + "@test.mikemes.local");
+        user.setEmailVerified(true);
+        user.setFirstName("Test");
+        user.setLastName("User");
         user.setAttributes(Map.of("org_id", List.of(orgId)));
 
         Response userResponse = adminClient.realm(REALM).users().create(user);
