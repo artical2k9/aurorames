@@ -9,6 +9,8 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+    properties:
+      org.hibernate.envers.default_schema: iam
   flyway:
     schemas: iam
     locations: classpath:db/migration
