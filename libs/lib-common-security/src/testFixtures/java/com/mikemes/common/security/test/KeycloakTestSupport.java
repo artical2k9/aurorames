@@ -79,6 +79,7 @@ public class KeycloakTestSupport implements BeforeAllCallback, AfterAllCallback 
         UserRepresentation user = new UserRepresentation();
         user.setUsername(username);
         user.setEnabled(true);
+        user.setRequiredActions(List.of());
         user.setAttributes(Map.of("org_id", List.of(orgId)));
 
         CredentialRepresentation cred = new CredentialRepresentation();

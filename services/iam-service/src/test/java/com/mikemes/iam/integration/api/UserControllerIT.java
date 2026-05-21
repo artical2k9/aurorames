@@ -330,6 +330,7 @@ class UserControllerIT {
         UserRepresentation user = new UserRepresentation();
         user.setUsername(username);
         user.setEnabled(true);
+        user.setRequiredActions(List.of());
         user.setAttributes(Map.of("org_id", List.of(SYSTEM_ORG_ID.toString())));
         CredentialRepresentation cred = new CredentialRepresentation();
         cred.setType(CredentialRepresentation.PASSWORD);
