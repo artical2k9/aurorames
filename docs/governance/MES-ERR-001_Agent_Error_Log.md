@@ -30,6 +30,13 @@
 **Fix applied:** Not resolvable without plan upgrade. Documented as a known gap. Options: (a) upgrade to GitHub Pro, (b) make the repo public, (c) rely on convention + CI visibility without enforcement.
 **Rule:** Branch protection rules cannot be set programmatically on private repos under GitHub Free. Do not attempt `gh api .../branches/.../protection` — it will 403. Note the limitation in the PR and raise it with the repo owner.
 
+## ERR-MES-022 — Keycloak 25+ ROPC fails on new realms without `setDirectGrantFlow`
+**Date:** 2026-05-21  **Category:** Testing — Keycloak  **Status:** Open
+**Symptom:** `KeycloakSupportTest.createUser_andFetchToken_returnsJwt()` failed with `NullPointerException: Cannot invoke "JsonNode.asText()" because the return value of "JsonNode.get(String)" is null`. All integration tests that use `fetchToken()` with ROPC fail the same way.
+**Root cause:** Keycloak 25+ ships a new realm with the "direct grant" flow disabled by default. Creating a realm via the Admin API without calling `realm.setDirectGrantFlow("direct grant")` means the ROPC token endpoint returns `{"error":"access_denied"}` with no `access_token` field. `JsonNode.get("access_token")` returns null → NPE.
+**Fix applied:** Added `realm.setDirectGrantFlow("direct grant")` to `setupRealm()` in `KeycloakTestSupport` and to `createRealm()` in `PrivilegeControllerIT`, `RoleControllerIT`, and `UserControllerIT`. Added null-check in every `fetchToken()` with an error message that includes the full response body.
+**Rule:** When creating a Keycloak realm via Admin API for ROPC testing, always call `realm.setDirectGrantFlow("direct grant")` before `adminClient.realms().create(realm)`. Without it, the token endpoint returns an error response and `fetchToken()` NPEs on `access_token`. In `fetchToken()`, always null-check the `access_token` node and include the raw response in the exception message.
+
 ## ERR-MES-019 — ESLint flat config rejects `processor: angular.processInlineTemplates`
 **Date:** 2026-05-20  **Category:** Frontend — ESLint  **Status:** Promoted 2026-05-20
 **Symptom:** `ng lint` failed: `Config (unnamed): Key "processor": Expected an object or a string.` when `processor: angular.processInlineTemplates` was set in `eslint.config.js`.

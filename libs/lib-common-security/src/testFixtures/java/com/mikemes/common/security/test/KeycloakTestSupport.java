@@ -111,7 +111,11 @@ public class KeycloakTestSupport implements BeforeAllCallback, AfterAllCallback 
             String body = HttpClient.newHttpClient()
                     .send(request, HttpResponse.BodyHandlers.ofString())
                     .body();
-            return MAPPER.readTree(body).get("access_token").asText();
+            com.fasterxml.jackson.databind.JsonNode node = MAPPER.readTree(body).get("access_token");
+            if (node == null) {
+                throw new IllegalStateException("No access_token in response: " + body);
+            }
+            return node.asText();
         } catch (IOException | InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("fetchToken failed", e);
@@ -122,6 +126,7 @@ public class KeycloakTestSupport implements BeforeAllCallback, AfterAllCallback 
         RealmRepresentation realm = new RealmRepresentation();
         realm.setRealm(REALM);
         realm.setEnabled(true);
+        realm.setDirectGrantFlow("direct grant");
         adminClient.realms().create(realm);
 
         ClientRepresentation client = new ClientRepresentation();

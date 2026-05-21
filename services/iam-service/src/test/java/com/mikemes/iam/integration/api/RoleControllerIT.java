@@ -299,6 +299,7 @@ class RoleControllerIT {
         RealmRepresentation realm = new RealmRepresentation();
         realm.setRealm(TEST_REALM);
         realm.setEnabled(true);
+        realm.setDirectGrantFlow("direct grant");
         kcAdmin.realms().create(realm);
 
         ClientRepresentation client = new ClientRepresentation();
@@ -386,8 +387,12 @@ class RoleControllerIT {
                     .POST(java.net.http.HttpRequest.BodyPublishers.ofString(body))
                     .build();
             String response = http.send(req, java.net.http.HttpResponse.BodyHandlers.ofString()).body();
-            return new com.fasterxml.jackson.databind.ObjectMapper()
-                    .readTree(response).get("access_token").asText();
+            com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readTree(response).get("access_token");
+            if (node == null) {
+                throw new IllegalStateException("No access_token in response: " + response);
+            }
+            return node.asText();
         } catch (Exception e) {
             throw new IllegalStateException("fetchToken failed", e);
         }
