@@ -13,9 +13,9 @@
 $ErrorActionPreference = "Stop"
 
 # Resolve project name as codeburn sees it (path relative to home directory)
-$home = [System.IO.Path]::GetFullPath($env:USERPROFILE)
+$userHome = [System.IO.Path]::GetFullPath($env:USERPROFILE)
 $repo = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
-$projectName = $repo.Substring($home.Length).TrimStart('\', '/').Replace('\', '/')
+$projectName = $repo.Substring($userHome.Length).TrimStart('\', '/').Replace('\', '/')
 
 # Find the commit where this branch diverged from Develop
 $mergeBase = git merge-base HEAD origin/Develop 2>$null
