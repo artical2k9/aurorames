@@ -3,7 +3,9 @@ package com.mikemes.iam.integration.api;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -60,6 +62,22 @@ class InternalControllerIT {
 
     @Autowired TestRestTemplate restTemplate;
     @Autowired EmbeddedKafkaBroker embeddedKafka;
+
+    private long eventsTopicOffset = 0;
+
+    @BeforeEach
+    void captureOffset() {
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafka.getBrokersAsString());
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {
+            TopicPartition tp = new TopicPartition("iam.events", 0);
+            consumer.assign(List.of(tp));
+            consumer.seekToEnd(List.of(tp));
+            eventsTopicOffset = consumer.position(tp);
+        }
+    }
 
     @Test
     void receiveKeycloakEvent_validTokenAndEventType_returns204AndPublishesToKafka() {
@@ -143,11 +161,12 @@ class InternalControllerIT {
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "it-consumer-" + UUID.randomUUID());
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         List<String> messages = new ArrayList<>();
         try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {
-            consumer.subscribe(List.of(topic));
+            TopicPartition tp = new TopicPartition(topic, 0);
+            consumer.assign(List.of(tp));
+            consumer.seek(tp, eventsTopicOffset);
             long deadline = System.currentTimeMillis() + 5_000;
             while (messages.size() < expectedCount && System.currentTimeMillis() < deadline) {
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(500));

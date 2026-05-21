@@ -2,11 +2,16 @@ package com.mikemes.iam.integration.privilege;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.mikemes.common.security.privilege.CaffeinePrivilegeCache;
+import com.mikemes.common.security.privilege.PrivilegeRegistryClient;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -25,6 +30,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers(disabledWithoutDocker = true)
 @EmbeddedKafka(partitions = 1, topics = {"iam.privilege-changes"})
 class PrivilegeCacheInvalidationIT {
+
+    @TestConfiguration
+    static class CacheConfig {
+        @Bean
+        @Primary
+        CaffeinePrivilegeCache caffeinePrivilegeCache(
+                PrivilegeRegistryClient registryClient,
+                @Value("${mikemes.security.privilege-cache-ttl-seconds:60}") long ttlSeconds) {
+            return new CaffeinePrivilegeCache(registryClient, ttlSeconds);
+        }
+    }
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")

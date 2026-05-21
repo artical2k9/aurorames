@@ -65,6 +65,8 @@ class PrivilegeControllerIT {
         registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
                 () -> KEYCLOAK.getAuthServerUrl() + "/realms/" + TEST_REALM
                         + "/protocol/openid-connect/certs");
+        registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri",
+                () -> KEYCLOAK.getAuthServerUrl() + "/realms/" + TEST_REALM);
         registry.add("keycloak.admin.server-url", KEYCLOAK::getAuthServerUrl);
         registry.add("keycloak.admin.realm", () -> TEST_REALM);
         registry.add("keycloak.admin.username", KEYCLOAK::getAdminUsername);
