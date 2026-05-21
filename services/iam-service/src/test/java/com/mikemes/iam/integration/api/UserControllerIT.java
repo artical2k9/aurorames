@@ -14,8 +14,6 @@ import org.keycloak.representations.idm.ProtocolMapperRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
-import org.keycloak.representations.userprofile.config.UPAttribute;
-import org.keycloak.representations.userprofile.config.UPConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -288,12 +286,46 @@ class UserControllerIT {
         realm.setDirectGrantFlow("direct grant");
         kcAdmin.realms().create(realm);
 
-        UPConfig upConfig = kcAdmin.realm(TEST_REALM).users().userProfile().getConfiguration();
-        upConfig.setUnmanagedAttributePolicy(UPConfig.UnmanagedAttributePolicy.ENABLED);
-        UPAttribute orgIdAttr = new UPAttribute();
-        orgIdAttr.setName("org_id");
-        upConfig.getAttributes().add(orgIdAttr);
-        kcAdmin.realm(TEST_REALM).users().userProfile().update(upConfig);
+        try {
+            String kcToken = kcAdmin.tokenManager().getAccessTokenString();
+            String profileUrl = KEYCLOAK.getAuthServerUrl() + "/admin/realms/" + TEST_REALM
+                    + "/users/profile";
+            java.net.http.HttpClient http = java.net.http.HttpClient.newHttpClient();
+            String existingJson = http.send(
+                    java.net.http.HttpRequest.newBuilder()
+                            .uri(java.net.URI.create(profileUrl))
+                            .header("Authorization", "Bearer " + kcToken)
+                            .GET().build(),
+                    java.net.http.HttpResponse.BodyHandlers.ofString()).body();
+            com.fasterxml.jackson.databind.ObjectMapper mapper =
+                    new com.fasterxml.jackson.databind.ObjectMapper();
+            com.fasterxml.jackson.databind.node.ObjectNode cfg =
+                    (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(existingJson);
+            cfg.put("unmanagedAttributePolicy", "ENABLED");
+            com.fasterxml.jackson.databind.node.ArrayNode attrs = cfg.withArray("attributes");
+            boolean hasOrgId = false;
+            for (com.fasterxml.jackson.databind.JsonNode attr : attrs) {
+                if ("org_id".equals(attr.path("name").asText())) { hasOrgId = true; break; }
+            }
+            if (!hasOrgId) { attrs.addObject().put("name", "org_id"); }
+            java.net.http.HttpResponse<String> putResp = http.send(
+                    java.net.http.HttpRequest.newBuilder()
+                            .uri(java.net.URI.create(profileUrl))
+                            .header("Authorization", "Bearer " + kcToken)
+                            .header("Content-Type", "application/json")
+                            .PUT(java.net.http.HttpRequest.BodyPublishers.ofString(
+                                    mapper.writeValueAsString(cfg)))
+                            .build(),
+                    java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (putResp.statusCode() / 100 != 2) {
+                throw new IllegalStateException("User Profile update failed: "
+                        + putResp.statusCode() + " — " + putResp.body());
+            }
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to configure User Profile", e);
+        }
 
         ClientRepresentation client = new ClientRepresentation();
         client.setClientId(TEST_CLIENT);
