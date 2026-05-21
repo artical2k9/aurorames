@@ -357,18 +357,17 @@ class RoleControllerIT {
         UserRepresentation user = new UserRepresentation();
         user.setUsername(username);
         user.setEnabled(true);
-        user.setRequiredActions(List.of());
         user.setAttributes(Map.of("org_id", List.of(SYSTEM_ORG_ID.toString())));
+
+        Response r = kcAdmin.realm(TEST_REALM).users().create(user);
+        String userId = extractId(r);
+        r.close();
 
         CredentialRepresentation cred = new CredentialRepresentation();
         cred.setType(CredentialRepresentation.PASSWORD);
         cred.setValue(password);
         cred.setTemporary(false);
-        user.setCredentials(List.of(cred));
-
-        Response r = kcAdmin.realm(TEST_REALM).users().create(user);
-        String userId = extractId(r);
-        r.close();
+        kcAdmin.realm(TEST_REALM).users().get(userId).resetPassword(cred);
 
         RoleRepresentation roleRep = kcAdmin.realm(TEST_REALM).roles().get(role).toRepresentation();
         kcAdmin.realm(TEST_REALM).users().get(userId).roles().realmLevel().add(List.of(roleRep));

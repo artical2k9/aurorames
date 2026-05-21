@@ -79,18 +79,17 @@ public class KeycloakTestSupport implements BeforeAllCallback, AfterAllCallback 
         UserRepresentation user = new UserRepresentation();
         user.setUsername(username);
         user.setEnabled(true);
-        user.setRequiredActions(List.of());
         user.setAttributes(Map.of("org_id", List.of(orgId)));
+
+        Response userResponse = adminClient.realm(REALM).users().create(user);
+        String userId = extractId(userResponse);
+        userResponse.close();
 
         CredentialRepresentation cred = new CredentialRepresentation();
         cred.setType(CredentialRepresentation.PASSWORD);
         cred.setValue(password);
         cred.setTemporary(false);
-        user.setCredentials(List.of(cred));
-
-        Response userResponse = adminClient.realm(REALM).users().create(user);
-        String userId = extractId(userResponse);
-        userResponse.close();
+        adminClient.realm(REALM).users().get(userId).resetPassword(cred);
 
         List<RoleRepresentation> roleReps = roles.stream()
                 .map(r -> adminClient.realm(REALM).roles().get(r).toRepresentation())
