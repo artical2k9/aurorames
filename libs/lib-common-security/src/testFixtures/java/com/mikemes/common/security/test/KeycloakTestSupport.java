@@ -13,6 +13,7 @@ import org.keycloak.representations.idm.ProtocolMapperRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.userprofile.config.UPConfig;
 import org.testcontainers.DockerClientFactory;
 
 import jakarta.ws.rs.core.Response;
@@ -132,6 +133,10 @@ public class KeycloakTestSupport implements BeforeAllCallback, AfterAllCallback 
         realm.setEnabled(true);
         realm.setDirectGrantFlow("direct grant");
         adminClient.realms().create(realm);
+
+        UPConfig upConfig = adminClient.realm(REALM).users().userProfile().getConfiguration();
+        upConfig.setUnmanagedAttributePolicy(UPConfig.UnmanagedAttributePolicy.ENABLED);
+        adminClient.realm(REALM).users().userProfile().update(upConfig);
 
         ClientRepresentation client = new ClientRepresentation();
         client.setClientId(CLIENT_ID);

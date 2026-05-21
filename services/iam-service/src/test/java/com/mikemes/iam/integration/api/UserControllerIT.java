@@ -14,6 +14,7 @@ import org.keycloak.representations.idm.ProtocolMapperRepresentation;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.userprofile.config.UPConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
@@ -65,8 +66,7 @@ class UserControllerIT {
         registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
                 () -> KEYCLOAK.getAuthServerUrl() + "/realms/" + TEST_REALM
                         + "/protocol/openid-connect/certs");
-        registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri",
-                () -> KEYCLOAK.getAuthServerUrl() + "/realms/" + TEST_REALM);
+        registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", () -> "");
         registry.add("keycloak.admin.server-url", KEYCLOAK::getAuthServerUrl);
         registry.add("keycloak.admin.realm", () -> TEST_REALM);
         registry.add("keycloak.admin.username", KEYCLOAK::getAdminUsername);
@@ -286,6 +286,10 @@ class UserControllerIT {
         realm.setEnabled(true);
         realm.setDirectGrantFlow("direct grant");
         kcAdmin.realms().create(realm);
+
+        UPConfig upConfig = kcAdmin.realm(TEST_REALM).users().userProfile().getConfiguration();
+        upConfig.setUnmanagedAttributePolicy(UPConfig.UnmanagedAttributePolicy.ENABLED);
+        kcAdmin.realm(TEST_REALM).users().userProfile().update(upConfig);
 
         ClientRepresentation client = new ClientRepresentation();
         client.setClientId(TEST_CLIENT);
