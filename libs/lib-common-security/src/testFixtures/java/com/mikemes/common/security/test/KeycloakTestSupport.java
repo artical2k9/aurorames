@@ -150,9 +150,14 @@ public class KeycloakTestSupport implements BeforeAllCallback, AfterAllCallback 
             com.fasterxml.jackson.databind.node.ArrayNode attrs = cfg.withArray("attributes");
             boolean hasOrgId = false;
             for (com.fasterxml.jackson.databind.JsonNode attr : attrs) {
-                if ("org_id".equals(attr.path("name").asText())) { hasOrgId = true; break; }
+                if ("org_id".equals(attr.path("name").asText())) {
+                    hasOrgId = true;
+                    break;
+                }
             }
-            if (!hasOrgId) { attrs.addObject().put("name", "org_id"); }
+            if (!hasOrgId) {
+                attrs.addObject().put("name", "org_id");
+            }
             java.net.http.HttpResponse<String> putResp = http.send(
                     java.net.http.HttpRequest.newBuilder()
                             .uri(java.net.URI.create(profileUrl))
