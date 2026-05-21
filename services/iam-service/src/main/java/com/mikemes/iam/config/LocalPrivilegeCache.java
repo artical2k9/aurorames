@@ -5,6 +5,7 @@ import com.mikemes.iam.domain.Role;
 import com.mikemes.iam.repository.RolePrivilegeRepository;
 import com.mikemes.iam.repository.RoleRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Set;
@@ -29,6 +30,7 @@ public class LocalPrivilegeCache implements PrivilegeCache {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Set<String> getPrivilegesForRole(String roleName) {
         List<Role> roles = roleRepository.findByName(roleName);
         return roles.stream()
