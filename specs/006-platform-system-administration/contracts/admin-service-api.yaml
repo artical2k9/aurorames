@@ -1,0 +1,89 @@
+openapi: "3.0.3"
+info:
+  title: Admin Service API
+  description: |
+    Spring Boot Admin Server for MikeMES microservice observability.
+    The SBA Server UI and REST aggregation API are protected by Keycloak OIDC.
+    The standard SBA REST API (instance registration, health aggregation) is exposed
+    internally for SBA clients; the documentation below covers only custom and
+    health endpoints. Full SBA REST API documentation: https://docs.spring-boot-admin.com/
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:8888
+    description: Local development
+  - url: http://admin-service:8888
+    description: Docker Compose internal
+
+tags:
+  - name: sba
+    description: Spring Boot Admin standard endpoints (SBA client registration)
+  - name: actuator
+    description: Spring Boot Actuator endpoints
+
+paths:
+  /actuator/health:
+    get:
+      tags: [actuator]
+      summary: Healthcheck (no auth required — used by Docker Compose healthcheck)
+      operationId: health
+      security: []
+      responses:
+        "200":
+          description: Service is UP
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+
+  /instances:
+    post:
+      tags: [sba]
+      summary: SBA client registration (standard SBA endpoint — internal use only)
+      description: |
+        Called automatically by `spring-boot-admin-starter-client` on each service startup.
+        Not exposed through Spring Cloud Gateway — internal network only.
+        See Spring Boot Admin documentation for full schema.
+      operationId: registerInstance
+      security:
+        - bearerAuth: []
+      requestBody:
+        description: SBA instance registration payload (managed by SBA client library)
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Spring Boot Admin instance registration payload (library-managed)
+      responses:
+        "201":
+          description: Instance registered
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak-issued JWT. Required for UI access and API calls.
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: integer
+              error:
+                type: string
+              message:
+                type: string
