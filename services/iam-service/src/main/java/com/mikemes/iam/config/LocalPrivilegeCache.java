@@ -1,15 +1,11 @@
 package com.mikemes.iam.config;
 
 import com.mikemes.common.security.privilege.PrivilegeCache;
-import com.mikemes.iam.domain.Role;
 import com.mikemes.iam.repository.RolePrivilegeRepository;
-import com.mikemes.iam.repository.RoleRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * iam-service provides its own PrivilegeCache backed by the local DB, bypassing
@@ -20,22 +16,15 @@ import java.util.stream.Collectors;
 @Component
 public class LocalPrivilegeCache implements PrivilegeCache {
 
-    private final RoleRepository roleRepository;
     private final RolePrivilegeRepository rolePrivilegeRepository;
 
-    public LocalPrivilegeCache(RoleRepository roleRepository,
-                               RolePrivilegeRepository rolePrivilegeRepository) {
-        this.roleRepository = roleRepository;
+    public LocalPrivilegeCache(RolePrivilegeRepository rolePrivilegeRepository) {
         this.rolePrivilegeRepository = rolePrivilegeRepository;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Set<String> getPrivilegesForRole(String roleName) {
-        List<Role> roles = roleRepository.findByName(roleName);
-        return roles.stream()
-                .flatMap(role -> rolePrivilegeRepository.findActiveByRoleId(role.getId()).stream())
-                .map(assignment -> assignment.getPrivilege().getPrivilegeKey())
-                .collect(Collectors.toSet());
+        return rolePrivilegeRepository.findPrivilegeKeysByRoleName(roleName);
     }
 }
