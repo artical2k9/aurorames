@@ -41,14 +41,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-@SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {
-            "logging.level.org.springframework.security=TRACE",
-            "logging.level.org.springframework.security.oauth2=TRACE",
-            "logging.level.com.mikemes=DEBUG"
-        }
-)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @EmbeddedKafka(partitions = 1, topics = {"iam.privilege-changes"})
 @Import(PrivilegeControllerIT.TestJwtDecoderConfig.class)
 class PrivilegeControllerIT {
@@ -110,7 +103,8 @@ class PrivilegeControllerIT {
             registry.add("spring.datasource.username", () -> env.getOrDefault("TEST_POSTGRES_USER", "iam_user"));
             registry.add("spring.datasource.password", () -> env.getOrDefault("TEST_POSTGRES_PASSWORD", "secret"));
             registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", () -> "");
-            registry.add("keycloak.admin.server-url", () -> env.getOrDefault("TEST_KEYCLOAK_URL", "http://localhost:8090"));
+            registry.add("keycloak.admin.server-url",
+                    () -> env.getOrDefault("TEST_KEYCLOAK_URL", "http://localhost:8090"));
             registry.add("keycloak.admin.realm", () -> TEST_REALM);
             registry.add("keycloak.admin.username", () -> env.getOrDefault("TEST_KEYCLOAK_ADMIN_USER", "admin"));
             registry.add("keycloak.admin.password", () -> env.getOrDefault("TEST_KEYCLOAK_ADMIN_PASSWORD", "admin"));
