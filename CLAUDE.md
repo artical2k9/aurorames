@@ -99,6 +99,7 @@ Before calling `gh pr create`, confirm **all** of the following:
 - [ ] Security considerations reviewed (Constitution §VII — Keycloak-only auth, no secrets in source)
 - [ ] `./gradlew check` passes locally with zero failures (lint + unit tests)
 - [ ] Tests written for all new/changed logic — coverage not decreased from baseline
+- [ ] If any new `services/*/src/main/java` or `libs/*/src/main/java` directory was created, its paths are added to both `sonar.sources` and `sonar.tests` in `sonar-project.properties`
 - [ ] **Deployment steps documented** in the PR description (see below — mandatory for all PRs)
 - [ ] **Usage Cost section completed** — run `.\scripts\feature-cost.ps1` and paste output into PR description
 - [ ] **Pre-retrospective verification completed:**
