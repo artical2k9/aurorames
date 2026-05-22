@@ -1,0 +1,124 @@
+// MikeMES root build — conventions applied to all Java subprojects.
+// Each subproject applies its own plugin on top (java-library or org.springframework.boot).
+
+plugins {
+    id 'com.github.spotbugs'    version '6.0.15' apply false
+    id 'org.springframework.boot' version '3.5.0' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
+}
+
+apply plugin: 'jacoco'
+
+allprojects {
+    group   = 'com.mikemes'
+    version = '0.1.0-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+        mavenLocal()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'checkstyle'
+    apply plugin: 'jacoco'
+    apply plugin: 'com.github.spotbugs'
+    apply plugin: 'io.spring.dependency-management'
+
+    // ── Java 21 toolchain ─────────────────────────────────────────────────────
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
+    // ── Spring Boot BOM — manages versions for all Spring-managed dependencies ─
+    dependencyManagement {
+        imports {
+            mavenBom "org.springframework.boot:spring-boot-dependencies:3.5.0"
+        }
+    }
+
+    // ── Checkstyle ────────────────────────────────────────────────────────────
+    checkstyle {
+        toolVersion  = '10.21.0'
+        configFile   = rootProject.file('config/checkstyle/checkstyle.xml')
+        maxWarnings  = 0       // zero-warning policy (Constitution §II)
+    }
+
+    // ── SpotBugs ──────────────────────────────────────────────────────────────
+    spotbugs {
+        toolVersion    = '4.8.6'
+        excludeFilter  = rootProject.file('config/spotbugs/exclude.xml')
+        ignoreFailures = false
+    }
+
+    spotbugsMain {
+        effort      = 'max'
+        reportLevel = 'low'
+        reports {
+            html { required = true  }
+            xml  { required = false }
+        }
+    }
+
+    spotbugsTest {
+        // Test code scanned at medium effort; findings are warnings not errors
+        effort      = 'default'
+        reportLevel = 'medium'
+        ignoreFailures = true
+        reports {
+            html { required = true  }
+            xml  { required = false }
+        }
+    }
+
+    // Wire SpotBugs main-source scan into the standard check lifecycle
+    check.dependsOn spotbugsMain
+
+    // ── Tests ─────────────────────────────────────────────────────────────────
+    test {
+        useJUnitPlatform()
+        testLogging {
+            events           'passed', 'skipped', 'failed'
+            exceptionFormat  = 'full'
+            showStandardStreams = false
+        }
+        finalizedBy jacocoTestReport
+    }
+
+    jacocoTestReport {
+        dependsOn test
+        reports {
+            xml.required  = true
+            html.required = true
+        }
+    }
+}
+
+// ── Aggregate JaCoCo report for SonarCloud ──────────────────────────────────
+// Called by CI: ./gradlew build jacocoRootReport
+tasks.register('jacocoRootReport', JacocoReport) {
+    group       = 'verification'
+    description = 'Generates aggregate JaCoCo XML report across all subprojects for SonarCloud.'
+
+    subprojects.each { sub ->
+        sub.plugins.withType(JavaPlugin) {
+            dependsOn sub.tasks.named('test')
+            dependsOn sub.tasks.named('jacocoTestReport')
+            additionalSourceDirs.from sub.sourceSets.main.java.srcDirs
+            sourceDirectories.from    sub.sourceSets.main.java.srcDirs
+            classDirectories.from     sub.sourceSets.main.output
+        }
+    }
+
+    executionData.from fileTree(rootDir) { include '**/build/jacoco/test.exec' }
+
+    reports {
+        xml.required         = true
+        xml.outputLocation   = layout.buildDirectory
+                .file('reports/jacoco/jacocoRootReport/jacocoRootReport.xml')
+        html.required        = false
+    }
+}

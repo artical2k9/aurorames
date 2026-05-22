@@ -1,0 +1,7 @@
+{
+  "epicKey": "MES-5",
+  "epicId": "12088",
+  "epicSummary": "P1 · IAM & Multi-Org Security (Keycloak)",
+  "importedAt": "2026-05-20T08:35:00Z",
+  "specFile": "specs/001-iam-multi-org-security-keycloak/spec.md"
+}

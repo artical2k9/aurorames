@@ -1,0 +1,494 @@
+openapi: "3.1.0"
+info:
+  title: iam-service API
+  version: "1.0.0"
+  description: |
+    MikeMES Identity & Access Management service.
+    Manages roles, privileges, and users. Delegates authentication to Keycloak 25+.
+    All endpoints (except /internal/*) require a valid JWT issued by the MikeMES Keycloak realm.
+    All endpoints are organisation-scoped: the org_id is derived from the authenticated JWT, never from the request body.
+
+servers:
+  - url: http://iam-service:8080
+    description: Internal Docker Compose DNS (service-to-service)
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RoleResponse:
+      type: object
+      required: [id, name, description, systemRole, privilegeCount]
+      properties:
+        id:          { type: string, format: uuid }
+        name:        { type: string, example: SENIOR_INSPECTOR }
+        description: { type: string }
+        systemRole:  { type: boolean, description: "True for the 6 built-in roles — cannot be deleted" }
+        privilegeCount: { type: integer }
+        createdAt:   { type: string, format: date-time }
+        createdBy:   { type: string, description: "Keycloak sub of creator" }
+
+    CreateRoleRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]{0,99}$"
+          example: SENIOR_INSPECTOR
+        description: { type: string, maxLength: 500 }
+
+    PrivilegeResponse:
+      type: object
+      required: [id, privilegeKey, moduleName, description]
+      properties:
+        id:           { type: string, format: uuid }
+        privilegeKey: { type: string, example: "quality:inspection:sign-off" }
+        moduleName:   { type: string, example: quality }
+        description:  { type: string }
+        registeredAt: { type: string, format: date-time }
+
+    PrivilegesByModule:
+      type: object
+      description: "Map of module name → list of privileges"
+      additionalProperties:
+        type: array
+        items:
+          $ref: "#/components/schemas/PrivilegeResponse"
+      example:
+        quality:
+          - id: "..."
+            privilegeKey: "quality:inspection:sign-off"
+            moduleName: quality
+            description: "Sign off an inspection result"
+
+    RolePrivilegeMapResponse:
+      type: object
+      description: "Map of role name → list of active privilege keys. Used by lib-common-security for cache warm-up."
+      additionalProperties:
+        type: array
+        items: { type: string }
+      example:
+        QUALITY_INSPECTOR: ["quality:inspection:view", "quality:inspection:sign-off"]
+        OPERATOR: ["work-orders:order:view", "shopfloor:operation:clock-on"]
+
+    RegisterPrivilegesRequest:
+      type: object
+      required: [moduleName, privileges]
+      properties:
+        moduleName:
+          type: string
+          example: quality-service
+        privileges:
+          type: array
+          items:
+            type: object
+            required: [privilegeKey, description]
+            properties:
+              privilegeKey:
+                type: string
+                pattern: "^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$"
+                example: "quality:inspection:sign-off"
+              description: { type: string }
+
+    UserResponse:
+      type: object
+      required: [id, email, firstName, lastName, roles, enabled]
+      properties:
+        id:        { type: string, format: uuid, description: "Keycloak user UUID" }
+        email:     { type: string, format: email }
+        firstName: { type: string }
+        lastName:  { type: string }
+        roles:     { type: array, items: { type: string } }
+        enabled:   { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    CreateUserRequest:
+      type: object
+      required: [email, firstName, lastName, roles]
+      properties:
+        email:     { type: string, format: email }
+        firstName: { type: string }
+        lastName:  { type: string }
+        roles:
+          type: array
+          items: { type: string }
+          minItems: 1
+          description: "Role names to assign on creation"
+
+    UpdateUserRolesRequest:
+      type: object
+      required: [roles]
+      properties:
+        roles:
+          type: array
+          items: { type: string }
+          description: "Complete set of roles to assign (replaces existing assignments)"
+
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:   { type: string, example: forbidden }
+        message: { type: string }
+        detail:  { type: string }
+
+    Page:
+      type: object
+      properties:
+        page:       { type: integer }
+        size:       { type: integer }
+        totalItems: { type: integer }
+        totalPages: { type: integer }
+
+paths:
+
+  # ── Roles ──────────────────────────────────────────────────────────────────
+
+  /roles:
+    get:
+      summary: List all roles for the authenticated user's organisation
+      operationId: listRoles
+      tags: [Roles]
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RoleResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+    post:
+      summary: Create a new custom role
+      operationId: createRole
+      tags: [Roles]
+      x-required-privilege: "iam:roles:manage"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateRoleRequest" }
+      responses:
+        "201":
+          description: Role created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoleResponse" }
+        "409":
+          description: Role name already exists in this organisation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /roles/{roleId}:
+    delete:
+      summary: Delete a custom role (blocked if users are currently assigned to it)
+      operationId: deleteRole
+      tags: [Roles]
+      x-required-privilege: "iam:roles:manage"
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Deleted }
+        "409":
+          description: Role has active user assignments — list count returned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "400":
+          description: Cannot delete a system role
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /roles/{roleId}/privileges:
+    get:
+      summary: Get privileges currently assigned to a role
+      operationId: getRolePrivileges
+      tags: [Roles]
+      x-required-privilege: "iam:roles:manage"
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PrivilegeResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /roles/{roleId}/privileges/{privilegeId}:
+    put:
+      summary: Grant a privilege to a role
+      operationId: grantPrivilege
+      tags: [Roles]
+      x-required-privilege: "iam:roles:manage"
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: privilegeId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Granted (idempotent — safe to call if already granted) }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+    delete:
+      summary: Revoke a privilege from a role
+      operationId: revokePrivilege
+      tags: [Roles]
+      x-required-privilege: "iam:roles:manage"
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: privilegeId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Revoked }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /roles/privilege-map:
+    get:
+      summary: "Get all role→privilege mappings (used by lib-common-security cache warm-up)"
+      operationId: getRolePrivilegeMap
+      tags: [Roles]
+      description: "M2M endpoint — called by microservices on startup and on cache miss. Returns a flat map of roleName → [privilegeKey, ...]."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RolePrivilegeMapResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ── Privileges ─────────────────────────────────────────────────────────────
+
+  /privileges:
+    get:
+      summary: List all registered privileges, grouped by module
+      operationId: listPrivileges
+      tags: [Privileges]
+      x-required-privilege: "iam:roles:manage"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrivilegesByModule" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /privileges/register:
+    post:
+      summary: Register (upsert) a module's privilege manifest — M2M only
+      operationId: registerPrivileges
+      tags: [Privileges]
+      description: "Called by each microservice at startup via PrivilegeRegistryClient using a Client Credentials M2M token. Idempotent."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterPrivilegesRequest" }
+      responses:
+        "204": { description: Registered / updated }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ── Users ──────────────────────────────────────────────────────────────────
+
+  /users:
+    get:
+      summary: List users in the authenticated organisation
+      operationId: listUsers
+      tags: [Users]
+      x-required-privilege: "iam:users:view"
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Page"
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: "#/components/schemas/UserResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+    post:
+      summary: Invite a new user to the organisation
+      operationId: createUser
+      tags: [Users]
+      x-required-privilege: "iam:users:create"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateUserRequest" }
+      responses:
+        "201":
+          description: User created in Keycloak; password-set email sent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserResponse" }
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /users/{userId}:
+    get:
+      summary: Get a user by ID
+      operationId: getUser
+      tags: [Users]
+      x-required-privilege: "iam:users:view"
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /users/{userId}/roles:
+    put:
+      summary: Replace a user's role assignments
+      operationId: updateUserRoles
+      tags: [Users]
+      x-required-privilege: "iam:users:create"
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateUserRolesRequest" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /users/{userId}/deactivate:
+    post:
+      summary: Deactivate a user (disables in Keycloak; active sessions are terminated)
+      operationId: deactivateUser
+      tags: [Users]
+      x-required-privilege: "iam:users:create"
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Deactivated }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  # ── Internal (not exposed through gateway) ─────────────────────────────────
+
+  /internal/keycloak-events:
+    post:
+      summary: Keycloak webhook receiver — publishes auth events to Kafka iam.events
+      operationId: receiveKeycloakEvent
+      tags: [Internal]
+      description: "Not exposed through gateway. Authenticated by static webhook bearer token (Docker secret)."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Keycloak event payload (KC 25+ http-sender format)
+      responses:
+        "204": { description: Accepted }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  components:
+    responses:
+      Unauthorized:
+        description: Missing or invalid JWT
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ErrorResponse" }
+      Forbidden:
+        description: JWT valid but required privilege not held
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ErrorResponse" }
+      NotFound:
+        description: Resource not found (or belongs to another org — returned as 404)
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ErrorResponse" }
+      BadRequest:
+        description: Validation failure
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ErrorResponse" }

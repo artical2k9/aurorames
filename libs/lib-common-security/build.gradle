@@ -1,0 +1,65 @@
+// lib-common-security — shared JWT validation, privilege cache, and security autoconfiguration.
+// Published to mavenLocal(); consumed by all 18 MikeMES microservices.
+
+plugins {
+    id 'java-library'           // exposes api() dependencies to consumers
+    id 'java-test-fixtures'     // publishes KeycloakTestSupport as a test-fixtures variant
+}
+
+dependencies {
+    // ── Core security — exposed on the api() surface consumed by all services ─
+    api 'org.springframework.boot:spring-boot-starter-security'
+    api 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+
+    // ── Privilege cache (Caffeine + Kafka invalidation) ───────────────────────
+    implementation libs.caffeine
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    // ── HTTP client for privilege registry calls ──────────────────────────────
+    implementation 'org.springframework:spring-web'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    // ── Spring Boot autoconfiguration support ─────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    compileOnly    'org.springframework.boot:spring-boot-configuration-processor'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // ── Test fixtures — KeycloakTestSupport shared by all integration tests ───
+    testFixturesImplementation 'org.junit.jupiter:junit-jupiter-api'
+    testFixturesImplementation libs.testcontainers.keycloak
+    testFixturesImplementation libs.keycloak.admin.client
+    testFixturesImplementation 'org.testcontainers:junit-jupiter'
+    testFixturesImplementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    // ── Tests ─────────────────────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation libs.testcontainers.keycloak
+    testImplementation libs.wiremock
+    testImplementation 'org.testcontainers:junit-jupiter'
+}
+
+// testFixtures SpotBugs — scan at medium effort, findings are warnings not errors
+spotbugsTestFixtures {
+    effort      = 'default'
+    reportLevel = 'medium'
+    ignoreFailures = true
+    reports {
+        html { required = true  }
+        xml  { required = false }
+    }
+}
+
+// Publish to mavenLocal so iam-service and future services can depend on it
+apply plugin: 'maven-publish'
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId    = 'com.mikemes'
+            artifactId = 'lib-common-security'
+            version    = project.version
+        }
+    }
+}

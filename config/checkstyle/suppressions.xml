@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+
+<!--
+  Checkstyle suppressions for known false-positive patterns in Spring Boot projects.
+  Each entry must document WHY it is safe to suppress.
+-->
+<suppressions>
+
+    <!--
+      HideUtilityClassConstructor: Spring Boot application classes have a static main()
+      method but are also instantiated by the Spring container during application startup.
+      They are NOT utility classes; the rule cannot distinguish this pattern.
+    -->
+    <suppress checks="HideUtilityClassConstructor" files=".*Application\.java"/>
+
+    <!--
+      HideUtilityClassConstructor: Spring @Configuration classes often have only static
+      @Bean factory methods. Spring instantiates them via CGLIB subclassing and requires
+      a no-arg constructor.
+    -->
+    <suppress checks="HideUtilityClassConstructor" files=".*Config\.java"/>
+    <suppress checks="HideUtilityClassConstructor" files=".*Configuration\.java"/>
+
+
+    <!--
+      MethodName: JUnit test methods use underscore-separated naming (given_when_then)
+      which is a widely accepted testing convention but violates the camelCase-only pattern.
+      Suppressed for test sources only.
+    -->
+    <suppress checks="MethodName" files=".*Test\.java"/>
+
+    <!--
+      VisibilityModifier: JUnit 5 @RegisterExtension fields (e.g. WireMockExtension) must
+      be non-private for the JUnit platform to access them. The enclosing class is a test
+      class with no public API, so the usual visibility rule does not apply.
+    -->
+    <suppress checks="VisibilityModifier" files=".*Test\.java"/>
+
+    <!--
+      VisibilityModifier / HideUtilityClassConstructor: testFixtures source set holds shared
+      test infrastructure (e.g. KeycloakTestSupport). These classes expose public constants
+      and use public constructors by design so consuming test classes can instantiate them.
+    -->
+    <suppress checks="VisibilityModifier" files=".*testFixtures.*"/>
+    <suppress checks="HideUtilityClassConstructor" files=".*testFixtures.*"/>
+
+    <!--
+      MethodName / VisibilityModifier: Integration test classes (IT suffix) follow the same
+      JUnit 5 conventions as unit test classes — underscore-separated names and non-private
+      @Container / @RegisterExtension fields required by the JUnit/Testcontainers platform.
+    -->
+    <suppress checks="MethodName" files=".*IT\.java"/>
+    <suppress checks="VisibilityModifier" files=".*IT\.java"/>
+
+</suppressions>

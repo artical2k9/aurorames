@@ -1,0 +1,40 @@
+// iam-service — Identity & Access Management microservice.
+// Manages roles, privileges, and user accounts. Delegates authentication to Keycloak.
+
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    // ── Shared security library ───────────────────────────────────────────────
+    implementation project(':libs:lib-common-security')
+
+    // ── Web & persistence ─────────────────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.hibernate.orm:hibernate-envers'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly    'org.postgresql:postgresql'
+
+    // ── Messaging ─────────────────────────────────────────────────────────────
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    // ── Keycloak Admin REST API client ────────────────────────────────────────
+    implementation libs.keycloak.admin.client
+
+    // ── API documentation ─────────────────────────────────────────────────────
+    implementation libs.springdoc.openapi.webmvc
+
+    // ── Tests ─────────────────────────────────────────────────────────────────
+    testImplementation(testFixtures(project(':libs:lib-common-security')))
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:kafka'
+    testImplementation libs.testcontainers.keycloak
+    testImplementation libs.wiremock
+    testImplementation libs.caffeine
+}
