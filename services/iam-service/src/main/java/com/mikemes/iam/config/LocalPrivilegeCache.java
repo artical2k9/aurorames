@@ -1,12 +1,12 @@
 package com.mikemes.iam.config;
 
 import com.mikemes.common.security.privilege.PrivilegeCache;
-import com.mikemes.iam.repository.RolePrivilegeRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * iam-service provides its own PrivilegeCache backed by the local DB, bypassing
@@ -14,27 +14,34 @@ import java.util.stream.Collectors;
  * create a circular self-call). @ConditionalOnMissingBean in the auto-configuration
  * means this bean takes precedence.
  *
- * Uses findAllActive() + in-memory filter rather than a parameterised JPQL query
- * because Hibernate 6.5 returns 0 rows for any WHERE clause that navigates through
- * a lazy @ManyToOne association on RolePrivilegeAssignment — both implicit
- * (a.role.id = ?) and explicit JOIN (JOIN a.role r WHERE r.name = ?). findAllActive()
- * has no association navigation in its WHERE clause and is unaffected by this bug.
+ * Uses JdbcTemplate with native SQL rather than JPQL via RolePrivilegeRepository
+ * because this method runs in the Spring Security filter chain — before
+ * OpenEntityManagerInViewInterceptor binds an EntityManager. With JPQL + lazy
+ * @ManyToOne, calling a.getRole().getName() after findAllActive() returns would
+ * require the Hibernate session to still be open, which is unreliable in that
+ * pre-OEMIV context. Native SQL returns scalar strings directly with no lazy
+ * loading and no Hibernate/Envers involvement.
  */
 @Component
 public class LocalPrivilegeCache implements PrivilegeCache {
 
-    private final RolePrivilegeRepository rolePrivilegeRepository;
+    private static final String PRIVILEGES_FOR_ROLE_SQL =
+            "SELECT p.privilege_key"
+            + " FROM iam.role_privilege rp"
+            + " JOIN iam.role r ON r.id = rp.role_id"
+            + " JOIN iam.privilege p ON p.id = rp.privilege_id"
+            + " WHERE rp.revoked_at IS NULL"
+            + " AND r.name = ?";
 
-    public LocalPrivilegeCache(RolePrivilegeRepository rolePrivilegeRepository) {
-        this.rolePrivilegeRepository = rolePrivilegeRepository;
+    private final JdbcTemplate jdbcTemplate;
+
+    public LocalPrivilegeCache(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Set<String> getPrivilegesForRole(String roleName) {
-        return rolePrivilegeRepository.findAllActive().stream()
-                .filter(a -> roleName.equals(a.getRole().getName()))
-                .map(a -> a.getPrivilege().getPrivilegeKey())
-                .collect(Collectors.toSet());
+        List<String> keys = jdbcTemplate.queryForList(PRIVILEGES_FOR_ROLE_SQL, String.class, roleName);
+        return new LinkedHashSet<>(keys);
     }
 }
