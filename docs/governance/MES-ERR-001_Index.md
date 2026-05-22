@@ -25,3 +25,17 @@
 | ERR-MES-019 | 2026-05-20 | Frontend — ESLint | Flat config rejects `processor: angular.processInlineTemplates`; omit it when all components use `templateUrl` |
 | ERR-MES-024 | 2026-05-21 | Testing — Keycloak | Always assert `r.getStatus() == 201` after KC admin create calls; never use KC to issue JWTs in IT tests — use locally-signed RSA JWTs |
 | ERR-MES-025 | 2026-05-21 | Agent — Confidence Calibration | Flag uncertainty before committing when relying on niche external-service breaking-change behaviour; prefer a local smoke test over a CI run as first verification |
+| ERR-MES-020 | 2026-05-21 | CI — Permissions | `gradlew` committed without execute bit on Windows; run `git update-index --chmod=+x gradlew` before first push |
+| ERR-MES-021 | 2026-05-21 | CI — GitHub | Branch protection API requires GitHub Pro on private repos; free plan returns 403 |
+| ERR-MES-022 | 2026-05-21 | Testing — Keycloak | KC 25+ new realm needs `setDirectGrantFlow("direct grant")` + full user profile fields for ROPC to work |
+| ERR-MES-023 | 2026-05-21 | Backend — Hibernate Envers | `@Audited` relation to non-audited entity requires `@Audited(targetAuditMode = NOT_AUDITED)` on the field |
+| ERR-MES-024 | 2026-05-21 | Testing — Keycloak | Assert `r.getStatus() == 201` on every KC admin create call; use locally-signed RSA JWTs in IT tests, never KC ROPC |
+| ERR-MES-026 | 2026-05-21 | Backend — JPA / Security | `PrivilegeCache` methods traversing lazy relations must be `@Transactional(readOnly=true)` with `JOIN FETCH` |
+| ERR-MES-027 | 2026-05-22 | Backend — JPA / Hibernate | Hibernate 6.5 JPQL implicit join on lazy `@ManyToOne.id` in WHERE returns 0 rows; use explicit JOIN or scalar FK field |
+| ERR-MES-028 | 2026-05-22 | Backend — Validation | `@Valid` on `@RequestBody` silently no-ops without `spring-boot-starter-validation` on classpath |
+| ERR-MES-029 | 2026-05-22 | Backend — JPA / Hibernate | Hibernate 6.5 explicit JPQL JOIN on `@Audited` entity also returns 0 rows; use `findAllActive()` + Java filter |
+| ERR-MES-030 | 2026-05-22 | Backend — JPA / Security | `PrivilegeCache` in Spring Security filter chain must use `JdbcTemplate`; JPQL + lazy loading fails silently before OEMIV |
+| ERR-MES-031 | 2026-05-22 | Backend — Hibernate Envers | Set both `hibernate.default_schema` AND `envers.default_schema`; missing Hibernate property causes unqualified `revinfo_seq` lookup |
+| ERR-MES-032 | 2026-05-22 | Testing — Keycloak | KC 24+ disables unmanaged attributes by default; call `userProfile().update(ENABLED)` after realm creation or `org_id` is silently dropped |
+| ERR-MES-033 | 2026-05-22 | CI — SonarCloud | `sonar.sources`/`sonar.tests` must only list existing directories; missing path causes SonarScanner exit code 3 |
+| ERR-MES-034 | 2026-05-22 | Build — Gradle | Aggregate `JacocoReport` at root needs `apply plugin: 'jacoco'` on root project + explicit `dependsOn jacocoTestReport` per subproject |
