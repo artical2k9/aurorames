@@ -1,7 +1,9 @@
 package com.mikemes.iam.integration.api;
 
+import com.mikemes.common.security.privilege.PrivilegeCache;
 import com.mikemes.iam.api.dto.PrivilegeItemRequest;
 import com.mikemes.iam.api.dto.RegisterPrivilegesRequest;
+import com.mikemes.iam.config.LocalPrivilegeCache;
 import dasniko.testcontainers.keycloak.KeycloakContainer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -28,20 +30,25 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Testcontainers(disabledWithoutDocker = true)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+            "logging.level.org.springframework.security=TRACE",
+            "logging.level.org.springframework.security.oauth2=TRACE",
+            "logging.level.com.mikemes=DEBUG"
+        }
+)
 @EmbeddedKafka(partitions = 1, topics = {"iam.privilege-changes"})
 @Import(PrivilegeControllerIT.TestJwtDecoderConfig.class)
 class PrivilegeControllerIT {
@@ -49,14 +56,27 @@ class PrivilegeControllerIT {
     static final UUID SYSTEM_ORG_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     static final String TEST_REALM = "mikemes-test";
 
-    @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")
-            .withDatabaseName("mikemes")
-            .withUsername("iam_user")
-            .withPassword("secret");
+    // When TEST_POSTGRES_URL is set, containers are provided externally (docker/compose-test.yml).
+    // When unset, Testcontainers starts them automatically.
+    static final boolean EXTERNAL_CONTAINERS = System.getenv("TEST_POSTGRES_URL") != null;
 
-    @Container
-    static final KeycloakContainer KEYCLOAK = new KeycloakContainer();
+    static final PostgreSQLContainer<?> POSTGRES;
+    static final KeycloakContainer KEYCLOAK;
+
+    static {
+        if (EXTERNAL_CONTAINERS) {
+            POSTGRES = null;
+            KEYCLOAK = null;
+        } else {
+            POSTGRES = new PostgreSQLContainer<>("postgres:16")
+                    .withDatabaseName("mikemes")
+                    .withUsername("iam_user")
+                    .withPassword("secret");
+            KEYCLOAK = new KeycloakContainer();
+            POSTGRES.start();
+            KEYCLOAK.start();
+        }
+    }
 
     static final com.nimbusds.jose.jwk.RSAKey TEST_RSA_KEY;
 
@@ -84,24 +104,55 @@ class PrivilegeControllerIT {
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-        registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", () -> "");
-        registry.add("keycloak.admin.server-url", KEYCLOAK::getAuthServerUrl);
-        registry.add("keycloak.admin.realm", () -> TEST_REALM);
-        registry.add("keycloak.admin.username", KEYCLOAK::getAdminUsername);
-        registry.add("keycloak.admin.password", KEYCLOAK::getAdminPassword);
+        if (EXTERNAL_CONTAINERS) {
+            Map<String, String> env = System.getenv();
+            registry.add("spring.datasource.url", () -> env.get("TEST_POSTGRES_URL"));
+            registry.add("spring.datasource.username", () -> env.getOrDefault("TEST_POSTGRES_USER", "iam_user"));
+            registry.add("spring.datasource.password", () -> env.getOrDefault("TEST_POSTGRES_PASSWORD", "secret"));
+            registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", () -> "");
+            registry.add("keycloak.admin.server-url", () -> env.getOrDefault("TEST_KEYCLOAK_URL", "http://localhost:8090"));
+            registry.add("keycloak.admin.realm", () -> TEST_REALM);
+            registry.add("keycloak.admin.username", () -> env.getOrDefault("TEST_KEYCLOAK_ADMIN_USER", "admin"));
+            registry.add("keycloak.admin.password", () -> env.getOrDefault("TEST_KEYCLOAK_ADMIN_PASSWORD", "admin"));
+        } else {
+            registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+            registry.add("spring.datasource.username", POSTGRES::getUsername);
+            registry.add("spring.datasource.password", POSTGRES::getPassword);
+            registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", () -> "");
+            registry.add("keycloak.admin.server-url", KEYCLOAK::getAuthServerUrl);
+            registry.add("keycloak.admin.realm", () -> TEST_REALM);
+            registry.add("keycloak.admin.username", KEYCLOAK::getAdminUsername);
+            registry.add("keycloak.admin.password", KEYCLOAK::getAdminPassword);
+        }
     }
 
     @Autowired TestRestTemplate restTemplate;
     @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired PrivilegeCache privilegeCache;
 
     static String adminToken;
     static String viewerToken;
 
     @BeforeAll
     static void setupKeycloak() {
+        if (EXTERNAL_CONTAINERS) {
+            String kcUrl = System.getenv().getOrDefault("TEST_KEYCLOAK_URL", "http://localhost:8090");
+            String kcUser = System.getenv().getOrDefault("TEST_KEYCLOAK_ADMIN_USER", "admin");
+            String kcPass = System.getenv().getOrDefault("TEST_KEYCLOAK_ADMIN_PASSWORD", "admin");
+            Keycloak kcAdmin = KeycloakBuilder.builder()
+                    .serverUrl(kcUrl)
+                    .realm("master")
+                    .clientId("admin-cli")
+                    .username(kcUser)
+                    .password(kcPass)
+                    .build();
+            createRealm(kcAdmin);
+            adminToken = buildToken("ADMIN");
+            viewerToken = buildToken("VIEWER");
+            kcAdmin.close();
+            return;
+        }
+
         assumeTrue(KEYCLOAK.isRunning(), "Docker not available — skipping PrivilegeControllerIT");
 
         Keycloak kcAdmin = KeycloakBuilder.builder()
@@ -138,8 +189,25 @@ class PrivilegeControllerIT {
     }
 
     @Test
+    void privilegeCache_isLocalPrivilegeCache_notCaffeineCache() {
+        assertThat(privilegeCache)
+                .as("iam-service must use LocalPrivilegeCache — CaffeinePrivilegeCache would call " +
+                    "GET /internal/privileges against itself, return empty authorities, and produce 403")
+                .isInstanceOf(LocalPrivilegeCache.class);
+    }
+
+    @Test
+    void privilegeCache_adminRole_hasIamRolesManagePrivilege() {
+        Set<String> privileges = privilegeCache.getPrivilegesForRole("ADMIN");
+        assertThat(privileges)
+                .as("LocalPrivilegeCache must return iam:roles:manage for ADMIN — " +
+                    "if empty, Flyway seed V003 has not run or the SQL schema/table names are wrong")
+                .contains("iam:roles:manage");
+    }
+
+    @Test
     void registerPrivileges_validManifest_returns204() {
-        assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
+        assumeTrue(EXTERNAL_CONTAINERS || KEYCLOAK.isRunning(), "Docker not available");
 
         RegisterPrivilegesRequest request = new RegisterPrivilegesRequest(
                 "quality",
@@ -152,7 +220,7 @@ class PrivilegeControllerIT {
 
     @Test
     void registerPrivileges_calledTwice_isIdempotent() {
-        assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
+        assumeTrue(EXTERNAL_CONTAINERS || KEYCLOAK.isRunning(), "Docker not available");
 
         RegisterPrivilegesRequest request = new RegisterPrivilegesRequest(
                 "quality",
@@ -169,7 +237,7 @@ class PrivilegeControllerIT {
 
     @Test
     void registerPrivileges_invalidKeyFormat_returns400() {
-        assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
+        assumeTrue(EXTERNAL_CONTAINERS || KEYCLOAK.isRunning(), "Docker not available");
 
         RegisterPrivilegesRequest request = new RegisterPrivilegesRequest(
                 "quality",
@@ -193,7 +261,7 @@ class PrivilegeControllerIT {
 
     @Test
     void listPrivileges_withAdminToken_returns200WithIamModule() {
-        assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
+        assumeTrue(EXTERNAL_CONTAINERS || KEYCLOAK.isRunning(), "Docker not available");
 
         ResponseEntity<Map> response = get("/privileges", adminToken,
                 new ParameterizedTypeReference<>() {});
@@ -205,7 +273,7 @@ class PrivilegeControllerIT {
 
     @Test
     void listPrivileges_withViewerToken_returns403() {
-        assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
+        assumeTrue(EXTERNAL_CONTAINERS || KEYCLOAK.isRunning(), "Docker not available");
 
         ResponseEntity<Map> response = get("/privileges", viewerToken,
                 new ParameterizedTypeReference<>() {});
@@ -215,7 +283,7 @@ class PrivilegeControllerIT {
 
     @Test
     void getPrivilegeMap_withAdminToken_returns200WithAdminRole() {
-        assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
+        assumeTrue(EXTERNAL_CONTAINERS || KEYCLOAK.isRunning(), "Docker not available");
 
         ResponseEntity<Map> response = get("/roles/privilege-map", adminToken,
                 new ParameterizedTypeReference<>() {});
@@ -238,7 +306,7 @@ class PrivilegeControllerIT {
 
     @Test
     void getPrivilegeMap_reflectsGrantImmediately() {
-        assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
+        assumeTrue(EXTERNAL_CONTAINERS || KEYCLOAK.isRunning(), "Docker not available");
 
         RegisterPrivilegesRequest registerReq = new RegisterPrivilegesRequest(
                 "test-module",
@@ -299,6 +367,11 @@ class PrivilegeControllerIT {
     // ── Keycloak setup helpers ────────────────────────────────────────────────
 
     static void createRealm(Keycloak kcAdmin) {
+        boolean exists = kcAdmin.realms().findAll().stream()
+                .anyMatch(r -> TEST_REALM.equals(r.getRealm()));
+        if (exists) {
+            return;
+        }
         RealmRepresentation realm = new RealmRepresentation();
         realm.setRealm(TEST_REALM);
         realm.setEnabled(true);

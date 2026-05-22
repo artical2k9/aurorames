@@ -10,6 +10,8 @@ spring:
       ddl-auto: validate
     open-in-view: false
     properties:
+      hibernate:
+        default_schema: iam
       org.hibernate.envers.default_schema: iam
   flyway:
     schemas: iam
