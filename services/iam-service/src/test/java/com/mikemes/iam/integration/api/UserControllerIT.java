@@ -10,6 +10,7 @@ import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
+import org.keycloak.representations.userprofile.config.UPConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -113,6 +114,7 @@ class UserControllerIT {
                 .build();
 
         createRealm(kcAdmin);
+        enableUnmanagedAttributes(kcAdmin);
         ensureRealmRole(kcAdmin, "ADMIN");
         ensureRealmRole(kcAdmin, "VIEWER");
         adminToken = buildToken("ADMIN");
@@ -320,11 +322,29 @@ class UserControllerIT {
     // ── Keycloak setup helpers ────────────────────────────────────────────────
 
     static void createRealm(Keycloak kcAdmin) {
+        boolean exists = kcAdmin.realms().findAll().stream()
+                .anyMatch(r -> TEST_REALM.equals(r.getRealm()));
+        if (exists) {
+            return;
+        }
         RealmRepresentation realm = new RealmRepresentation();
         realm.setRealm(TEST_REALM);
         realm.setEnabled(true);
         realm.setDirectGrantFlow("direct grant");
         kcAdmin.realms().create(realm);
+    }
+
+    static void enableUnmanagedAttributes(Keycloak kcAdmin) {
+        // KC 24+ defaults unmanaged attribute policy to DISABLED; org_id is not declared
+        // in the user profile schema so it would be silently dropped on create/read.
+        // Enable unmanaged attributes so the Admin REST API can set and retrieve org_id.
+        try {
+            UPConfig config = kcAdmin.realm(TEST_REALM).users().userProfile().getConfiguration();
+            config.setUnmanagedAttributePolicy(UPConfig.UnmanagedAttributePolicy.ENABLED);
+            kcAdmin.realm(TEST_REALM).users().userProfile().update(config);
+        } catch (RuntimeException e) {
+            // if the KC version in the container predates this API, tests will fail naturally
+        }
     }
 
     static void ensureRealmRole(Keycloak kcAdmin, String roleName) {
