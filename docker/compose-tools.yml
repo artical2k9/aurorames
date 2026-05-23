@@ -1,0 +1,24 @@
+# Optional dev tooling — do NOT include in production deployments.
+# Start with: docker compose -f docker/compose-tools.yml up -d
+services:
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: mikemes-portainer
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - mikemes-net
+
+volumes:
+  portainer_data:
+    driver: local
+
+networks:
+  mikemes-net:
+    external: true

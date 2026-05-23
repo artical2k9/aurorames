@@ -26,3 +26,5 @@
 | ERR-MES-024 | 2026-05-21 | Testing — Keycloak | Always assert `r.getStatus() == 201` after KC admin create calls; never use KC to issue JWTs in IT tests — use locally-signed RSA JWTs |
 | ERR-MES-025 | 2026-05-21 | Agent — Confidence Calibration | Flag uncertainty before committing when relying on niche external-service breaking-change behaviour; prefer a local smoke test over a CI run as first verification |
 | ERR-MES-033 | 2026-05-23 | Build | `spring-boot-starter-web` must be declared explicitly on any service with REST controllers or servlet filters; `data-jpa`/`actuator`/`validation` do not pull it in |
+| ERR-MES-034 | 2026-05-23 | Testing — Flyway | Before writing a Flyway migration that inserts rows into a table, check the test suite for count-based assertions on that table; add a type/module filter or switch to content-based assertions |
+| ERR-MES-035 | 2026-05-23 | Testing — Coverage | When scaffolding a new Spring Boot service, unit tests for ALL controller methods, exception handlers, and servlet filters are required before pushing; IT tests (Testcontainers) do not run in CI |

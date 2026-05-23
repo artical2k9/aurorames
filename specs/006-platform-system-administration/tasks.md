@@ -163,8 +163,8 @@ No user story labels — these unblock all subsequent phases.
 
 **Independent Test**: `docker compose -f docker/compose-tools.yml up -d portainer && curl -sf http://localhost:9000/` succeeds (redirects to Portainer UI).
 
-- [ ] T045 [US5] Create `docker/compose-tools.yml` — define `portainer` service: `image: portainer/portainer-ce:latest`; ports `9000:9000` and `9443:9443`; volumes: `/var/run/docker.sock:/var/run/docker.sock` and `portainer_data:/data`; restart: `unless-stopped`; networks: `mikemes-net`; include `volumes: portainer_data:` declaration. Include comment: "Optional dev tooling — do NOT include in production deployments."
-- [ ] T046 [P] [US5] Add Portainer startup instructions to `specs/006-platform-system-administration/quickstart.md` — first-run admin password setup note; verify `http://localhost:9000` shows container list
+- [X] T045 [US5] Create `docker/compose-tools.yml` — define `portainer` service: `image: portainer/portainer-ce:latest`; ports `9000:9000` and `9443:9443`; volumes: `/var/run/docker.sock:/var/run/docker.sock` and `portainer_data:/data`; restart: `unless-stopped`; networks: `mikemes-net`; include `volumes: portainer_data:` declaration. Include comment: "Optional dev tooling — do NOT include in production deployments."
+- [X] T046 [P] [US5] Add Portainer startup instructions to `specs/006-platform-system-administration/quickstart.md` — first-run admin password setup note; verify `http://localhost:9000` shows container list
 
 **Checkpoint**: `docker compose -f docker/compose-tools.yml up -d portainer` starts Portainer; UI accessible on `:9000`; can view all containers on `mikemes-net`.
 

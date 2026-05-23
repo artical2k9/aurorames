@@ -103,7 +103,9 @@ docker compose -f docker/compose-tools.yml up -d portainer
 
 Portainer UI: `http://localhost:9000`
 
-On first start, Portainer prompts for admin password setup.
+On first start, Portainer prompts for admin password setup — complete it within 5 minutes or the container must be restarted to reset the timeout.
+
+Verify: after login, navigate to **Home → local → Containers**. All running `mikemes-*` containers should appear in the list with their status and published ports.
 
 ---
 
