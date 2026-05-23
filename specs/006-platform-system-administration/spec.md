@@ -28,7 +28,8 @@ An operator opens the Spring Boot Admin UI and sees the live health status, metr
 
 1. **Given** admin-service and iam-service are running, **When** an authenticated operator opens the SBA UI, **Then** iam-service appears in the service list with status `UP`, health details, and metrics visible.
 2. **Given** iam-service restarts, **When** it re-registers with admin-service, **Then** its status updates to `UP` within 30 seconds without an admin-service restart.
-3. **Given** an unauthenticated request hits `/admin/*`, **When** the SBA server evaluates it, **Then** the request is denied (401/redirect to Keycloak login).
+3. **Given** an unauthenticated request hits the SBA UI, **When** the SBA server evaluates it, **Then** the request is redirected to Keycloak login.
+4. **Given** an authenticated user without the `platform:admin` privilege accesses the SBA UI, **When** Spring Security evaluates their authorities, **Then** access is denied (403).
 4. **Given** a service has a DOWN actuator health, **When** an operator views SBA, **Then** the service shows `DOWN` with the failing health indicator named.
 
 ---
@@ -103,6 +104,7 @@ Operators manage running containers via a Portainer web UI. Portainer is optiona
 - What happens if admin-service is down when a client service starts? SBA client retries on an interval — service still starts, registers when admin-service recovers.
 - What if a platform config key exceeds 255 chars? `@Valid` + Bean Validation `@Size` returns `400 Bad Request`.
 - What if two services race to PUT the same config key? `UNIQUE(org_id, config_key)` plus upsert logic (INSERT ON CONFLICT UPDATE) makes it idempotent — last writer wins.
+- What happens when PUT is called on a soft-deleted (active=false) key? The upsert MUST find the existing inactive row, set `active=true`, and update its value and description — no new row is created. This prevents key proliferation and allows config entries to be "restored" by a subsequent PUT.
 - What if `org_id` is missing from the JWT? `MikeMESJwtAuthenticationConverter` already throws `MissingClaimException` → `401` before reaching the controller.
 
 ---
@@ -111,14 +113,14 @@ Operators manage running containers via a Portainer web UI. Portainer is optiona
 
 ### Functional Requirements
 
-- **FR-001**: `admin-service` MUST run `de.codecentric:spring-boot-admin-starter-server` secured by Keycloak OIDC (no anonymous UI access)
+- **FR-001**: `admin-service` MUST run `de.codecentric:spring-boot-admin-starter-server`; the SBA UI MUST be secured by Keycloak OIDC (no anonymous UI access); only users holding the `platform:admin` privilege may access the UI (enforced via custom `GrantedAuthoritiesMapper` mapping the `privileges` claim from the Keycloak access token to Spring Security authorities; UI routes guarded with `hasAuthority("platform:admin")`); the `POST /instances` registration endpoint MUST require no auth (internal `mikemes-net` network isolation is the boundary; it is never routed through the gateway)
 - **FR-002**: All services (iam-service, gateway-service, platform-service) MUST include `spring-boot-admin-starter-client` and register with admin-service on startup
 - **FR-003**: `gateway-service` routes MUST include `/api/admin/**` → `admin-service` and `/api/platform/**` → `platform-service`, both requiring a valid JWT
 - **FR-004**: `platform-service` MUST expose `GET /api/platform/config`, `GET /api/platform/config/{key}`, `PUT /api/platform/config/{key}`, `DELETE /api/platform/config/{key}`
 - **FR-005**: `platform-service` MUST expose `GET /internal/config/{key}` protected by webhook token (same pattern as iam-service InternalController)
 - **FR-006**: All `platform-service` entities MUST include `org_id UUID NOT NULL` column
 - **FR-007**: `platform-service` MUST use `lib-common-security` for JWT decoding and `@RequiresPrivilege` for endpoint protection
-- **FR-008**: `iam-service` Flyway MUST seed `platform:config:manage` and `platform:config:read` privileges (new migration V005)
+- **FR-008**: `iam-service` Flyway MUST seed `platform:config:manage`, `platform:config:read`, and `platform:admin` privileges (new migration V005); `platform:admin` is required to access the SBA UI
 - **FR-009**: `platform-service` Flyway migration V001 MUST create schema `platform` and table `system_configuration` with `UNIQUE(org_id, config_key)`
 - **FR-010**: `compose-infra.yml` MUST add `admin-service` and `platform-service` containers with healthchecks
 - **FR-011**: `.env.example` MUST document all new environment variables
@@ -127,7 +129,7 @@ Operators manage running containers via a Portainer web UI. Portainer is optiona
 
 ### Key Entities
 
-- **SystemConfiguration** (platform-service): Represents a named configuration value scoped per organisation. Fields: `id`, `org_id`, `config_key`, `config_value`, `description`, `active`, `created_at`, `updated_at`, `created_by`.
+- **SystemConfiguration** (platform-service): Represents a named configuration value scoped per organisation. Fields: `id`, `org_id`, `config_key`, `config_value`, `description`, `active`, `created_at`, `updated_at`, `created_by` (Keycloak `sub` UUID — set on insert, not updated on subsequent upserts; preserves original creator identity).
 - No persistent entities in admin-service (SBA Server is stateless — instance registry is in-memory).
 
 ---
@@ -142,6 +144,7 @@ Operators manage running containers via a Portainer web UI. Portainer is optiona
 - **SC-004**: All P1 user stories (US1–US4) have passing integration tests
 - **SC-005**: `docker compose ps` shows `admin-service` and `platform-service` as `healthy` after startup
 - **SC-006**: Gateway returns `401` for unauthenticated requests to `/api/admin/**` and `/api/platform/**`
+- **SC-007**: `GET /api/platform/config/{key}` completes in < 50ms p95 under 100 concurrent organisations (verified by load test or Testcontainers-based benchmark in CI)
 
 ---
 
@@ -175,10 +178,21 @@ Operators manage running containers via a Portainer web UI. Portainer is optiona
 ## Assumptions
 
 - `admin-service` runs on port 8888 and `platform-service` on port 8090 (no conflicts with existing services on 8080/8085)
-- SBA Server uses Keycloak OIDC login (OAuth2 client credentials or authorization code flow for UI) — not Basic Auth
+- SBA Server uses Keycloak OIDC authorization code flow for the UI — not Basic Auth; admin-service SecurityConfig implements a custom `GrantedAuthoritiesMapper` to extract the `privileges` claim from the Keycloak access token (consistent with MES-5 JWT claim mapping); `@RequiresPrivilege` cannot be used directly in admin-service (OAuth2 Login flow, not resource server) — `hasAuthority("platform:admin")` is used instead
 - Privilege seeding (`platform:config:manage`, `platform:config:read`) lands in iam-service Flyway V005; this migration ships in the same PR
 - `lib-common-audit` does not exist yet; audit logging for `SystemConfiguration` mutations is deferred to MES-7
 - Portainer ships in `compose-tools.yml` as a dev/staging convenience — not required for CI or production
+
+---
+
+## Clarifications
+
+### Session 2026-05-23
+
+- Q: Should `POST /instances` (SBA client registration) require authentication? → A: No auth — `/instances` is not routed through the gateway and is isolated to `mikemes-net`; Docker network boundary provides the perimeter. External APIs are secured by the gateway JWT catch-all + per-service JWT resource server. Security layers: (1) Docker network isolation for internal endpoints, (2) gateway JWT enforcement for all `spring.cloud.gateway.routes` entries, (3) service-level `@RequiresPrivilege` for privilege checks. The no-auth decision applies only to `/instances`; any new external API route must go through the gateway and inherits mandatory JWT enforcement.
+- Q: Which Keycloak users can access the SBA UI? → A: Only users holding the `platform:admin` privilege. Rationale: privilege-based access is consistent with the existing security model; avoids JWT token bloat from creating dedicated Keycloak roles; any Keycloak role can be granted `platform:admin` in the future without code changes. Implementation: admin-service SecurityConfig uses a custom `GrantedAuthoritiesMapper` (or `OidcUserService`) to extract the `privileges` claim from the Keycloak access token and map it to Spring Security `GrantedAuthority`; UI routes are guarded with `hasAuthority("platform:admin")`.
+- Q: What value does `SystemConfiguration.created_by` store? → A: Keycloak `sub` claim (UUID). Rationale: `sub` is stable and immutable; usernames and emails can change. Service layer extracts `sub` from the `JwtAuthenticationToken` and sets `created_by` on insert; field is not updated on subsequent upserts (preserves original creator).
+- Q: What happens when PUT is called on a soft-deleted key? → A: Upsert reactivates the existing inactive row (sets `active=true`, updates value and description). No new row is created. Prevents key proliferation; allows config entries to be restored via PUT without a separate reactivation endpoint. Added to Edge Cases and SC-007 added for performance target (`< 50ms p95` at 100 concurrent orgs, carried from plan.md).
 
 ---
 

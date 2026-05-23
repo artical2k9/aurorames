@@ -46,11 +46,12 @@ paths:
       summary: SBA client registration (standard SBA endpoint — internal use only)
       description: |
         Called automatically by `spring-boot-admin-starter-client` on each service startup.
-        Not exposed through Spring Cloud Gateway — internal network only.
+        Not exposed through Spring Cloud Gateway — internal `mikemes-net` network only.
+        No authentication required: Docker network isolation is the security boundary.
+        External APIs are secured at the gateway level; this endpoint is never gateway-routed.
         See Spring Boot Admin documentation for full schema.
       operationId: registerInstance
-      security:
-        - bearerAuth: []
+      security: []
       requestBody:
         description: SBA instance registration payload (managed by SBA client library)
         required: true
