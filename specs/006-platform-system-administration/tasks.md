@@ -9,7 +9,23 @@
 
 ---
 
-## Phase 1: Setup — Service Scaffolding
+## PR Strategy
+
+Five PRs targeting `Develop`. Each PR boundary is an independently testable checkpoint with a CI anchor command that must pass before the PR is raised.
+
+| PR | Phases | Tasks | CI Anchor | Notes |
+|---|---|---|---|---|
+| PR 1 | Phase 1 + 2 + 3 | T001–T019 | `./gradlew :services:admin-service:check` passes | Phase 1+2 bundled: setup stubs have no tests; Phase 3 provides admin-service CI coverage anchor |
+| PR 2 | Phase 4 | T020–T024 | `./gradlew :services:gateway-service:check` passes | Gateway IT tests cover new routes |
+| PR 3 | Phase 5 | T025–T041 | `./gradlew :services:platform-service:check` passes | SystemConfigControllerIT + org isolation verified |
+| PR 4 | Phase 6 + Phase 8 | T042–T044, T047–T052 | `docker compose ps` all healthy + `./gradlew check` (all modules) green | Phase 6 depends on PR 1 + PR 3 merged; Phase 8 compliance runs before raising PR 4 |
+| PR 5 | Phase 7 | T045–T046 | `curl -sf http://localhost:9000/` succeeds | P2 optional — raise after PR 4 merges to Develop |
+
+**Sequencing note for Phase 6–8**: Phase 7 (Portainer, P2) appears between Phase 6 and Phase 8 in task order below. Complete Phase 6 → skip to Phase 8 → raise PR 4. Implement Phase 7 separately as PR 5.
+
+---
+
+## Phase 1: Setup — Service Scaffolding [PR 1]
 
 **Purpose**: Register new modules, create build files and application entry points, update static-analysis config.
 No user story labels — these unblock all subsequent phases.
@@ -27,7 +43,7 @@ No user story labels — these unblock all subsequent phases.
 
 ---
 
-## Phase 2: Foundational — Shared Prerequisites
+## Phase 2: Foundational — Shared Prerequisites [PR 1 continued]
 
 **Purpose**: Wire SBA client into existing services, seed platform privileges, document env vars.
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
@@ -43,7 +59,7 @@ No user story labels — these unblock all subsequent phases.
 
 ---
 
-## Phase 3: User Story 1 — Spring Boot Admin Observability (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 — Spring Boot Admin Observability (Priority: P1) 🎯 MVP [PR 1 continued]
 
 **Goal**: `admin-service` runs Spring Boot Admin Server at `:8888`, protected by Keycloak OIDC. All registered services (iam-service, gateway-service, platform-service) appear in the SBA UI.
 
@@ -62,9 +78,11 @@ No user story labels — these unblock all subsequent phases.
 
 **Checkpoint**: `admin-service` starts on `:8888`; `/actuator/health` returns 200; SBA UI loads after Keycloak login; after `docker compose up -d`, `iam-service` and `gateway-service` appear as registered instances.
 
+> **Raise PR 1 after this checkpoint** (T001–T019) | CI: `./gradlew :services:admin-service:check` passes | Target: `Develop`
+
 ---
 
-## Phase 4: User Story 2 — Gateway Routing for admin/platform (Priority: P1)
+## Phase 4: User Story 2 — Gateway Routing for admin/platform (Priority: P1) [PR 2]
 
 **Goal**: Authenticated requests to `/api/admin/**` and `/api/platform/**` are routed via Spring Cloud Gateway with JWT enforcement. Direct service ports are not externally reachable.
 
@@ -83,9 +101,11 @@ No user story labels — these unblock all subsequent phases.
 
 **Checkpoint**: Gateway routes `/api/admin/**` and `/api/platform/**` with JWT enforcement; GatewaySecurityIT passes; unauthenticated requests to either route receive 401 from the gateway.
 
+> **Raise PR 2 after this checkpoint** (T020–T024) | CI: `./gradlew :services:gateway-service:check` passes | Target: `Develop`
+
 ---
 
-## Phase 5: User Story 3 — Platform Service: Organisation Configuration (Priority: P1)
+## Phase 5: User Story 3 — Platform Service: Organisation Configuration (Priority: P1) [PR 3]
 
 **Goal**: `platform-service` provides CRUD for `SystemConfiguration` scoped by `org_id`. A cross-org GET returns 404. `PUT` is idempotent (upsert).
 
@@ -116,9 +136,11 @@ No user story labels — these unblock all subsequent phases.
 
 **Checkpoint**: `SystemConfiguration` CRUD works end-to-end; org_id isolation enforced; V001 migration runs clean; IT tests pass; `PUT` is idempotent on repeat calls.
 
+> **Raise PR 3 after this checkpoint** (T025–T041) | CI: `./gradlew :services:platform-service:check` passes | Target: `Develop`
+
 ---
 
-## Phase 6: User Story 4 — Docker Compose Service Mesh (Priority: P1)
+## Phase 6: User Story 4 — Docker Compose Service Mesh (Priority: P1) [PR 4]
 
 **Goal**: `admin-service` and `platform-service` containers are defined in `compose-infra.yml` with healthchecks. All services communicate by hostname on `mikemes-net`. SBA clients register with admin-service on startup.
 
@@ -130,9 +152,12 @@ No user story labels — these unblock all subsequent phases.
 
 **Checkpoint**: All services start healthy. `docker compose ps` shows no unhealthy or exited containers. SBA UI at `:8888` shows iam-service and gateway-service registered.
 
+> **Continue to Phase 8 (compliance) before raising PR 4** — do NOT raise PR 4 here; Phase 8 compliance tasks must complete first.  
+> **Skip Phase 7** (P2 Portainer) until after PR 4 merges — see sequencing note in PR Strategy section above.
+
 ---
 
-## Phase 7: User Story 5 — Portainer Container Management UI (Priority: P2)
+## Phase 7: User Story 5 — Portainer Container Management UI (Priority: P2) [PR 5 — raise after PR 4 merges]
 
 **Goal**: Operators can manage running containers via Portainer web UI, started optionally via `docker/compose-tools.yml`.
 
@@ -143,9 +168,11 @@ No user story labels — these unblock all subsequent phases.
 
 **Checkpoint**: `docker compose -f docker/compose-tools.yml up -d portainer` starts Portainer; UI accessible on `:9000`; can view all containers on `mikemes-net`.
 
+> **Raise PR 5 after this checkpoint** (T045–T046) | CI: `curl -sf http://localhost:9000/` succeeds | Target: `Develop` | P2 — optional, raise after PR 4 merges
+
 ---
 
-## Phase 8: Compliance Verification & Defect Closure
+## Phase 8: Compliance Verification & Defect Closure [PR 4 continued]
 
 **Purpose**: Validate Constitution gates, org isolation, idempotency, and Keycloak RBAC before marking MES-6 done.
 Mandatory per Constitution §II and §IV.
@@ -156,6 +183,8 @@ Mandatory per Constitution §II and §IV.
 - [ ] T050 Confirm Keycloak RBAC updated: V005 migration seeds `platform:config:manage` and `platform:config:read`; verify in `services/iam-service/src/main/resources/db/migration/V005__seed_platform_module_privileges.sql`
 - [ ] T051 Run full `./gradlew check` across all modules — zero test failures, zero Checkstyle violations, zero SpotBugs violations
 - [ ] T052 Pre-retrospective: review session work against `docs/governance/MES-ERR-001_Index.md` categories for any new errors or near-misses; log any new entries before transitioning MES-6 to Done
+
+> **Raise PR 4 after this checkpoint** (T042–T044, T047–T052) | CI: `docker compose ps` all healthy + `./gradlew check` (all modules) green | Target: `Develop`
 
 ---
 
