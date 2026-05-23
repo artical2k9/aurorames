@@ -25,3 +25,4 @@
 | ERR-MES-019 | 2026-05-20 | Frontend — ESLint | Flat config rejects `processor: angular.processInlineTemplates`; omit it when all components use `templateUrl` |
 | ERR-MES-024 | 2026-05-21 | Testing — Keycloak | Always assert `r.getStatus() == 201` after KC admin create calls; never use KC to issue JWTs in IT tests — use locally-signed RSA JWTs |
 | ERR-MES-025 | 2026-05-21 | Agent — Confidence Calibration | Flag uncertainty before committing when relying on niche external-service breaking-change behaviour; prefer a local smoke test over a CI run as first verification |
+| ERR-MES-033 | 2026-05-23 | Build | `spring-boot-starter-web` must be declared explicitly on any service with REST controllers or servlet filters; `data-jpa`/`actuator`/`validation` do not pull it in |
