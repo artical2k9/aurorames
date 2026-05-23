@@ -1,0 +1,23 @@
+// admin-service — Spring Boot Admin Server: monitoring UI for all registered microservices.
+// Protected by Keycloak OIDC login (Authorization Code flow). No database.
+
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    // ── Spring Boot Admin Server + self-registration client ──────────────────
+    implementation libs.spring.boot.admin.server
+    implementation libs.spring.boot.admin.client
+
+    // ── Security — Keycloak OIDC login ────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // ── Web + Actuator ────────────────────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // ── Tests ─────────────────────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}

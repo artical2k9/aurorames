@@ -69,9 +69,31 @@ class FlywayMigrationIT {
         Integer count = jdbc.queryForObject(
                 "SELECT count(*) FROM iam.role_privilege rp "
                         + "JOIN iam.role r ON rp.role_id = r.id "
-                        + "WHERE r.name = 'ADMIN' AND r.is_system_role = true",
+                        + "JOIN iam.privilege p ON rp.privilege_id = p.id "
+                        + "WHERE r.name = 'ADMIN' AND r.is_system_role = true "
+                        + "AND p.module_name = 'iam'",
                 Integer.class);
         assertThat(count).isEqualTo(4);
+    }
+
+    @Test
+    void v005_platformModulePrivilegesSeeded() {
+        Integer count = jdbc.queryForObject(
+                "SELECT count(*) FROM iam.privilege WHERE module_name = 'platform'",
+                Integer.class);
+        assertThat(count).isEqualTo(2);
+    }
+
+    @Test
+    void v005_adminRoleAssignedAllPlatformPrivileges() {
+        Integer count = jdbc.queryForObject(
+                "SELECT count(*) FROM iam.role_privilege rp "
+                        + "JOIN iam.role r ON rp.role_id = r.id "
+                        + "JOIN iam.privilege p ON rp.privilege_id = p.id "
+                        + "WHERE r.name = 'ADMIN' AND r.is_system_role = true "
+                        + "AND p.module_name = 'platform'",
+                Integer.class);
+        assertThat(count).isEqualTo(2);
     }
 
     @Test

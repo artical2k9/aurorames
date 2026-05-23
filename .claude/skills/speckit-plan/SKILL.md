@@ -144,7 +144,28 @@ You **MUST** consider the user input before proceeding (if not empty).
 3. **Agent context update**:
    - Update the plan reference between the `<!-- SPECKIT START -->` and `<!-- SPECKIT END -->` markers in `CLAUDE.md` to point to the plan file created in step 1 (the IMPL_PLAN path)
 
-**Output**: data-model.md, /contracts/*, quickstart.md, updated agent context file
+4. **Generate PR Strategy** — append a `## PR Strategy` section to plan.md:
+
+   Analyse the user stories in the spec and determine logical PR boundaries using these rules:
+
+   **Bundling rules** (apply in order):
+   - Setup and foundational phases have no standalone tests — bundle them with the first user story whose `./gradlew check` (or equivalent CI command) provides a coverage anchor for any new modules introduced in setup. A PR that introduces a new module with zero test coverage will fail SonarCloud quality gate.
+   - Each user story that has an explicit "Independent Test" criterion in the spec is a candidate for its own PR boundary — provided all its upstream phase dependencies are already merged to the target branch.
+   - Phases with cross-story dependencies (e.g., "depends on US1 AND US3") cannot be raised as a PR until both dependency PRs have merged; document this in the CI anchor column.
+   - P2+ priority user stories become separate optional PRs, raised after all P1 PRs have merged.
+   - The final compliance/verification phase (if present) bundles into the last P1 PR — it runs as a checklist before the PR is raised, not as a separate PR.
+
+   **Output format** — table in `## PR Strategy` in plan.md:
+
+   | PR | Phases | Task Range | CI Anchor | Notes |
+   |---|---|---|---|---|
+   | PR N | Phase X + Phase Y | TXXX–TYYY | Exact command that must pass before raising | Dependency or SonarCloud risk notes |
+
+   Include a **Sequencing note** below the table if any phase must be skipped and returned to later (e.g., a P2 phase sandwiched between two P1 phases that share a PR).
+
+   This section is consumed by `/speckit-tasks` when generating tasks.md to insert inline PR cut markers.
+
+**Output**: data-model.md, /contracts/*, quickstart.md, updated agent context file, `## PR Strategy` section in plan.md
 
 ## Key rules
 

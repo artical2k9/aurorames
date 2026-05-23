@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: admin-service
+  boot:
+    admin:
+      server:
+        enabled: true
+      client:
+        url: ${ADMIN_SERVICE_URL:http://admin-service:8888}
+        instance:
+          prefer-ip: true
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: admin-service
+            client-secret: ${ADMIN_SERVICE_CLIENT_SECRET:changeme}
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid,profile,email
+        provider:
+          keycloak:
+            issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mikemes}
+
+server:
+  port: 8888
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers
+  endpoint:
+    health:
+      show-details: when-authorized

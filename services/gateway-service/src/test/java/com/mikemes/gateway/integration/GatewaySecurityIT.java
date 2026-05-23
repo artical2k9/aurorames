@@ -126,6 +126,40 @@ class GatewaySecurityIT {
             .expectStatus().isOk();
     }
 
+    @Test
+    void platform_route_with_valid_jwt_is_forwarded() {
+        when(jwtDecoder.decode(anyString())).thenReturn(Mono.just(validJwt()));
+
+        client.get().uri("/api/platform/actuator/health")
+            .header("Authorization", "Bearer valid.token")
+            .exchange()
+            .expectStatus().isOk();
+    }
+
+    @Test
+    void platform_route_without_jwt_returns_401() {
+        client.get().uri("/api/platform/actuator/health")
+            .exchange()
+            .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void admin_route_with_valid_jwt_is_forwarded() {
+        when(jwtDecoder.decode(anyString())).thenReturn(Mono.just(validJwt()));
+
+        client.get().uri("/api/admin/actuator/health")
+            .header("Authorization", "Bearer valid.token")
+            .exchange()
+            .expectStatus().isOk();
+    }
+
+    @Test
+    void admin_route_without_jwt_returns_401() {
+        client.get().uri("/api/admin/actuator/health")
+            .exchange()
+            .expectStatus().isUnauthorized();
+    }
+
     private static Jwt validJwt() {
         return Jwt.withTokenValue("valid.token")
             .header("alg", "RS256")

@@ -76,6 +76,10 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 4. **Generate tasks.md**: Read the tasks template from TASKS_TEMPLATE (from the JSON output above) and use it as structure. If TASKS_TEMPLATE is empty, fall back to `.specify/templates/tasks-template.md`. Fill with:
    - Correct feature name from plan.md
+   - **PR Strategy section** (placed immediately after the header block, before Phase 1):
+     - If plan.md contains a `## PR Strategy` section, reproduce it verbatim as the first section of tasks.md
+     - If plan.md has no PR Strategy section, derive one from first principles using the bundling rules below and insert it
+     - Include a sequencing note if any phase must be skipped and returned to later (e.g., a P2 phase between two P1 phases that share a PR)
    - Phase 1: Setup tasks (project initialization)
    - Phase 2: Foundational tasks (blocking prerequisites for all user stories)
    - Phase 3+: One phase per user story (in priority order from spec.md)
@@ -83,9 +87,22 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Final Phase: Polish & cross-cutting concerns
    - All tasks must follow the strict checklist format (see Task Generation Rules below)
    - Clear file paths for each task
+   - **Inline PR cut markers**: At the end of each phase that closes a PR boundary, insert a blockquote marker immediately after the checkpoint line:
+     ```
+     > **Raise PR N after this checkpoint** (TXXX–TYYY) | CI: `<exact command>` | Target: `Develop`
+     ```
+     For the compliance/verification phase that completes a PR rather than having its own: append `[PR N continued]` to the phase heading instead of a new `[PR N]` tag.
+   - **Phase heading PR labels**: Append `[PR N]` or `[PR N continued]` to each phase heading to make PR membership scannable at a glance
    - Dependencies section showing story completion order
    - Parallel execution examples per story
    - Implementation strategy section (MVP first, incremental delivery)
+
+   **PR boundary derivation rules** (use when plan.md has no `## PR Strategy`):
+   - Setup + foundational phases bundle with the first user story that provides a CI coverage anchor for new modules (prevents SonarCloud zero-coverage failures)
+   - Each independently testable user story (has an "Independent Test" in spec.md) is its own PR boundary
+   - Cross-story dependency phases (depends on US-A AND US-B) raise their PR only after both dependency PRs merge
+   - P2+ stories are separate optional PRs after all P1 PRs merge
+   - Final compliance phase bundles into the last P1 PR
 
 5. **Report**: Output path to generated tasks.md and summary:
    - Total task count

@@ -107,6 +107,13 @@
 **Fix applied:** Added `enableUnmanagedAttributes(Keycloak)` helper to `UserControllerIT.setupKeycloak()` that calls `users().userProfile().getConfiguration()`, sets `UnmanagedAttributePolicy.ENABLED`, and calls `users().userProfile().update(config)`. Also made `createRealm` idempotent.
 **Rule:** When creating a Keycloak realm programmatically in tests (KC 24+), always configure the User Profile to allow unmanaged attributes if the code sets custom user attributes (e.g. `org_id`, `tenant_id`) via `user.setAttributes(...)`. Without this, attributes are silently dropped by KC — no error is returned, but reads return null. The symptom is: user creation returns 201 but subsequent lookups by ID return 404 or empty lists. Fix: call `users().userProfile().update(config)` with `UnmanagedAttributePolicy.ENABLED` after realm creation.
 
+## ERR-MES-033 — `spring-boot-starter-web` omitted from new service build.gradle causes `jakarta.servlet` compile errors
+**Date:** 2026-05-23  **Category:** Build  **Status:** Open
+**Symptom:** `./gradlew :services:platform-service:compileJava` failed with `package jakarta.servlet does not exist` on `WebhookTokenFilter extends OncePerRequestFilter`. Spring Security, JPA, and Actuator starters were all present.
+**Root cause:** `spring-boot-starter-web` is the starter that brings in the embedded servlet container and `jakarta.servlet.*` API. None of the other starters (`data-jpa`, `actuator`, `validation`, `oauth2-resource-server` via lib-common-security) pulls in the servlet API transitively. A Spring Boot REST service with servlet filters must declare `spring-boot-starter-web` explicitly.
+**Fix applied:** Added `implementation 'org.springframework.boot:spring-boot-starter-web'` to `services/platform-service/build.gradle`.
+**Rule:** Any service that defines REST controllers, servlet filters, or `OncePerRequestFilter` subclasses must include `spring-boot-starter-web`. It is not pulled in by `spring-boot-starter-data-jpa`, `spring-boot-starter-actuator`, `spring-boot-starter-validation`, or the `lib-common-security` library. Always include it as the first `implementation` dependency when scaffolding a new web service.
+
 ## ERR-MES-019 — ESLint flat config rejects `processor: angular.processInlineTemplates`
 **Date:** 2026-05-20  **Category:** Frontend — ESLint  **Status:** Promoted 2026-05-20
 **Symptom:** `ng lint` failed: `Config (unnamed): Key "processor": Expected an object or a string.` when `processor: angular.processInlineTemplates` was set in `eslint.config.js`.

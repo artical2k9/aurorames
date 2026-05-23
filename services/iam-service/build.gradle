@@ -24,6 +24,9 @@ dependencies {
     // ── Keycloak Admin REST API client ────────────────────────────────────────
     implementation libs.keycloak.admin.client
 
+    // ── Spring Boot Admin client self-registration ────────────────────────────
+    implementation libs.spring.boot.admin.client
+
     // ── API documentation ─────────────────────────────────────────────────────
     implementation libs.springdoc.openapi.webmvc
 
