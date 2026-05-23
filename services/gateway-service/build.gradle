@@ -17,6 +17,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
+    // ── Spring Boot Admin client self-registration ────────────────────────────
+    implementation libs.spring.boot.admin.client
+
     // ── Tests ─────────────────────────────────────────────────────────────────
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation libs.wiremock
