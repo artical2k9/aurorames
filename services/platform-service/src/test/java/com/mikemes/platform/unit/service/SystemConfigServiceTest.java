@@ -97,4 +97,28 @@ class SystemConfigServiceTest {
 
         assertThat(service.findByKey(ORG_ID, CONFIG_KEY)).isEmpty();
     }
+
+    @Test
+    void listAll_returns_all_active_entries() {
+        SystemConfiguration e1 = new SystemConfiguration();
+        e1.setOrgId(ORG_ID);
+        e1.setConfigKey("k1");
+        e1.setConfigValue("v1");
+        e1.setActive(true);
+        when(repository.findByOrgIdAndActiveTrue(ORG_ID)).thenReturn(java.util.List.of(e1));
+
+        var result = service.listAll(ORG_ID);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).key()).isEqualTo("k1");
+    }
+
+    @Test
+    void softDelete_throws_when_key_absent() {
+        when(repository.findByOrgIdAndConfigKeyAndActiveTrue(ORG_ID, CONFIG_KEY))
+                .thenReturn(Optional.empty());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.softDelete(ORG_ID, CONFIG_KEY))
+                .isInstanceOf(java.util.NoSuchElementException.class);
+    }
 }

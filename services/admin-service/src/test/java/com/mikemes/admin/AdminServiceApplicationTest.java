@@ -24,5 +24,7 @@ class AdminServiceApplicationTest {
     ClientRegistrationRepository clientRegistrationRepository;
 
     @Test
-    void contextLoads() {}
+    void contextLoads() {
+        // intentionally empty: verifies the Spring context loads without error
+    }
 }
