@@ -24,7 +24,7 @@ dependencies {
     // Tests — Keycloak SPI types available in test scope for unit testing
     testImplementation "org.keycloak:keycloak-server-spi:25.0.6"
     testImplementation "org.keycloak:keycloak-server-spi-private:25.0.6"
-    testRuntimeOnly "org.keycloak:keycloak-core:25.0.6"
+    testImplementation "org.keycloak:keycloak-core:25.0.6"
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 

@@ -1,7 +1,9 @@
 package com.mikemes.auditservice.unit.service;
 
 import com.mikemes.audit.domain.AuditRecord;
+import com.mikemes.audit.domain.AuthAuditRecord;
 import com.mikemes.auditservice.api.dto.AuditRecordDto;
+import com.mikemes.auditservice.api.dto.AuthAuditRecordDto;
 import com.mikemes.auditservice.repository.AuditRecordRepository;
 import com.mikemes.auditservice.repository.AuthAuditRecordRepository;
 import com.mikemes.auditservice.service.AuditQueryService;
@@ -74,6 +76,58 @@ class AuditQueryServiceTest {
         assertThat(result.getContent().get(0).entityType()).isEqualTo("WorkOrder");
         assertThat(result.getContent().get(0).entityId()).isEqualTo("id-1");
         assertThat(result.getContent().get(0).userId()).isEqualTo("user:test");
+    }
+
+    @Test
+    void findAuditRecordsCallsRepositoryWithFilters() {
+        OffsetDateTime from = OffsetDateTime.of(2025, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime to = OffsetDateTime.of(2025, 1, 8, 0, 0, 0, 0, ZoneOffset.UTC);
+        Pageable pageable = PageRequest.of(0, 20);
+
+        when(auditRepository.findByFilters(any(), any(), any(), any(), any(), any()))
+            .thenReturn(new PageImpl<>(List.of()));
+
+        Page<AuditRecordDto> result = service.findAuditRecords(
+            "WorkOrder", "user:test", "CREATE", from, to, pageable);
+
+        assertThat(result.getContent()).isEmpty();
+        verify(auditRepository).findByFilters(
+            eq("WorkOrder"), eq("user:test"), eq("CREATE"), eq(from), eq(to), any(Pageable.class));
+    }
+
+    @Test
+    void findAuthEventsCallsAuthRepositoryAndMapsToDto() {
+        OffsetDateTime from = OffsetDateTime.of(2025, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+        OffsetDateTime to = OffsetDateTime.of(2025, 1, 8, 0, 0, 0, 0, ZoneOffset.UTC);
+        Pageable pageable = PageRequest.of(0, 20);
+        UUID recordId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
+
+        AuthAuditRecord record = AuthAuditRecord.builder()
+            .id(recordId)
+            .eventId(eventId)
+            .eventType("AUTH_EVENT")
+            .userId("user:auth-test")
+            .clientId("mes-frontend")
+            .ipAddress("10.0.0.1")
+            .sessionId("session-001")
+            .realmId("mikemes")
+            .occurredAt(from.plusHours(1))
+            .build();
+
+        when(authRepository.findByFilters(any(), any(), any(), any(), any()))
+            .thenReturn(new PageImpl<>(List.of(record)));
+
+        Page<AuthAuditRecordDto> result = service.findAuthEvents(
+            "user:auth-test", "AUTH_EVENT", from, to, pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+        AuthAuditRecordDto dto = result.getContent().get(0);
+        assertThat(dto.id()).isEqualTo(recordId);
+        assertThat(dto.eventId()).isEqualTo(eventId);
+        assertThat(dto.userId()).isEqualTo("user:auth-test");
+        assertThat(dto.clientId()).isEqualTo("mes-frontend");
+        assertThat(dto.realmId()).isEqualTo("mikemes");
     }
 
     @Test
