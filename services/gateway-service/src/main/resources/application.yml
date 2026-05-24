@@ -33,6 +33,12 @@ spring:
             - Path=/api/platform/**
           filters:
             - StripPrefix=2
+        - id: audit-service
+          uri: ${AUDIT_SERVICE_URL:http://audit-service:8091}
+          predicates:
+            - Path=/api/audit/**
+          filters:
+            - StripPrefix=2
 
 management:
   endpoints:

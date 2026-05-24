@@ -221,11 +221,11 @@ description: "Task list for MES-7 — System Activity & Audit Logging"
 
 **Purpose**: Wire audit-service into the Docker Compose service mesh, configure the gateway route, and update all infrastructure manifests.
 
-- [ ] T081 Add gateway route to `services/gateway-service/src/main/resources/application.yml` — `- id: audit-service` with `uri: http://audit-service:8090`, predicates `Path=/api/audit/**`, filter `StripPrefix=2`
-- [ ] T082 Add `audit-service` to `docker/compose-infra.yml` — `image`, `container_name: audit-service`, `ports: ["8090:8090"]`, `environment` block with DB + Kafka + Keycloak vars, `depends_on: [postgres, kafka, keycloak]`, `healthcheck: test: curl -f http://localhost:8090/actuator/health`
-- [ ] T083 [P] Update `.env.example` — add all new audit-service variables: `AUDIT_SERVICE_DB_PASSWORD`, `AUDIT_FLYWAY_DB_PASSWORD`, `AUDIT_HEALTH_KAFKA_LAG_THRESHOLD=1000`, `KEYCLOAK_AUDIT_KAFKA_BOOTSTRAP_SERVERS`, `KEYCLOAK_AUDIT_KAFKA_TOPIC=mes.audit.events`; add generation instructions (ERR-MES-016: `.env.example` must stay in sync with compose file)
-- [ ] T084 [P] Add `audit-service` Spring Boot Admin client config to `services/audit-service/src/main/resources/application.yml` — `spring.boot.admin.client.url=${SBA_URL}`
-- [ ] T085 Run `./gradlew check` — full multi-module build; all tests pass; zero lint violations across all modules
+- [X] T081 Add gateway route to `services/gateway-service/src/main/resources/application.yml` — `- id: audit-service` with `uri: http://audit-service:8090`, predicates `Path=/api/audit/**`, filter `StripPrefix=2`
+- [X] T082 Add `audit-service` to `docker/compose-infra.yml` — `image`, `container_name: audit-service`, `ports: ["8090:8090"]`, `environment` block with DB + Kafka + Keycloak vars, `depends_on: [postgres, kafka, keycloak]`, `healthcheck: test: curl -f http://localhost:8090/actuator/health`
+- [X] T083 [P] Update `.env.example` — add all new audit-service variables: `AUDIT_SERVICE_DB_PASSWORD`, `AUDIT_FLYWAY_DB_PASSWORD`, `AUDIT_HEALTH_KAFKA_LAG_THRESHOLD=1000`, `KEYCLOAK_AUDIT_KAFKA_BOOTSTRAP_SERVERS`, `KEYCLOAK_AUDIT_KAFKA_TOPIC=mes.audit.events`; add generation instructions (ERR-MES-016: `.env.example` must stay in sync with compose file)
+- [X] T084 [P] Add `audit-service` Spring Boot Admin client config to `services/audit-service/src/main/resources/application.yml` — `spring.boot.admin.client.url=${SBA_URL}`
+- [X] T085 Run `./gradlew check` — full multi-module build; all tests pass; zero lint violations across all modules
 - [ ] T086 [P] Validate `quickstart.md` steps locally — run `docker compose up -d`, build SPI JAR, smoke-test Kafka event ingestion, smoke-test tamper-evidence verify endpoint
 
 > **Raise PR3 after this checkpoint** (T063–T086) | CI: `./gradlew :services:audit-service:check` | Target: `Develop`

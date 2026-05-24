@@ -1,5 +1,5 @@
 server:
-  port: 8090
+  port: 8091
 
 spring:
   application:
@@ -66,4 +66,4 @@ audit:
 spring.boot.admin.client:
   url: ${SPRING_BOOT_ADMIN_URL:http://localhost:8085}
   instance:
-    service-base-url: ${AUDIT_SERVICE_URL:http://localhost:8090}
+    service-base-url: ${AUDIT_SERVICE_URL:http://localhost:8091}
