@@ -1,0 +1,267 @@
+# Production stack — uses pre-built images from ghcr.io/artical2k9.
+# Deploy via Portainer → Stacks → Add Stack → paste this file.
+#
+# Required secrets (set as stack environment variables in Portainer):
+#   IAM_DB_PASSWORD, PLATFORM_DB_USER, PLATFORM_DB_PASSWORD,
+#   AUDIT_SERVICE_DB_USERNAME, AUDIT_SERVICE_DB_PASSWORD,
+#   AUDIT_FLYWAY_DB_USERNAME, AUDIT_FLYWAY_DB_PASSWORD,
+#   KEYCLOAK_ADMIN_PASSWORD, KEYCLOAK_WEBHOOK_SECRET,
+#   MIKEMES_SECURITY_WEBHOOK_TOKEN,
+#   IAM_SERVICE_CLIENT_SECRET, GATEWAY_SERVICE_CLIENT_SECRET,
+#   ADMIN_SERVICE_CLIENT_SECRET
+#
+# If the ghcr.io repository is private, add a registry credential in
+# Portainer (Settings → Registries) using a GitHub PAT with read:packages scope.
+
+services:
+
+  # ── PostgreSQL 16 ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: mikemes-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mikemes
+      POSTGRES_USER: ${IAM_DB_USER:-iam_user}
+      POSTGRES_PASSWORD: ${IAM_DB_PASSWORD:?IAM_DB_PASSWORD must be set}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${IAM_DB_USER:-iam_user} -d mikemes"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - mikemes-net
+
+  # ── Apache Kafka 3.7 (KRaft) ───────────────────────────────────────────────
+  kafka:
+    image: apache/kafka:3.7.1
+    container_name: mikemes-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_IN_SYNC_REPLICAS: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list > /dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - mikemes-net
+
+  # ── Keycloak 25.0.6 ────────────────────────────────────────────────────────
+  # Custom image with MikeMES SPI and realm JSON baked in.
+  # Realm is auto-imported on first start via --import-realm.
+  # NOTE: start-dev uses embedded H2. For a hardened deployment, switch to
+  # start mode with an external PostgreSQL Keycloak database.
+  keycloak:
+    image: ghcr.io/artical2k9/mikemes-keycloak:latest
+    pull_policy: always
+    container_name: mikemes-keycloak
+    restart: unless-stopped
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD must be set}
+      KC_LOG_LEVEL: INFO
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "false"
+      KC_HTTP_PORT: 8080
+      KEYCLOAK_AUDIT_KAFKA_BOOTSTRAP_SERVERS: ${KEYCLOAK_AUDIT_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KEYCLOAK_AUDIT_KAFKA_TOPIC: ${KEYCLOAK_AUDIT_KAFKA_TOPIC:-mes.audit.events}
+    ports:
+      - "8080:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+    networks:
+      - mikemes-net
+
+  # ── IAM Service ────────────────────────────────────────────────────────────
+  iam-service:
+    image: ghcr.io/artical2k9/mikemes-iam-service:latest
+    pull_policy: always
+    container_name: mikemes-iam-service
+    restart: unless-stopped
+    environment:
+      IAM_DB_URL: ${IAM_DB_URL:-jdbc:postgresql://postgres:5432/mikemes?currentSchema=iam}
+      IAM_DB_USER: ${IAM_DB_USER:-iam_user}
+      IAM_DB_PASSWORD: ${IAM_DB_PASSWORD:?IAM_DB_PASSWORD must be set}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mikemes}
+      KEYCLOAK_WEBHOOK_SECRET: ${KEYCLOAK_WEBHOOK_SECRET:?KEYCLOAK_WEBHOOK_SECRET must be set}
+      MIKEMES_SECURITY_WEBHOOK_TOKEN: ${MIKEMES_SECURITY_WEBHOOK_TOKEN:?MIKEMES_SECURITY_WEBHOOK_TOKEN must be set}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ADMIN_SERVICE_URL: http://admin-service:8888
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - mikemes-net
+
+  # ── Gateway Service ────────────────────────────────────────────────────────
+  gateway-service:
+    image: ghcr.io/artical2k9/mikemes-gateway-service:latest
+    pull_policy: always
+    container_name: mikemes-gateway-service
+    restart: unless-stopped
+    environment:
+      GATEWAY_PORT: ${GATEWAY_PORT:-8082}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mikemes}
+      IAM_SERVICE_URL: http://iam-service:8080
+      ADMIN_SERVICE_URL: http://admin-service:8888
+      PLATFORM_SERVICE_URL: http://platform-service:8090
+      AUDIT_SERVICE_URL: http://audit-service:8091
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    ports:
+      - "${GATEWAY_PORT:-8082}:8082"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8082/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - mikemes-net
+
+  # ── Admin Service (Spring Boot Admin) ──────────────────────────────────────
+  admin-service:
+    image: ghcr.io/artical2k9/mikemes-admin-service:latest
+    pull_policy: always
+    container_name: mikemes-admin-service
+    restart: unless-stopped
+    environment:
+      ADMIN_SERVICE_CLIENT_SECRET: ${ADMIN_SERVICE_CLIENT_SECRET:?ADMIN_SERVICE_CLIENT_SECRET must be set}
+      ADMIN_SERVICE_URL: http://admin-service:8888
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mikemes}
+    ports:
+      - "8888:8888"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8888/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - mikemes-net
+
+  # ── Platform Service ───────────────────────────────────────────────────────
+  platform-service:
+    image: ghcr.io/artical2k9/mikemes-platform-service:latest
+    pull_policy: always
+    container_name: mikemes-platform-service
+    restart: unless-stopped
+    environment:
+      PLATFORM_DB_URL: jdbc:postgresql://postgres:5432/mikemes?currentSchema=platform
+      PLATFORM_DB_USER: ${PLATFORM_DB_USER:?PLATFORM_DB_USER must be set}
+      PLATFORM_DB_PASSWORD: ${PLATFORM_DB_PASSWORD:?PLATFORM_DB_PASSWORD must be set}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mikemes}
+      MIKEMES_SECURITY_WEBHOOK_TOKEN: ${MIKEMES_SECURITY_WEBHOOK_TOKEN:?MIKEMES_SECURITY_WEBHOOK_TOKEN must be set}
+      ADMIN_SERVICE_URL: http://admin-service:8888
+      IAM_SERVICE_URL: http://iam-service:8080
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    ports:
+      - "8090:8090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      admin-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8090/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - mikemes-net
+
+  # ── Audit Service ──────────────────────────────────────────────────────────
+  audit-service:
+    image: ghcr.io/artical2k9/mikemes-audit-service:latest
+    pull_policy: always
+    container_name: mikemes-audit-service
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      AUDIT_DB_NAME: mikemes
+      AUDIT_SERVICE_DB_USERNAME: ${AUDIT_SERVICE_DB_USERNAME:?AUDIT_SERVICE_DB_USERNAME must be set}
+      AUDIT_SERVICE_DB_PASSWORD: ${AUDIT_SERVICE_DB_PASSWORD:?AUDIT_SERVICE_DB_PASSWORD must be set}
+      AUDIT_FLYWAY_DB_USERNAME: ${AUDIT_FLYWAY_DB_USERNAME:?AUDIT_FLYWAY_DB_USERNAME must be set}
+      AUDIT_FLYWAY_DB_PASSWORD: ${AUDIT_FLYWAY_DB_PASSWORD:?AUDIT_FLYWAY_DB_PASSWORD must be set}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      AUDIT_KAFKA_CONSUMER_GROUP: audit-service-group
+      AUDIT_HEALTH_KAFKA_LAG_THRESHOLD: ${AUDIT_HEALTH_KAFKA_LAG_THRESHOLD:-1000}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mikemes}
+      SPRING_BOOT_ADMIN_URL: http://admin-service:8888
+      AUDIT_SERVICE_URL: http://audit-service:8091
+    ports:
+      - "8091:8091"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8091/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - mikemes-net
+
+volumes:
+  postgres-data:
+    driver: local
+  kafka-data:
+    driver: local
+
+networks:
+  mikemes-net:
+    driver: bridge

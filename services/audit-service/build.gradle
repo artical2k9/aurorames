@@ -1,0 +1,43 @@
+// audit-service — centralised audit trail ingestion and query service.
+// Consumes mes.audit.events Kafka topic; persists AuditRecord and AuthAuditRecord;
+// exposes query and tamper-evidence API on port 8090.
+
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    // ── Shared libraries ──────────────────────────────────────────────────────
+    implementation project(':libs:lib-common-security')
+    implementation project(':libs:lib-common-audit')
+    implementation project(':libs:lib-common-events')
+
+    // ── Web + Persistence + Validation ────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // ── Kafka consumer ────────────────────────────────────────────────────────
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    // ── Database migration ────────────────────────────────────────────────────
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly    'org.postgresql:postgresql'
+
+    // ── API documentation ─────────────────────────────────────────────────────
+    implementation libs.springdoc.openapi.webmvc
+
+    // ── Spring Boot Admin client self-registration ────────────────────────────
+    implementation libs.spring.boot.admin.client
+
+    // ── Tests ─────────────────────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:kafka'
+    testImplementation project(':libs:lib-common-security').sourceSets.testFixtures.output
+}

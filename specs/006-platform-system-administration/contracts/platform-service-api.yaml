@@ -1,0 +1,284 @@
+openapi: "3.0.3"
+info:
+  title: Platform Service API
+  description: |
+    Per-organisation system configuration management for MikeMES.
+    All endpoints (except /internal/*) require a valid JWT Bearer token.
+    The `org_id` claim in the JWT determines which organisation's data is accessed.
+  version: "1.0.0"
+  contact:
+    name: MikeMES Platform Team
+
+servers:
+  - url: http://localhost:8090
+    description: Local development
+  - url: http://platform-service:8090
+    description: Docker Compose internal
+
+tags:
+  - name: config
+    description: Organisation system configuration management
+  - name: internal
+    description: Internal service-to-service endpoints (webhook token auth)
+
+paths:
+  /api/platform/config:
+    get:
+      tags: [config]
+      summary: List all active config entries for the caller's organisation
+      description: Returns all active SystemConfiguration entries scoped to the org_id in the JWT.
+      operationId: listConfig
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of configuration entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SystemConfigDto"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/platform/config/{key}:
+    get:
+      tags: [config]
+      summary: Get a config entry by key
+      operationId: getConfig
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ConfigKey"
+      responses:
+        "200":
+          description: Configuration entry found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigDto"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [config]
+      summary: Upsert a config entry (idempotent)
+      description: |
+        Creates or updates a configuration entry for the given key within the caller's organisation.
+        Requires privilege: `platform:config:manage`.
+        This operation is idempotent — repeat calls with the same body produce the same state.
+      operationId: upsertConfig
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ConfigKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertConfigRequest"
+      responses:
+        "200":
+          description: Entry created or updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigDto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    delete:
+      tags: [config]
+      summary: Soft-delete a config entry (sets active=false)
+      description: |
+        Deactivates (soft-deletes) a configuration entry. The row is retained in the database.
+        Requires privilege: `platform:config:manage`.
+      operationId: deleteConfig
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ConfigKey"
+      responses:
+        "204":
+          description: Entry deactivated
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /internal/config/{key}:
+    get:
+      tags: [internal]
+      summary: Internal read of a config entry by key (webhook token auth)
+      description: |
+        Service-to-service endpoint for domain services to read configuration at runtime.
+        Protected by the same `WebhookTokenFilter` pattern as iam-service InternalController.
+        The `org_id` query parameter is required (caller passes org context explicitly).
+      operationId: getConfigInternal
+      security:
+        - webhookToken: []
+      parameters:
+        - $ref: "#/components/parameters/ConfigKey"
+        - name: orgId
+          in: query
+          required: true
+          description: Organisation UUID (caller must pass explicitly — no JWT in internal calls)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Configuration entry found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemConfigDto"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /actuator/health:
+    get:
+      tags: [internal]
+      summary: Spring Boot Actuator health endpoint (no auth required)
+      operationId: health
+      security: []
+      responses:
+        "200":
+          description: Service is UP
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak-issued JWT. Must contain `org_id` and `roles` claims.
+    webhookToken:
+      type: http
+      scheme: bearer
+      description: Shared webhook token (`mikemes.security.webhook-token`) for internal service calls.
+
+  parameters:
+    ConfigKey:
+      name: key
+      in: path
+      required: true
+      description: Configuration key (dot-notation recommended, e.g. `quality.tolerance.default`)
+      schema:
+        type: string
+        maxLength: 255
+        pattern: "^[a-zA-Z0-9._\\-]+$"
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Authenticated but insufficient privileges
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Entry not found for the given key within the caller's organisation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    BadRequest:
+      description: Invalid request body
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    SystemConfigDto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        orgId:
+          type: string
+          format: uuid
+          readOnly: true
+        key:
+          type: string
+          maxLength: 255
+        value:
+          type: string
+          nullable: true
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+        createdBy:
+          type: string
+          nullable: true
+          readOnly: true
+
+    UpsertConfigRequest:
+      type: object
+      required: [value]
+      properties:
+        value:
+          type: string
+          description: Configuration value (JSON string, plain string, or numeric as string)
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string

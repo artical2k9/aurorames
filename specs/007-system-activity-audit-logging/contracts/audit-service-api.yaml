@@ -1,0 +1,424 @@
+openapi: 3.1.0
+info:
+  title: MikeMES Audit Service API
+  version: 1.0.0
+  description: |
+    Centralised audit trail query and tamper-evidence verification API.
+    All endpoints require a valid Keycloak-issued JWT with AUDIT_READ or SYSTEM_ADMIN role.
+    Compliant with 21 CFR Part 11 §11.10(e), AS9100D §7.5, and CMMC AU domain controls.
+
+servers:
+  - url: http://localhost:8090
+    description: Local development (direct)
+  - url: http://localhost:8080/api/audit
+    description: Via Spring Cloud Gateway
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AuditRecordDto:
+      type: object
+      required: [id, eventId, eventType, entityType, entityId, userId, serviceSource, action, occurredAt, checksum, schemaVersion]
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+          description: Deduplication key from the originating AuditEventMessage
+        eventType:
+          type: string
+          enum: [ENTITY_CHANGE, KAFKA_EVENT, AUTH_EVENT]
+        entityType:
+          type: string
+          example: WorkOrder
+        entityId:
+          type: string
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        userId:
+          type: string
+          description: JWT subject claim, or "system:<service-name>" for system-initiated actions
+          example: "user:abc-123"
+        serviceSource:
+          type: string
+          example: work-order-service
+        action:
+          type: string
+          enum: [CREATE, UPDATE, DELETE, PUBLISH, AUTH]
+        occurredAt:
+          type: string
+          format: date-time
+          description: UTC timestamp with millisecond precision
+        previousState:
+          type: object
+          nullable: true
+          description: Entity state before the mutation (null for CREATE)
+        newState:
+          type: object
+          nullable: true
+          description: Entity state after the mutation (null for DELETE)
+        checksum:
+          type: string
+          pattern: "^[a-f0-9]{64}$"
+          description: SHA-256 hex checksum of canonical record fields
+        schemaVersion:
+          type: integer
+          minimum: 1
+        tenantId:
+          type: string
+          format: uuid
+          nullable: true
+
+    AuthAuditRecordDto:
+      type: object
+      required: [id, eventId, eventType, realmId, occurredAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          description: Keycloak EventType name (LOGIN, LOGOUT, LOGIN_ERROR, ROLE_MAPPING, etc.)
+          example: LOGIN
+        userId:
+          type: string
+          nullable: true
+        clientId:
+          type: string
+          nullable: true
+        ipAddress:
+          type: string
+          nullable: true
+        sessionId:
+          type: string
+          nullable: true
+        realmId:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        details:
+          type: object
+          nullable: true
+          description: Keycloak event details map (error codes, resources affected, etc.)
+
+    PagedAuditResponse:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditRecordDto'
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 200
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+
+    PagedAuthResponse:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuthAuditRecordDto'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+
+    VerificationResult:
+      type: object
+      required: [status, recordsChecked, violations, verifiedAt]
+      properties:
+        status:
+          type: string
+          enum: [PASS, FAIL]
+        recordsChecked:
+          type: integer
+          format: int64
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/VerificationViolation'
+        verifiedAt:
+          type: string
+          format: date-time
+
+    VerificationViolation:
+      type: object
+      required: [recordId, reason]
+      properties:
+        recordId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          enum: [CHECKSUM_MISMATCH, RECORD_MISSING]
+        expectedChecksum:
+          type: string
+          nullable: true
+        actualChecksum:
+          type: string
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      required: [status, error, message, timestamp]
+      properties:
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+    SizeParam:
+      name: size
+      in: query
+      schema:
+        type: integer
+        default: 50
+        minimum: 1
+        maximum: 200
+    FromParam:
+      name: from
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date-time
+      description: Start of date range (inclusive, ISO 8601 UTC)
+    ToParam:
+      name: to
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date-time
+      description: End of date range (inclusive, ISO 8601 UTC)
+
+paths:
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Entity audit trail
+  # ──────────────────────────────────────────────────────────────────────────
+
+  /audit/entities/{entityType}/{entityId}/history:
+    get:
+      summary: Get change history for a specific entity
+      description: |
+        Returns all audit records for the given entity, sorted descending by occurredAt.
+        Requires AUDIT_READ or SYSTEM_ADMIN role. Response time SLA: < 2s.
+      operationId: getEntityHistory
+      tags: [Entity Audit]
+      parameters:
+        - name: entityType
+          in: path
+          required: true
+          schema:
+            type: string
+          example: WorkOrder
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - $ref: '#/components/parameters/FromParam'
+        - $ref: '#/components/parameters/ToParam'
+      responses:
+        '200':
+          description: Paginated entity history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAuditResponse'
+        '403':
+          description: Missing AUDIT_READ or SYSTEM_ADMIN role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid date range or pagination parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /audit/entities:
+    get:
+      summary: Query audit records across all entity types
+      description: |
+        Supports filtering by entityType, userId, action, and date range.
+        Requires AUDIT_READ or SYSTEM_ADMIN role.
+      operationId: queryAuditRecords
+      tags: [Entity Audit]
+      parameters:
+        - name: entityType
+          in: query
+          schema:
+            type: string
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string
+            enum: [CREATE, UPDATE, DELETE, PUBLISH, AUTH]
+        - $ref: '#/components/parameters/FromParam'
+        - $ref: '#/components/parameters/ToParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Paginated audit records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAuditResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Authentication audit trail
+  # ──────────────────────────────────────────────────────────────────────────
+
+  /audit/auth-events:
+    get:
+      summary: Query authentication and authorisation events
+      description: |
+        Returns Keycloak-sourced authentication events. Filter by userId, eventType, date range.
+        Requires AUDIT_READ or SYSTEM_ADMIN role.
+      operationId: queryAuthEvents
+      tags: [Auth Audit]
+      parameters:
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: eventType
+          in: query
+          schema:
+            type: string
+          example: LOGIN_ERROR
+        - $ref: '#/components/parameters/FromParam'
+        - $ref: '#/components/parameters/ToParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        '200':
+          description: Paginated auth audit records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAuthResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Tamper-evidence verification
+  # ──────────────────────────────────────────────────────────────────────────
+
+  /audit/verify:
+    post:
+      summary: Run tamper-evidence verification over a time window
+      description: |
+        Recomputes SHA-256 checksums for all audit_records in the given time window
+        and reports any discrepancies. Requires SYSTEM_ADMIN role.
+        Note: This operation scans potentially large datasets; use narrow time windows
+        for interactive checks. Long-running requests may be tracked asynchronously (future).
+      operationId: verifyAuditIntegrity
+      tags: [Tamper Evidence]
+      parameters:
+        - $ref: '#/components/parameters/FromParam'
+        - $ref: '#/components/parameters/ToParam'
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationResult'
+        '403':
+          description: Requires SYSTEM_ADMIN role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Internal / actuator
+  # ──────────────────────────────────────────────────────────────────────────
+
+  /actuator/health:
+    get:
+      summary: Service health (actuator)
+      description: |
+        Reports UP or DOWN. Reports DOWN when Kafka consumer lag exceeds threshold
+        (default 1,000 messages). No authentication required (permitted by SecurityConfig).
+      operationId: health
+      tags: [Actuator]
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+        '503':
+          description: Service unhealthy (Kafka lag threshold exceeded or DB unavailable)

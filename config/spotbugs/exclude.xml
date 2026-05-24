@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs exclusion filter — MikeMES.
+  Each exclusion addresses a known false-positive pattern in Spring Boot / JPA code.
+  All exclusions must have a comment explaining WHY they are safe.
+-->
+<FindBugsFilter>
+
+    <!--
+      EI_EXPOSE_REP / EI_EXPOSE_REP2: "May expose internal representation by
+      returning/storing a reference to a mutable object."
+      Safe in Spring beans and JPA entities because Spring / Hibernate manage
+      object lifecycle; callers are within the same bounded context.
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+    <!--
+      SE_BAD_FIELD: "Non-transient non-serializable instance field in serializable class."
+      JPA entities implement Serializable for L2 caching; Hibernate proxies are not
+      serializable but this is managed by Hibernate configuration.
+    -->
+    <Match>
+        <Bug pattern="SE_BAD_FIELD"/>
+    </Match>
+
+    <!--
+      SE_NO_SERIALVERSIONID: "Serializable class has no serialVersionUID."
+      JPA entities and Spring beans do not require serialVersionUID for
+      on-premises deployment; version migration is handled at the DB schema level.
+    -->
+    <Match>
+        <Bug pattern="SE_NO_SERIALVERSIONID"/>
+    </Match>
+
+    <!--
+      NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE: False positive when chaining
+      Spring Data repository methods that cannot return null given the query
+      constraints, but SpotBugs cannot prove it statically.
+      Legitimate null checks are enforced at service boundaries, not in repos.
+    -->
+    <Match>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+        <Class name="~.*Repository"/>
+    </Match>
+
+    <!--
+      URF_UNREAD_FIELD: "Unread field" in JPA entities.
+      JPA reads fields via reflection; SpotBugs cannot see this usage.
+    -->
+    <Match>
+        <Bug pattern="URF_UNREAD_FIELD"/>
+    </Match>
+
+    <!--
+      RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE: False positive on Optional.isPresent()
+      and @NonNull-annotated parameters checked by Spring validation before the method
+      body executes.
+    -->
+    <Match>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE,RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE"/>
+    </Match>
+
+    <!--
+      CT_CONSTRUCTOR_THROW: SpotBugs flags constructors that can throw as a
+      potential finalizer attack vector. Spring beans and JPA entities never
+      use finalize(); this pattern does not apply.
+    -->
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+    </Match>
+
+</FindBugsFilter>

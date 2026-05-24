@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: gateway-service
+  boot:
+    admin:
+      client:
+        url: ${ADMIN_SERVICE_URL:http://admin-service:8888}
+        instance:
+          prefer-ip: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mikemes}/protocol/openid-connect/certs
+  cloud:
+    gateway:
+      routes:
+        - id: iam-service
+          uri: ${IAM_SERVICE_URL:http://iam-service:8085}
+          predicates:
+            - Path=/api/iam/**
+          filters:
+            - StripPrefix=2
+        - id: admin-service
+          uri: ${ADMIN_SERVICE_URL:http://admin-service:8888}
+          predicates:
+            - Path=/api/admin/**
+          filters:
+            - StripPrefix=2
+        - id: platform-service
+          uri: ${PLATFORM_SERVICE_URL:http://platform-service:8090}
+          predicates:
+            - Path=/api/platform/**
+          filters:
+            - StripPrefix=2
+        - id: audit-service
+          uri: ${AUDIT_SERVICE_URL:http://audit-service:8091}
+          predicates:
+            - Path=/api/audit/**
+          filters:
+            - StripPrefix=2
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+server:
+  port: ${GATEWAY_PORT:8082}

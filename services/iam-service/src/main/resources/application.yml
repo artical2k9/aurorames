@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: iam-service
+  datasource:
+    url: ${IAM_DB_URL:jdbc:postgresql://localhost:5432/mikemes}
+    username: ${IAM_DB_USER:iam_user}
+    password: ${IAM_DB_PASSWORD:changeme}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: iam
+      org.hibernate.envers.default_schema: iam
+  flyway:
+    schemas: iam
+    locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+  boot:
+    admin:
+      client:
+        url: ${ADMIN_SERVICE_URL:http://admin-service:8888}
+        instance:
+          prefer-ip: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mikemes}
+
+server:
+  port: 8085
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+keycloak:
+  admin:
+    server-url: ${KEYCLOAK_SERVER_URL:http://localhost:8080}
+    realm: ${KEYCLOAK_REALM:mikemes}
+    username: ${KEYCLOAK_ADMIN_USERNAME:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
+
+mikemes:
+  security:
+    iam-service-url: ${IAM_SERVICE_URL:http://localhost:8085}
+    privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL:60}
+    privilege-changes-topic: iam.privilege-changes
+
+iam:
+  webhook:
+    # MUST be overridden via IAM_WEBHOOK_TOKEN env var in every environment
+    token: ${IAM_WEBHOOK_TOKEN:dev-webhook-secret-change-in-production}
+  events:
+    topic: iam.events

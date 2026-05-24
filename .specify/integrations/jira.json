@@ -1,0 +1,32 @@
+{
+  "provider": "jira",
+  "site": "artical.atlassian.net",
+  "cloudId": "2d0ddc1c-9504-4952-a6cd-e4c522ccb319",
+  "projectKey": "MES",
+  "projectId": "10101",
+  "projectName": "MikeMES",
+  "issueTypes": {
+    "epic":    { "id": "10081", "name": "Epic" },
+    "story":   { "id": "10080", "name": "Story" },
+    "task":    { "id": "10078", "name": "Task" },
+    "bug":     { "id": "10079", "name": "Bug" },
+    "subtask": { "id": "10082", "name": "Subtask" }
+  },
+  "issueLinkTypes": {
+    "relates":          { "id": "10003", "name": "Relates",          "inward": "relates to",    "outward": "relates to" },
+    "blocks":           { "id": "10000", "name": "Blocks",           "inward": "is blocked by", "outward": "blocks" },
+    "duplicate":        { "id": "10002", "name": "Duplicate",        "inward": "is duplicated by", "outward": "duplicates" },
+    "problem_incident": { "id": "10006", "name": "Problem/Incident", "inward": "is caused by",  "outward": "causes" }
+  },
+  "programmeLink": {
+    "linkType": "Relates",
+    "note": "Jira next-gen has no native Epic-of-Epics. Child Epics are linked to the programme Epic via 'Relates', labelled with 'speckit-programme' and the parent Epic key (e.g. 'programme:MES-1')."
+  },
+  "mapping": {
+    "speckit_phase":      "Epic",
+    "speckit_user_story": "Story",
+    "speckit_task":       "Task",
+    "speckit_test_task":  "Task",
+    "speckit_defect":     "Bug"
+  }
+}

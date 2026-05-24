@@ -1,0 +1,31 @@
+// lib-common-events — shared Kafka event message DTOs and topic constants.
+// Published to mavenLocal(); consumed by all services that publish audit events.
+
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    // Expose Jackson annotations on the API surface so consumers can use @JsonProperty
+    api 'com.fasterxml.jackson.core:jackson-databind'
+    api 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+apply plugin: 'maven-publish'
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId    = 'com.mikemes'
+            artifactId = 'lib-common-events'
+            version    = project.version
+            versionMapping {
+                usage('java-api') { fromResolutionOf('runtimeClasspath') }
+                usage('java-runtime') { fromResolutionResult() }
+            }
+        }
+    }
+}

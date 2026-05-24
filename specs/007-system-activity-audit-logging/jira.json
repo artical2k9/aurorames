@@ -1,0 +1,7 @@
+{
+  "epicKey": "MES-7",
+  "epicId": "12090",
+  "epicSummary": "P1 · System Activity & Audit Logging",
+  "importedAt": "2026-05-24T00:00:00Z",
+  "specFile": "specs/007-system-activity-audit-logging/spec.md"
+}
