@@ -1,8 +1,10 @@
 package com.mikemes.auditservice.unit.api;
 
 import com.mikemes.auditservice.api.AuditController;
+import com.mikemes.auditservice.api.dto.AuditRecordDto;
 import com.mikemes.auditservice.api.dto.AuthAuditRecordDto;
 import com.mikemes.auditservice.config.SecurityConfig;
+import com.mikemes.auditservice.repository.AuditRecordRepository;
 import com.mikemes.auditservice.service.AuditQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +43,9 @@ class AuditControllerTest {
     @MockitoBean
     private JwtDecoder jwtDecoder;
 
+    @MockitoBean
+    private AuditRecordRepository auditRecordRepository;
+
     @Test
     @WithMockUser(roles = "AUDIT_READ")
     void getAuthEventsReturns200WithAuditReadRole() throws Exception {
@@ -75,6 +80,45 @@ class AuditControllerTest {
     @WithMockUser(roles = "PLATFORM_USER")
     void getAuthEventsReturns403WithoutAuditReadRole() throws Exception {
         mockMvc.perform(get("/audit/auth-events")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "AUDIT_READ")
+    void getEntityHistoryReturns200WithMockedRecords() throws Exception {
+        AuditRecordDto dto = new AuditRecordDto(
+            UUID.randomUUID(), UUID.randomUUID(), "KAFKA_EVENT",
+            "WorkOrder", "WO-001", "user:test",
+            "work-order-service", "CREATE",
+            OffsetDateTime.now(ZoneOffset.UTC), null, null, "a".repeat(64), 1
+        );
+        when(queryService.findEntityHistory(any(), any(), any(), any(), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(dto)));
+
+        mockMvc.perform(get("/audit/entities/WorkOrder/WO-001/history")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].entityType").value("WorkOrder"))
+            .andExpect(jsonPath("$.content[0].entityId").value("WO-001"));
+    }
+
+    @Test
+    @WithMockUser(roles = "AUDIT_READ")
+    void getEntitiesReturns200WithFilters() throws Exception {
+        when(queryService.findAuditRecords(any(), any(), any(), any(), any(), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/audit/entities")
+                .param("entityType", "WorkOrder")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "PLATFORM_USER")
+    void getEntityHistoryReturns403WithoutAuditReadRole() throws Exception {
+        mockMvc.perform(get("/audit/entities/WorkOrder/WO-001/history")
                 .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isForbidden());
     }

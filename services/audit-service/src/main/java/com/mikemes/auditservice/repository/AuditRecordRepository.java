@@ -47,4 +47,6 @@ public interface AuditRecordRepository extends JpaRepository<AuditRecord, UUID> 
     java.util.List<AuditRecord> findAllByOccurredAtBetweenOrderByOccurredAt(
             @Param("from") OffsetDateTime from,
             @Param("to") OffsetDateTime to);
+
+    Page<AuditRecord> findByOccurredAtBetween(OffsetDateTime from, OffsetDateTime to, Pageable pageable);
 }
