@@ -26,3 +26,8 @@
 | ERR-MES-024 | 2026-05-21 | Testing — Keycloak | Always assert `r.getStatus() == 201` after KC admin create calls; never use KC to issue JWTs in IT tests — use locally-signed RSA JWTs |
 | ERR-MES-025 | 2026-05-21 | Agent — Confidence Calibration | Flag uncertainty before committing when relying on niche external-service breaking-change behaviour; prefer a local smoke test over a CI run as first verification |
 | ERR-MES-033 | 2026-05-23 | Build | `spring-boot-starter-web` must be declared explicitly on any service with REST controllers or servlet filters; `data-jpa`/`actuator`/`validation` do not pull it in |
+| ERR-MES-034 | 2026-05-24 | Testing — Spring Security | 2-arg `UsernamePasswordAuthenticationToken(name, null)` creates unauthenticated token; use 3-arg constructor with authorities for authenticated test tokens |
+| ERR-MES-035 | 2026-05-24 | Testing — Spring MVC slice | `@WebMvcTest` does not load JPA repos; if a `@Configuration` bean injects a repo, add `@MockitoBean` for it in the test class |
+| ERR-MES-036 | 2026-05-24 | Testing — Testcontainers | docker-java defaults to API v1.32; Docker Desktop 29.x min is 1.40 — add `systemProperty 'api.version', '1.41'` to `test {}` |
+| ERR-MES-037 | 2026-05-24 | Testing — Gradle | Gradle daemon doesn't inherit shell env vars; forward `DOCKER_HOST` via `environment` in `test {}` and run `--stop` after the change |
+| ERR-MES-038 | 2026-05-24 | Backend — Spring Security | Spring Security 6.5 throws `UnreachableFilterChainException` for two "any request" chains; exclude shared auto-config in `application.yml` AND in `DynamicPropertySource` (it replaces yml) |

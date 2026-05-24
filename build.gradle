@@ -77,6 +77,11 @@ subprojects {
     // Wire SpotBugs main-source scan into the standard check lifecycle
     check.dependsOn spotbugsMain
 
+    // Gradle 9 requires explicit JUnit Platform launcher declaration for non-Boot modules
+    dependencies {
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
     // ── Tests ─────────────────────────────────────────────────────────────────
     test {
         useJUnitPlatform()
@@ -84,6 +89,15 @@ subprojects {
             events           'passed', 'skipped', 'failed'
             exceptionFormat  = 'full'
             showStandardStreams = false
+        }
+        // Forward Docker env vars into the test worker JVM so Testcontainers can
+        // locate Docker Desktop on Windows (npipe or TCP).
+        def dockerHost = System.getenv('DOCKER_HOST')
+        if (dockerHost) {
+            environment 'DOCKER_HOST', dockerHost
+            // docker-java defaults to API v1.32; Docker Desktop 29.x requires min 1.40.
+            // Force the version via the JVM system property that docker-java reads directly.
+            systemProperty 'api.version', '1.41'
         }
         finalizedBy jacocoTestReport
     }
