@@ -8,7 +8,12 @@ import com.mikemes.events.audit.AuditEventMessage;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.KafkaContainer;
@@ -17,6 +22,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
@@ -28,7 +34,21 @@ import static org.awaitility.Awaitility.await;
 
 @SpringBootTest
 @Testcontainers(disabledWithoutDocker = true)
+@Import(AuditKafkaConsumerIT.TestJwtConfig.class)
 class AuditKafkaConsumerIT {
+
+    @TestConfiguration
+    static class TestJwtConfig {
+        @Bean
+        JwtDecoder jwtDecoder() {
+            return token -> Jwt.withTokenValue(token)
+                .header("alg", "RS256")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claim("sub", "test")
+                .build();
+        }
+    }
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES =
@@ -51,10 +71,10 @@ class AuditKafkaConsumerIT {
         registry.add("spring.flyway.password", POSTGRES::getPassword);
         registry.add("spring.kafka.consumer.bootstrap-servers", KAFKA::getBootstrapServers);
         registry.add("spring.kafka.producer.bootstrap-servers", KAFKA::getBootstrapServers);
-        // Disable security for integration tests — use a test-only no-op provider
         registry.add("spring.autoconfigure.exclude",
             () -> "org.springframework.boot.autoconfigure.security.oauth2.resource.servlet"
-                + ".OAuth2ResourceServerAutoConfiguration");
+                + ".OAuth2ResourceServerAutoConfiguration,"
+                + "com.mikemes.common.security.config.MikeMESSecurityAutoConfiguration");
     }
 
     @Autowired

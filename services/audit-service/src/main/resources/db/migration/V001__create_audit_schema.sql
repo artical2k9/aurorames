@@ -4,13 +4,15 @@
 CREATE SCHEMA IF NOT EXISTS audit;
 
 -- Shared revision entity for Hibernate Envers (ValidityAuditStrategy)
+-- Column names match DefaultRevisionEntity field names (id, timestamp).
 CREATE TABLE audit.mes_revisions (
-    rev             INTEGER      NOT NULL GENERATED ALWAYS AS IDENTITY,
-    rev_tstmp       BIGINT       NOT NULL,
+    id              INTEGER      NOT NULL,
+    timestamp       BIGINT       NOT NULL,
     user_id         VARCHAR(100) NOT NULL,
     service_source  VARCHAR(100) NOT NULL,
-    CONSTRAINT pk_mes_revisions PRIMARY KEY (rev)
+    CONSTRAINT pk_mes_revisions PRIMARY KEY (id)
 );
+CREATE SEQUENCE audit.mes_revisions_seq START WITH 1 INCREMENT BY 50;
 
 -- Core immutable audit record store for Kafka-published business events
 CREATE TABLE audit.audit_records (
@@ -26,7 +28,7 @@ CREATE TABLE audit.audit_records (
     previous_state  JSONB,
     new_state       JSONB,
     checksum        VARCHAR(64)  NOT NULL,
-    schema_version  SMALLINT     NOT NULL DEFAULT 1,
+    schema_version  INTEGER      NOT NULL DEFAULT 1,
     tenant_id       UUID,
     CONSTRAINT pk_audit_records          PRIMARY KEY (id),
     CONSTRAINT uq_audit_records_event_id UNIQUE      (event_id)

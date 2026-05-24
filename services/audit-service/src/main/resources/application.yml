@@ -5,6 +5,13 @@ spring:
   application:
     name: audit-service
 
+  # audit-service owns its own SecurityFilterChain (SecurityConfig). Exclude the shared lib's
+  # auto-configuration to prevent two "any request" filter chains conflicting under
+  # Spring Security 6.5+ (Spring Boot 3.5.0 added UnreachableFilterChainException enforcement).
+  autoconfigure:
+    exclude:
+      - com.mikemes.common.security.config.MikeMESSecurityAutoConfiguration
+
   datasource:
     url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${AUDIT_DB_NAME:mikemes}
     username: ${AUDIT_SERVICE_DB_USERNAME:audit_service}

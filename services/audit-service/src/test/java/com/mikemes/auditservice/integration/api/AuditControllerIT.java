@@ -6,7 +6,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -17,6 +22,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -30,7 +36,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers(disabledWithoutDocker = true)
+@Import(AuditControllerIT.TestJwtConfig.class)
 class AuditControllerIT {
+
+    @TestConfiguration
+    static class TestJwtConfig {
+        @Bean
+        JwtDecoder jwtDecoder() {
+            // NOP decoder — @WithMockUser bypasses JWT validation; this bean satisfies SecurityConfig.
+            return token -> Jwt.withTokenValue(token)
+                .header("alg", "RS256")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claim("sub", "test")
+                .build();
+        }
+    }
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES =
@@ -53,9 +74,14 @@ class AuditControllerIT {
         registry.add("spring.flyway.password", POSTGRES::getPassword);
         registry.add("spring.kafka.consumer.bootstrap-servers", KAFKA::getBootstrapServers);
         registry.add("spring.kafka.producer.bootstrap-servers", KAFKA::getBootstrapServers);
+        // Exclude both OAuth2 resource-server auto-config AND the shared MikeMES security auto-config.
+        // OAuth2ResourceServerAutoConfiguration: its JwtDecoder would try to fetch Keycloak OIDC discovery.
+        // MikeMESSecurityAutoConfiguration: creates a duplicate "any request" SecurityFilterChain.
+        // TestJwtConfig inner class provides the JwtDecoder that SecurityConfig.filterChain() needs.
         registry.add("spring.autoconfigure.exclude",
             () -> "org.springframework.boot.autoconfigure.security.oauth2.resource.servlet"
-                + ".OAuth2ResourceServerAutoConfiguration");
+                + ".OAuth2ResourceServerAutoConfiguration,"
+                + "com.mikemes.common.security.config.MikeMESSecurityAutoConfiguration");
     }
 
     @Autowired
