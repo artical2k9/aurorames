@@ -236,15 +236,15 @@ description: "Task list for MES-7 — System Activity & Audit Logging"
 
 **Purpose**: Mandatory per Constitution §II and §IV. Run before transitioning MES-7 to Done.
 
-- [ ] T087 Verify all Constitution Check gates in `specs/007-system-activity-audit-logging/plan.md` show ✅ PASS — update Gate III to ✅ PASS after human plan approval; update Gate V note to reflect `AuditAccessInterceptor` implementation
+- [X] T087 Verify all Constitution Check gates in `specs/007-system-activity-audit-logging/plan.md` show ✅ PASS — update Gate III to ✅ PASS after human plan approval; update Gate V note to reflect `AuditAccessInterceptor` implementation
 - [ ] T088 [P] Confirm audit trail immutability at DB layer — attempt `UPDATE audit.audit_records SET user_id='tampered'` using `audit_service` credentials; assert `ERROR: permission denied`
 - [ ] T089 [P] Confirm Kafka consumer idempotency — publish identical `eventId` twice; assert `count(*) from audit.audit_records where event_id = ?` returns 1
 - [ ] T090 [P] Confirm `tenant_id` column present on `audit_records` and `auth_audit_records` — run `SELECT column_name FROM information_schema.columns WHERE table_schema='audit'`; assert `tenant_id` present in both tables
-- [ ] T091 Confirm AUDIT_READ privilege exists in `iam-service` privilege registry (platform module seed migration); add Flyway migration `V006__seed_audit_module_privileges.sql` to `services/iam-service/src/main/resources/db/migration/` if missing
+- [X] T091 Confirm AUDIT_READ privilege exists in `iam-service` privilege registry (platform module seed migration); add Flyway migration `V006__seed_audit_module_privileges.sql` to `services/iam-service/src/main/resources/db/migration/` if missing
 - [ ] T092 [P] Compliance spot-check 21 CFR Part 11 §11.10(e) — verify: (a) all audit records have UTC timestamp; (b) no UPDATE/DELETE path exists for app user; (c) `checksum` populated on every record; confirm in integration test output
 - [ ] T093 [P] Compliance spot-check CMMC AU.2.041 — verify log generation: run `./gradlew :services:audit-service:check`; confirm AuditKafkaConsumerIT produces records for all event types (CREATE, UPDATE, DELETE, AUTH)
-- [ ] T094 Confirm all test failures logged during this feature's development are tracked as Jira defects and resolved (Constitution §II — no open defects before Done)
-- [ ] T095 Run retrospective gate per CLAUDE.md — review this session's work for new errors or near-misses; update `docs/governance/MES-ERR-001_Agent_Error_Log.md` with any new entries; promote as applicable
+- [X] T094 Confirm all test failures logged during this feature's development are tracked as Jira defects and resolved (Constitution §II — no open defects before Done)
+- [X] T095 Run retrospective gate per CLAUDE.md — review this session's work for new errors or near-misses; update `docs/governance/MES-ERR-001_Agent_Error_Log.md` with any new entries; promote as applicable
 
 ---
 

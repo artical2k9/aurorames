@@ -114,6 +114,20 @@
 **Fix applied:** Added `implementation 'org.springframework.boot:spring-boot-starter-web'` to `services/platform-service/build.gradle`.
 **Rule:** Any service that defines REST controllers, servlet filters, or `OncePerRequestFilter` subclasses must include `spring-boot-starter-web`. It is not pulled in by `spring-boot-starter-data-jpa`, `spring-boot-starter-actuator`, `spring-boot-starter-validation`, or the `lib-common-security` library. Always include it as the first `implementation` dependency when scaffolding a new web service.
 
+## ERR-MES-034 — `UsernamePasswordAuthenticationToken` 2-arg constructor creates unauthenticated token
+**Date:** 2026-05-24  **Category:** Testing — Spring Security  **Status:** Open
+**Symptom:** `AuditAccessInterceptorTest.afterCompletionSavesAuditAccessRecord()` failed: `expected "user:test" but was "anonymous"`. The interceptor's `resolveUserId()` called `auth.isAuthenticated()` which returned `false`, so it fell through to `"anonymous"`.
+**Root cause:** `new UsernamePasswordAuthenticationToken("user:test", null)` uses the 2-arg constructor which explicitly calls `setAuthenticated(false)`. The interceptor correctly checks `auth.isAuthenticated()` before trusting the principal, so the test token was rejected as unauthenticated.
+**Fix applied:** Changed to the 3-arg constructor: `new UsernamePasswordAuthenticationToken("user:test", null, List.of(new SimpleGrantedAuthority("ROLE_AUDIT_READ")))`. The 3-arg constructor calls `super.setAuthenticated(true)`.
+**Rule:** In unit tests that need an authenticated Spring Security token, always use the 3-arg `UsernamePasswordAuthenticationToken(principal, credentials, authorities)` constructor. The 2-arg constructor creates an **unauthenticated** token (`isAuthenticated() == false`). Any code that guards on `auth.isAuthenticated()` will treat the 2-arg token as anonymous.
+
+## ERR-MES-035 — `@WebMvcTest` fails when a `@Configuration` bean injects a JPA repository
+**Date:** 2026-05-24  **Category:** Testing — Spring MVC slice  **Status:** Open
+**Symptom:** `AuditControllerTest` (annotated `@WebMvcTest(AuditController.class)`) failed with `UnsatisfiedDependencyException: Error creating bean with name 'webMvcConfig': No qualifying bean of type 'AuditRecordRepository' available`. Tests could not load the application context.
+**Root cause:** `WebMvcConfig implements WebMvcConfigurer` takes `AuditRecordRepository` as a constructor argument. `@WebMvcTest` creates a limited web slice context — it does NOT load `@Repository` beans or JPA infrastructure. Because `WebMvcConfig` is a `@Configuration` class discovered by component scan, Spring tries to instantiate it and fails on its JPA repo dependency.
+**Fix applied:** Added `@MockitoBean AuditRecordRepository auditRecordRepository` to `AuditControllerTest`, satisfying `WebMvcConfig`'s dependency.
+**Rule:** If a `@Configuration` class (e.g. `WebMvcConfig`) that registers interceptors or filters depends on a JPA repository, all `@WebMvcTest` classes in that service must declare `@MockitoBean` for that repository. The web slice context does not load JPA beans. Symptoms: `UnsatisfiedDependencyException` or `IllegalStateException: Failed to load ApplicationContext` in web slice tests when `@Configuration` beans have non-web dependencies.
+
 ## ERR-MES-019 — ESLint flat config rejects `processor: angular.processInlineTemplates`
 **Date:** 2026-05-20  **Category:** Frontend — ESLint  **Status:** Promoted 2026-05-20
 **Symptom:** `ng lint` failed: `Config (unnamed): Key "processor": Expected an object or a string.` when `processor: angular.processInlineTemplates` was set in `eslint.config.js`.
