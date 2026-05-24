@@ -2,7 +2,9 @@ package com.mikemes.auditservice.consumer;
 
 import com.mikemes.audit.checksum.ChecksumService;
 import com.mikemes.audit.domain.AuditRecord;
+import com.mikemes.audit.domain.AuthAuditRecord;
 import com.mikemes.auditservice.repository.AuditRecordRepository;
+import com.mikemes.auditservice.repository.AuthAuditRecordRepository;
 import com.mikemes.events.KafkaTopics;
 import com.mikemes.events.audit.AuditEventMessage;
 import org.slf4j.Logger;
@@ -20,13 +22,16 @@ public class AuditKafkaConsumer {
     private static final Logger LOG = LoggerFactory.getLogger(AuditKafkaConsumer.class);
 
     private final AuditRecordRepository repository;
+    private final AuthAuditRecordRepository authRepository;
     private final ChecksumService checksumService;
     private final DuplicateEventHandler duplicateEventHandler;
 
     public AuditKafkaConsumer(AuditRecordRepository repository,
+                              AuthAuditRecordRepository authRepository,
                               ChecksumService checksumService,
                               DuplicateEventHandler duplicateEventHandler) {
         this.repository = repository;
+        this.authRepository = authRepository;
         this.checksumService = checksumService;
         this.duplicateEventHandler = duplicateEventHandler;
     }
@@ -37,8 +42,7 @@ public class AuditKafkaConsumer {
     )
     public void consume(AuditEventMessage message, Acknowledgment ack) {
         if ("AUTH_EVENT".equals(message.eventType())) {
-            LOG.debug("AUTH_EVENT received — routed to auth consumer; skipping in main consumer");
-            ack.acknowledge();
+            consumeAuthEvent(message, ack);
             return;
         }
         try {
@@ -66,6 +70,30 @@ public class AuditKafkaConsumer {
             LOG.debug("Duplicate detection for eventId={}", message.eventId());
             duplicateEventHandler.handleDuplicate(message, ack);
         }
+    }
+
+    private void consumeAuthEvent(AuditEventMessage message, Acknowledgment ack) {
+        try {
+            AuthAuditRecord record = mapToAuthRecord(message);
+            authRepository.save(record);
+            ack.acknowledge();
+            LOG.debug("Persisted auth audit record eventId={}", message.eventId());
+        } catch (DataIntegrityViolationException e) {
+            LOG.debug("Duplicate auth event detection for eventId={}", message.eventId());
+            duplicateEventHandler.handleDuplicate(message, ack);
+        }
+    }
+
+    private AuthAuditRecord mapToAuthRecord(AuditEventMessage message) {
+        return AuthAuditRecord.builder()
+            .id(UUID.randomUUID())
+            .eventId(message.eventId())
+            .eventType(message.eventType())
+            .userId(message.userId())
+            .realmId(message.serviceSource())
+            .occurredAt(message.timestamp())
+            .details(message.payload())
+            .build();
     }
 
     private AuditRecord mapToRecord(AuditEventMessage message) {

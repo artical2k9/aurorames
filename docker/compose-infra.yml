@@ -81,10 +81,13 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "false"
       KC_HTTP_PORT: 8080
+      KEYCLOAK_AUDIT_KAFKA_BOOTSTRAP_SERVERS: ${KEYCLOAK_AUDIT_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      KEYCLOAK_AUDIT_KAFKA_TOPIC: ${KEYCLOAK_AUDIT_KAFKA_TOPIC:-mes.audit.events}
     ports:
       - "8080:8080"
     volumes:
       - ../keycloak/mikemes-realm.json:/opt/keycloak/data/import/mikemes-realm.json:ro
+      - ../libs/lib-keycloak-audit-spi/build/libs/lib-keycloak-audit-spi.jar:/opt/keycloak/providers/lib-keycloak-audit-spi.jar:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
       interval: 15s

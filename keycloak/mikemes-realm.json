@@ -37,7 +37,7 @@
   "eventsExpiration": 604800,
   "adminEventsEnabled": true,
   "adminEventsDetailsEnabled": true,
-  "eventsListeners": ["jboss-logging", "http-sender"],
+  "eventsListeners": ["jboss-logging", "http-sender", "mes-audit-listener"],
   "enabledEventTypes": [
     "LOGIN",
     "LOGIN_ERROR",

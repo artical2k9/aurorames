@@ -7,8 +7,12 @@
 
 dependencies {
     // Keycloak SPI API — provided by Keycloak JVM at runtime, not bundled
+    compileOnly "org.keycloak:keycloak-core:25.0.6"
     compileOnly "org.keycloak:keycloak-server-spi:25.0.6"
     compileOnly "org.keycloak:keycloak-server-spi-private:25.0.6"
+
+    // Shared event DTO — bundled in fat JAR
+    implementation project(':libs:lib-common-events')
 
     // Kafka producer — bundled in fat JAR (Keycloak does not provide this)
     implementation 'org.apache.kafka:kafka-clients'
@@ -17,7 +21,10 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 
-    // Tests
+    // Tests — Keycloak SPI types available in test scope for unit testing
+    testImplementation "org.keycloak:keycloak-server-spi:25.0.6"
+    testImplementation "org.keycloak:keycloak-server-spi-private:25.0.6"
+    testRuntimeOnly "org.keycloak:keycloak-core:25.0.6"
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 

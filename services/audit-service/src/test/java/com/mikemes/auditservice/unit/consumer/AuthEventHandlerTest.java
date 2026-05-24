@@ -1,7 +1,7 @@
 package com.mikemes.auditservice.unit.consumer;
 
 import com.mikemes.audit.checksum.ChecksumService;
-import com.mikemes.audit.domain.AuditRecord;
+import com.mikemes.audit.domain.AuthAuditRecord;
 import com.mikemes.auditservice.consumer.AuditKafkaConsumer;
 import com.mikemes.auditservice.consumer.DuplicateEventHandler;
 import com.mikemes.auditservice.repository.AuditRecordRepository;
@@ -22,11 +22,11 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AuditKafkaConsumerTest {
+class AuthEventHandlerTest {
 
     @Mock
     private AuditRecordRepository repository;
@@ -47,43 +47,47 @@ class AuditKafkaConsumerTest {
     private AuditKafkaConsumer consumer;
 
     @Test
-    void consumeSavesRecordAndAcknowledges() {
+    void authEventRoutesToAuthAuditRecordRepository() {
         AuditEventMessage message = new AuditEventMessage(
-            UUID.randomUUID(), "KAFKA_EVENT", "test-service",
-            "WorkOrder", "WO-001", "user:test",
-            OffsetDateTime.now(ZoneOffset.UTC), "CREATE",
-            Map.of("key", "value"), 1
+            UUID.randomUUID(),
+            "AUTH_EVENT",
+            "keycloak-spi",
+            "USER",
+            "user-auth-001",
+            "user-auth-001",
+            OffsetDateTime.now(ZoneOffset.UTC),
+            "AUTH",
+            Map.of("client_id", "mes-frontend"),
+            1
         );
-        when(checksumService.compute(any(AuditRecord.class))).thenReturn("a".repeat(64));
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<AuditRecord> captor = ArgumentCaptor.forClass(AuditRecord.class);
 
         consumer.consume(message, acknowledgment);
 
-        verify(repository).save(captor.capture());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<AuthAuditRecord> captor = ArgumentCaptor.forClass(AuthAuditRecord.class);
+        verify(authRepository).save(captor.capture());
         verify(acknowledgment).acknowledge();
-        AuditRecord saved = captor.getValue();
-        assertThat(saved.getEventId()).isEqualTo(message.eventId());
-        assertThat(saved.getEntityType()).isEqualTo("WorkOrder");
-        assertThat(saved.getUserId()).isEqualTo("user:test");
+        assertThat(captor.getValue().getEventId()).isEqualTo(message.eventId());
+        assertThat(captor.getValue().getUserId()).isEqualTo("user-auth-001");
     }
 
     @Test
-    void consumeSetsChecksumFromChecksumService() {
+    void authEventDoesNotRouteToAuditRecordRepository() {
         AuditEventMessage message = new AuditEventMessage(
-            UUID.randomUUID(), "KAFKA_EVENT", "test-service",
-            "WorkOrder", "WO-002", "user:test",
-            OffsetDateTime.now(ZoneOffset.UTC), "UPDATE",
-            Map.of(), 1
+            UUID.randomUUID(),
+            "AUTH_EVENT",
+            "keycloak-spi",
+            "USER",
+            "user-auth-002",
+            "user-auth-002",
+            OffsetDateTime.now(ZoneOffset.UTC),
+            "AUTH",
+            Map.of(),
+            1
         );
-        String expectedChecksum = "b".repeat(64);
-        when(checksumService.compute(any(AuditRecord.class))).thenReturn(expectedChecksum);
 
         consumer.consume(message, acknowledgment);
 
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<AuditRecord> captor = ArgumentCaptor.forClass(AuditRecord.class);
-        verify(repository).save(captor.capture());
-        assertThat(captor.getValue().getChecksum()).isEqualTo(expectedChecksum);
+        verify(repository, never()).save(any());
     }
 }
