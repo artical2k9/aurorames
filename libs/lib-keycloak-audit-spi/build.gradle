@@ -31,6 +31,7 @@ dependencies {
 // Fat JAR: bundle all runtime dependencies so Keycloak can load Kafka without
 // requiring Kafka JARs to be placed separately in the providers directory.
 jar {
+    dependsOn configurations.runtimeClasspath
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
