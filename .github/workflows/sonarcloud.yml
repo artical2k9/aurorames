@@ -1,5 +1,12 @@
-# SonarCloud analysis — runs on every PR and push to main/develop.
-# Mirrors the sonarcloud.yml pattern from artical2k9/homeweb.
+# SonarCloud analysis — runs on PRs and pushes to main/Develop.
+#
+# sonar.qualitygate.wait is conditional:
+#   - true  for pull_request events: enforces the quality gate (fails CI if gate fails)
+#   - false for push events: analysis uploads branch history but does not poll the gate
+#
+# The quality gate poll fails on push events because the gate result endpoint requires
+# a completed main-branch analysis to exist; on a fresh project this is never available
+# for branch pushes. PR-based enforcement via SonarCloud Code Analysis is sufficient.
 #
 # Stack: Java 21 (Temurin) · Gradle 8.x multi-module · Spring Boot 3.3 microservices
 #
@@ -72,7 +79,7 @@ jobs:
         with:
           projectBaseDir: .
           args: >
-            -Dsonar.qualitygate.wait=true
+            -Dsonar.qualitygate.wait=${{ github.event_name == 'pull_request' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
