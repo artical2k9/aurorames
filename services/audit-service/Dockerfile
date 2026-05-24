@@ -1,13 +1,10 @@
-FROM eclipse-temurin:21-jdk-alpine AS builder
-WORKDIR /app
-COPY build/libs/*.jar app.jar
-RUN java -Djarmode=layertools -jar app.jar extract
+FROM eclipse-temurin:21-jdk-alpine AS build
+WORKDIR /workspace
+COPY . .
+RUN ./gradlew :services:audit-service:bootJar --no-daemon -x test
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=builder /app/dependencies/ ./
-COPY --from=builder /app/spring-boot-loader/ ./
-COPY --from=builder /app/snapshot-dependencies/ ./
-COPY --from=builder /app/application/ ./
-EXPOSE 8090
-ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+COPY --from=build /workspace/services/audit-service/build/libs/*.jar app.jar
+EXPOSE 8091
+ENTRYPOINT ["java", "-jar", "app.jar"]

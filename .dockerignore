@@ -1,0 +1,15 @@
+.git
+.github
+.gradle
+.specify
+.claude
+node_modules
+frontend/angular/.angular
+frontend/angular/dist
+frontend/angular/coverage
+**/build/
+# Re-include the SPI fat JAR so the keycloak/Dockerfile can COPY it in CI
+!libs/lib-keycloak-audit-spi/build/libs/keycloak-spi.jar
+docs
+specs
+*.md
