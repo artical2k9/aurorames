@@ -1,0 +1,35 @@
+// lib-keycloak-audit-spi — Keycloak Event Listener SPI that publishes auth events
+// to the mes.audit.events Kafka topic. Runs inside the Keycloak JVM — no Spring Boot.
+// Deployed as a fat JAR mounted in Keycloak's providers/ directory.
+
+// Root conventions apply java, checkstyle, spotbugs, jacoco, and Spring Boot BOM.
+// Only lib-specific overrides are declared here.
+
+dependencies {
+    // Keycloak SPI API — provided by Keycloak JVM at runtime, not bundled
+    compileOnly "org.keycloak:keycloak-server-spi:25.0.6"
+    compileOnly "org.keycloak:keycloak-server-spi-private:25.0.6"
+
+    // Kafka producer — bundled in fat JAR (Keycloak does not provide this)
+    implementation 'org.apache.kafka:kafka-clients'
+
+    // Jackson — JSON serialisation of AuditEventMessage; bundled in fat JAR
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // Tests
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+// Fat JAR: bundle all runtime dependencies so Keycloak can load Kafka without
+// requiring Kafka JARs to be placed separately in the providers directory.
+jar {
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes 'Implementation-Title': 'lib-keycloak-audit-spi',
+                   'Implementation-Version': project.version
+    }
+}

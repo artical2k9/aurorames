@@ -1,0 +1,49 @@
+// lib-common-audit — Hibernate Envers configuration, shared JPA audit entities,
+// ChecksumService (SHA-256 tamper evidence), and Spring Boot autoconfiguration.
+// Published to mavenLocal(); consumed by audit-service and future domain services.
+
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    // ── JPA + Envers — exposed on API surface for @Audited domain services ────
+    api 'org.springframework.boot:spring-boot-starter-data-jpa'
+    api libs.hibernate.envers
+
+    // ── Security context — MesRevisionListener reads the authenticated user ───
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+
+    // ── Autoconfiguration support ─────────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    compileOnly    'org.springframework.boot:spring-boot-configuration-processor'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // ── Jackson — ChecksumService serialises JSONB fields for SHA-256 ─────────
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // ── JSONB mapping via Hypersistence Utils ─────────────────────────────────
+    implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.9.0'
+
+    // ── Tests ─────────────────────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+apply plugin: 'maven-publish'
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId    = 'com.mikemes'
+            artifactId = 'lib-common-audit'
+            version    = project.version
+            versionMapping {
+                usage('java-api') { fromResolutionOf('runtimeClasspath') }
+                usage('java-runtime') { fromResolutionResult() }
+            }
+        }
+    }
+}

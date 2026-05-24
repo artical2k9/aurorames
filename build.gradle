@@ -77,6 +77,11 @@ subprojects {
     // Wire SpotBugs main-source scan into the standard check lifecycle
     check.dependsOn spotbugsMain
 
+    // Gradle 9 requires explicit JUnit Platform launcher declaration for non-Boot modules
+    dependencies {
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
     // ── Tests ─────────────────────────────────────────────────────────────────
     test {
         useJUnitPlatform()
