@@ -129,21 +129,21 @@
 **Rule:** If a `@Configuration` class (e.g. `WebMvcConfig`) that registers interceptors or filters depends on a JPA repository, all `@WebMvcTest` classes in that service must declare `@MockitoBean` for that repository. The web slice context does not load JPA beans. Symptoms: `UnsatisfiedDependencyException` or `IllegalStateException: Failed to load ApplicationContext` in web slice tests when `@Configuration` beans have non-web dependencies.
 
 ## ERR-MES-036 — docker-java defaults to API v1.32, rejected by Docker Desktop 29.x (min 1.40)
-**Date:** 2026-05-24  **Category:** Testing — Testcontainers / Docker  **Status:** Open
+**Date:** 2026-05-24  **Category:** Testing — Testcontainers / Docker  **Status:** Promoted 2026-05-24
 **Symptom:** Testcontainers tests failed immediately with `BadRequestException (Status 400): client version 1.32 is too old. Minimum supported API version is 1.40`. Docker Desktop was running and responding.
 **Root cause:** The docker-java client used by Testcontainers defaults to Docker Engine API version 1.32. Docker Desktop 4.29+ (Docker Engine 29.x) raised the minimum supported API version to 1.40, so every request from Testcontainers is rejected with HTTP 400.
 **Fix applied:** Added `systemProperty 'api.version', '1.41'` to the `test {}` block in `build.gradle`. docker-java reads this JVM system property directly to override the default API version.
 **Rule:** On Windows with Docker Desktop 29.x, Testcontainers tests require `systemProperty 'api.version', '1.41'` in `build.gradle` `test {}`. Without it, all requests fail with HTTP 400 (API version too old). The env var `DOCKER_API_VERSION` is not reliably forwarded to the test JVM — the `systemProperty` approach is authoritative.
 
 ## ERR-MES-037 — Gradle daemon does not inherit shell env vars; DOCKER_HOST silently ignored
-**Date:** 2026-05-24  **Category:** Testing — Testcontainers / Gradle  **Status:** Open
+**Date:** 2026-05-24  **Category:** Testing — Testcontainers / Gradle  **Status:** Promoted 2026-05-24
 **Symptom:** Even after setting `$env:DOCKER_HOST = "npipe:////./pipe/docker_engine_linux"` in the PowerShell session, Testcontainers tests ignored it and tried a default named pipe. Manually adding `environment 'DOCKER_HOST', ...` to `build.gradle` and running `.\gradlew --stop` was required for the env var to take effect.
 **Root cause:** The Gradle daemon is a long-lived JVM process started once and reused across builds. It captures its environment at daemon start time. If `DOCKER_HOST` was not set when the daemon first started, subsequent shell exports in the same session have no effect — the daemon never sees them.
 **Fix applied:** (1) Added `environment 'DOCKER_HOST', dockerHost` (and `DOCKER_API_VERSION` guard) to the `test {}` block in `build.gradle` so the test worker JVM always receives the variable regardless of daemon state. (2) Required `.\gradlew --stop` once to kill the stale daemon before the change took effect.
 **Rule:** Never rely on shell env vars alone to reach the Gradle test worker JVM. Forward Docker-related env vars explicitly via `environment` blocks in the `test {}` configuration. After changing `build.gradle`, run `.\gradlew --stop` to kill the cached daemon so the next build starts a fresh process with the updated env.
 
 ## ERR-MES-038 — Spring Security 6.5 (Boot 3.5) enforces UnreachableFilterChainException for two "any request" chains
-**Date:** 2026-05-24  **Category:** Backend — Spring Security  **Status:** Open
+**Date:** 2026-05-24  **Category:** Backend — Spring Security  **Status:** Promoted 2026-05-24
 **Symptom:** Application startup failed with `UnreachableFilterChainException: A filter chain that matches any request ['filterChain' in SecurityConfig] ... has already been configured. This means that the filter chain for ['mikeMESSecurityFilterChain' in MikeMESSecurityAutoConfiguration] will never get invoked.`
 **Root cause:** Spring Boot 3.5.0 upgraded to Spring Security 6.5, which introduced strict enforcement of filter chain ordering — it throws at startup if two `SecurityFilterChain` beans both match "any request". `MikeMESSecurityAutoConfiguration` is registered as a Spring Boot auto-configuration (via `META-INF/spring/...AutoConfiguration.imports`) and creates a catch-all `SecurityFilterChain`. When `audit-service` also defines `SecurityConfig.filterChain()` (also "any request"), the two chains conflict.
 **Fix applied:** (1) Added `spring.autoconfigure.exclude: com.mikemes.common.security.config.MikeMESSecurityAutoConfiguration` to `application.yml` so the shared lib's chain is never created in production. (2) Added both `OAuth2ResourceServerAutoConfiguration` AND `MikeMESSecurityAutoConfiguration` to the `DynamicPropertySource` exclude list in all three IT test classes (since `DynamicPropertySource` completely replaces the `application.yml` exclude list, not appends to it).
