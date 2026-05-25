@@ -2,7 +2,7 @@ spring:
   application:
     name: iam-service
   datasource:
-    url: ${IAM_DB_URL:jdbc:postgresql://localhost:5432/mikemes}
+    url: ${IAM_DB_URL:jdbc:postgresql://localhost:5432/mes}
     username: ${IAM_DB_USER:iam_user}
     password: ${IAM_DB_PASSWORD:changeme}
   jpa:
@@ -35,7 +35,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mikemes}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mes}
 
 server:
   port: 8085
@@ -52,11 +52,11 @@ management:
 keycloak:
   admin:
     server-url: ${KEYCLOAK_SERVER_URL:http://localhost:8080}
-    realm: ${KEYCLOAK_REALM:mikemes}
+    realm: ${KEYCLOAK_REALM:mes}
     username: ${KEYCLOAK_ADMIN_USERNAME:admin}
     password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
 
-mikemes:
+mes:
   security:
     iam-service-url: ${IAM_SERVICE_URL:http://localhost:8085}
     privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL:60}

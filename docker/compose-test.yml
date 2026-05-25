@@ -3,15 +3,15 @@ services:
   # ── PostgreSQL 16 — matches PrivilegeControllerIT container config ─────────
   postgres-test:
     image: postgres:16
-    container_name: mikemes-postgres-test
+    container_name: mes-postgres-test
     environment:
-      POSTGRES_DB: mikemes
+      POSTGRES_DB: mes
       POSTGRES_USER: iam_user
       POSTGRES_PASSWORD: secret
     ports:
       - "5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U iam_user -d mikemes"]
+      test: ["CMD-SHELL", "pg_isready -U iam_user -d mes"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -20,7 +20,7 @@ services:
   # ── Keycloak 25.0.6 dev mode — admin/admin ─────────────────────────────────
   keycloak-test:
     image: quay.io/keycloak/keycloak:25.0.6
-    container_name: mikemes-keycloak-test
+    container_name: mes-keycloak-test
     command: start-dev
     environment:
       KEYCLOAK_ADMIN: admin

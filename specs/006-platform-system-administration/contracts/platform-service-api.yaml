@@ -2,12 +2,12 @@ openapi: "3.0.3"
 info:
   title: Platform Service API
   description: |
-    Per-organisation system configuration management for MikeMES.
+    Per-organisation system configuration management for Aurora MES.
     All endpoints (except /internal/*) require a valid JWT Bearer token.
     The `org_id` claim in the JWT determines which organisation's data is accessed.
   version: "1.0.0"
   contact:
-    name: MikeMES Platform Team
+    name: Aurora MES Platform Team
 
 servers:
   - url: http://localhost:8090
@@ -180,7 +180,7 @@ components:
     webhookToken:
       type: http
       scheme: bearer
-      description: Shared webhook token (`mikemes.security.webhook-token`) for internal service calls.
+      description: Shared webhook token (`mes.security.webhook-token`) for internal service calls.
 
   parameters:
     ConfigKey:

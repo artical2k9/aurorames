@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  SpotBugs exclusion filter — MikeMES.
+  SpotBugs exclusion filter — Aurora MES.
   Each exclusion addresses a known false-positive pattern in Spring Boot / JPA code.
   All exclusions must have a comment explaining WHY they are safe.
 -->

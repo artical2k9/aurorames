@@ -2,7 +2,7 @@ spring:
   application:
     name: platform-service
   datasource:
-    url: ${PLATFORM_DB_URL:jdbc:postgresql://localhost:5432/mikemes?currentSchema=platform}
+    url: ${PLATFORM_DB_URL:jdbc:postgresql://localhost:5432/mes?currentSchema=platform}
     username: ${PLATFORM_DB_USER:platform_user}
     password: ${PLATFORM_DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
@@ -28,7 +28,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mikemes}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mes}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -46,8 +46,8 @@ management:
     health:
       show-details: when-authorized
 
-mikemes:
+mes:
   security:
-    webhook-token: ${MIKEMES_SECURITY_WEBHOOK_TOKEN:changeme}
+    webhook-token: ${MES_SECURITY_WEBHOOK_TOKEN:changeme}
     iam-service-url: ${IAM_SERVICE_URL:http://iam-service:8080}
     privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL_SECONDS:300}

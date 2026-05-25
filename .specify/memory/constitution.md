@@ -35,7 +35,7 @@ Deferred TODOs:
   - TODO(RATIFICATION_DATE): Treated as 2026-05-19 (today, initial commit).
 -->
 
-# MikeMES Constitution
+# Aurora MES Constitution
 
 ## Core Principles
 
@@ -108,7 +108,7 @@ However:
 
 ### IV. Compliance by Design
 
-MikeMES operates in aerospace, defence, and regulated manufacturing
+Aurora MES operates in aerospace, defence, and regulated manufacturing
 environments. Compliance is a first-class architectural concern, not a
 post-hoc audit activity.
 
@@ -189,7 +189,7 @@ systems) MUST be designed for reliability and auditability.
 
 ### IX. Multi-Organisation Data Isolation
 
-MikeMES MUST support multiple independent organisations within a single
+Aurora MES MUST support multiple independent organisations within a single
 deployment. Data isolation is a safety and compliance requirement, not just
 a feature.
 
@@ -219,7 +219,7 @@ bookings) MUST reflect reality as closely as system constraints allow.
 
 ## Functional Domain Coverage
 
-MikeMES MUST cover the following functional domains. Each domain MUST have a
+Aurora MES MUST cover the following functional domains. Each domain MUST have a
 dedicated spec before implementation begins.
 
 | Domain | AS Standards | Notes |
@@ -405,7 +405,7 @@ owning service's REST API or a Kafka event.
 ### Build Structure
 
 ```
-MikeMES/                          ← root Gradle project
+Aurora MES/                          ← root Gradle project
 ├── settings.gradle               ← includes all subprojects
 ├── build.gradle                  ← root conventions (Java 21, shared deps)
 ├── gradle/libs.versions.toml     ← version catalog (BOM-style)

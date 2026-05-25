@@ -21,7 +21,7 @@ spring:
             scope: openid,profile,email
         provider:
           keycloak:
-            issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mikemes}
+            issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mes}
 
 server:
   port: 8888

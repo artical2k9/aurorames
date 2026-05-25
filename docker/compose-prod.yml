@@ -6,7 +6,7 @@
 #   AUDIT_SERVICE_DB_USERNAME, AUDIT_SERVICE_DB_PASSWORD,
 #   AUDIT_FLYWAY_DB_USERNAME, AUDIT_FLYWAY_DB_PASSWORD,
 #   KEYCLOAK_ADMIN_PASSWORD, KEYCLOAK_WEBHOOK_SECRET,
-#   MIKEMES_SECURITY_WEBHOOK_TOKEN,
+#   MES_SECURITY_WEBHOOK_TOKEN,
 #   IAM_SERVICE_CLIENT_SECRET, GATEWAY_SERVICE_CLIENT_SECRET,
 #   ADMIN_SERVICE_CLIENT_SECRET
 #
@@ -18,27 +18,27 @@ services:
   # ── PostgreSQL 16 ──────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
-    container_name: mikemes-postgres
+    container_name: mes-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: mikemes
+      POSTGRES_DB: mes
       POSTGRES_USER: ${IAM_DB_USER:-iam_user}
       POSTGRES_PASSWORD: ${IAM_DB_PASSWORD:?IAM_DB_PASSWORD must be set}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${IAM_DB_USER:-iam_user} -d mikemes"]
+      test: ["CMD-SHELL", "pg_isready -U ${IAM_DB_USER:-iam_user} -d mes"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
     networks:
-      - mikemes-net
+      - mes-net
 
   # ── Apache Kafka 3.7 (KRaft) ───────────────────────────────────────────────
   kafka:
     image: apache/kafka:3.7.1
-    container_name: mikemes-kafka
+    container_name: mes-kafka
     restart: unless-stopped
     environment:
       KAFKA_NODE_ID: 1
@@ -66,17 +66,17 @@ services:
       retries: 10
       start_period: 30s
     networks:
-      - mikemes-net
+      - mes-net
 
   # ── Keycloak 25.0.6 ────────────────────────────────────────────────────────
-  # Custom image with MikeMES SPI and realm JSON baked in.
+  # Custom image with Aurora MES SPI and realm JSON baked in.
   # Realm is auto-imported on first start via --import-realm.
   # NOTE: start-dev uses embedded H2. For a hardened deployment, switch to
   # start mode with an external PostgreSQL Keycloak database.
   keycloak:
-    image: ghcr.io/artical2k9/mikemes-keycloak:latest
+    image: ghcr.io/artical2k9/mes-keycloak:latest
     pull_policy: always
-    container_name: mikemes-keycloak
+    container_name: mes-keycloak
     restart: unless-stopped
     command: start-dev --import-realm
     environment:
@@ -100,21 +100,21 @@ services:
       retries: 15
       start_period: 60s
     networks:
-      - mikemes-net
+      - mes-net
 
   # ── IAM Service ────────────────────────────────────────────────────────────
   iam-service:
-    image: ghcr.io/artical2k9/mikemes-iam-service:latest
+    image: ghcr.io/artical2k9/mes-iam-service:latest
     pull_policy: always
-    container_name: mikemes-iam-service
+    container_name: mes-iam-service
     restart: unless-stopped
     environment:
-      IAM_DB_URL: ${IAM_DB_URL:-jdbc:postgresql://postgres:5432/mikemes?currentSchema=iam}
+      IAM_DB_URL: ${IAM_DB_URL:-jdbc:postgresql://postgres:5432/mes?currentSchema=iam}
       IAM_DB_USER: ${IAM_DB_USER:-iam_user}
       IAM_DB_PASSWORD: ${IAM_DB_PASSWORD:?IAM_DB_PASSWORD must be set}
-      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mikemes}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mes}
       KEYCLOAK_WEBHOOK_SECRET: ${KEYCLOAK_WEBHOOK_SECRET:?KEYCLOAK_WEBHOOK_SECRET must be set}
-      MIKEMES_SECURITY_WEBHOOK_TOKEN: ${MIKEMES_SECURITY_WEBHOOK_TOKEN:?MIKEMES_SECURITY_WEBHOOK_TOKEN must be set}
+      MES_SECURITY_WEBHOOK_TOKEN: ${MES_SECURITY_WEBHOOK_TOKEN:?MES_SECURITY_WEBHOOK_TOKEN must be set}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       ADMIN_SERVICE_URL: http://admin-service:8888
     ports:
@@ -133,17 +133,17 @@ services:
       retries: 10
       start_period: 60s
     networks:
-      - mikemes-net
+      - mes-net
 
   # ── Gateway Service ────────────────────────────────────────────────────────
   gateway-service:
-    image: ghcr.io/artical2k9/mikemes-gateway-service:latest
+    image: ghcr.io/artical2k9/mes-gateway-service:latest
     pull_policy: always
-    container_name: mikemes-gateway-service
+    container_name: mes-gateway-service
     restart: unless-stopped
     environment:
       GATEWAY_PORT: ${GATEWAY_PORT:-8082}
-      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mikemes}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mes}
       IAM_SERVICE_URL: http://iam-service:8080
       ADMIN_SERVICE_URL: http://admin-service:8888
       PLATFORM_SERVICE_URL: http://platform-service:8090
@@ -161,18 +161,18 @@ services:
       retries: 10
       start_period: 60s
     networks:
-      - mikemes-net
+      - mes-net
 
   # ── Admin Service (Spring Boot Admin) ──────────────────────────────────────
   admin-service:
-    image: ghcr.io/artical2k9/mikemes-admin-service:latest
+    image: ghcr.io/artical2k9/mes-admin-service:latest
     pull_policy: always
-    container_name: mikemes-admin-service
+    container_name: mes-admin-service
     restart: unless-stopped
     environment:
       ADMIN_SERVICE_CLIENT_SECRET: ${ADMIN_SERVICE_CLIENT_SECRET:?ADMIN_SERVICE_CLIENT_SECRET must be set}
       ADMIN_SERVICE_URL: http://admin-service:8888
-      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mikemes}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mes}
     ports:
       - "8888:8888"
     depends_on:
@@ -185,20 +185,20 @@ services:
       retries: 10
       start_period: 60s
     networks:
-      - mikemes-net
+      - mes-net
 
   # ── Platform Service ───────────────────────────────────────────────────────
   platform-service:
-    image: ghcr.io/artical2k9/mikemes-platform-service:latest
+    image: ghcr.io/artical2k9/mes-platform-service:latest
     pull_policy: always
-    container_name: mikemes-platform-service
+    container_name: mes-platform-service
     restart: unless-stopped
     environment:
-      PLATFORM_DB_URL: jdbc:postgresql://postgres:5432/mikemes?currentSchema=platform
+      PLATFORM_DB_URL: jdbc:postgresql://postgres:5432/mes?currentSchema=platform
       PLATFORM_DB_USER: ${PLATFORM_DB_USER:?PLATFORM_DB_USER must be set}
       PLATFORM_DB_PASSWORD: ${PLATFORM_DB_PASSWORD:?PLATFORM_DB_PASSWORD must be set}
-      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mikemes}
-      MIKEMES_SECURITY_WEBHOOK_TOKEN: ${MIKEMES_SECURITY_WEBHOOK_TOKEN:?MIKEMES_SECURITY_WEBHOOK_TOKEN must be set}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mes}
+      MES_SECURITY_WEBHOOK_TOKEN: ${MES_SECURITY_WEBHOOK_TOKEN:?MES_SECURITY_WEBHOOK_TOKEN must be set}
       ADMIN_SERVICE_URL: http://admin-service:8888
       IAM_SERVICE_URL: http://iam-service:8080
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -216,18 +216,18 @@ services:
       retries: 10
       start_period: 60s
     networks:
-      - mikemes-net
+      - mes-net
 
   # ── Audit Service ──────────────────────────────────────────────────────────
   audit-service:
-    image: ghcr.io/artical2k9/mikemes-audit-service:latest
+    image: ghcr.io/artical2k9/mes-audit-service:latest
     pull_policy: always
-    container_name: mikemes-audit-service
+    container_name: mes-audit-service
     restart: unless-stopped
     environment:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      AUDIT_DB_NAME: mikemes
+      AUDIT_DB_NAME: mes
       AUDIT_SERVICE_DB_USERNAME: ${AUDIT_SERVICE_DB_USERNAME:?AUDIT_SERVICE_DB_USERNAME must be set}
       AUDIT_SERVICE_DB_PASSWORD: ${AUDIT_SERVICE_DB_PASSWORD:?AUDIT_SERVICE_DB_PASSWORD must be set}
       AUDIT_FLYWAY_DB_USERNAME: ${AUDIT_FLYWAY_DB_USERNAME:?AUDIT_FLYWAY_DB_USERNAME must be set}
@@ -235,7 +235,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       AUDIT_KAFKA_CONSUMER_GROUP: audit-service-group
       AUDIT_HEALTH_KAFKA_LAG_THRESHOLD: ${AUDIT_HEALTH_KAFKA_LAG_THRESHOLD:-1000}
-      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mikemes}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mes}
       SPRING_BOOT_ADMIN_URL: http://admin-service:8888
       AUDIT_SERVICE_URL: http://audit-service:8091
     ports:
@@ -254,7 +254,7 @@ services:
       retries: 10
       start_period: 60s
     networks:
-      - mikemes-net
+      - mes-net
 
 volumes:
   postgres-data:
@@ -263,5 +263,5 @@ volumes:
     driver: local
 
 networks:
-  mikemes-net:
+  mes-net:
     driver: bridge

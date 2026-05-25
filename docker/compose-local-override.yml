@@ -1,0 +1,4 @@
+services:
+  admin-service:
+    image: ghcr.io/artical2k9/mes-admin-service:local
+    pull_policy: never

@@ -125,7 +125,7 @@ For **database migration changes (Flyway):**
 - Flyway applies automatically on Spring Boot startup — note the expected log line
 - Verify: check service startup logs for `Successfully applied N migration(s)`
 
-For **Keycloak realm changes (`keycloak/mikemes-realm.json`):**
+For **Keycloak realm changes (`keycloak/mes-realm.json`):**
 - Re-import via Docker: `docker compose -f docker/compose-infra.yml restart keycloak`
 - OR list specific admin console steps if the change is post-import config (e.g. client secret rotation)
 - Post-import secret steps: list any secrets that must be set manually after import
