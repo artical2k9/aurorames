@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at:
-specs/007-system-activity-audit-logging/plan.md
+specs/008-item-master-bom-management/plan.md
 <!-- SPECKIT END -->
 
 ## Branching Strategy
