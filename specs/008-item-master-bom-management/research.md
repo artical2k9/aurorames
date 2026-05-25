@@ -118,20 +118,21 @@ New topics (following `<service>.<domain>.<entity>.events` convention):
 
 ### Default BOM Authoring Column Order
 
-`Seq | Part Number | Description | Revision | Qty | Unit | Eff From | Eff To | Actions`
+`Seq | Find # | Part Number | Description | Revision | Qty | Unit | Eff From | Eff To | [UDF columns…] | Actions`
 
-Find # is omitted from the Authoring table (it is shown in the Explosion Tree view alongside the tree hierarchy).
+Find # is included in the Authoring table as a read-only column (sourced from `item_master.find_number`). It is also shown in the Explosion Tree.
 
 ### Inline Column Chooser
 
-The column chooser is rendered as a `⊕ Columns` button at the far-right end of the table header row (not a separate panel). Clicking it opens a PrimeNG `p-overlayPanel` anchored to the button. Available columns (beyond defaults) include: Reference Designator, Make/Buy, Lead Time, and any org-defined UDF columns.
+The column chooser is rendered as a `⊕ Columns` button at the far-right end of the table header row (not a separate panel). Clicking it opens a PrimeNG `p-overlayPanel` anchored to the button. The picker lists all standard columns and all org-configured UDF columns in a single unified list — UDF columns are not special; they are just another set of columns the user can show or hide.
 
 ### BOM Line UDFs
 
 BOM lines participate in the `mes-udf-lib` UDF system (Decision 5). UDF field definitions are scoped per org and per module (`module_key = 'bom-line'`). UDF values are stored as JSONB in `bom_line.custom_fields`. In the UI:
 
-- UDF columns are off by default and added via the column chooser.
-- Rows that have non-null UDF values display a `n UDFs` chip in the Actions area when UDF columns are hidden, to signal that hidden data exists.
+- **UDF columns render as normal table column headers** alongside the standard columns — consistent with the shared `GridPreferenceService` / `ColumnPickerComponent` pattern used across all grid screens.
+- The column picker lists UDF columns under a `USER DEFINED FIELDS` section header so they are visually grouped, but they behave identically to standard columns (toggle on/off, drag to reorder, width saved to `user_grid_preferences`).
+- There is no "n UDFs" chip. If a UDF column is hidden and has a value, it is simply not shown (same behaviour as any hidden column).
 
 ### Effectivity Mode — Date vs Unit
 
@@ -222,11 +223,13 @@ These values are used in `frontend/angular/src/styles.scss` for PrimeNG override
 | Item Master / Create | Dark | — | |
 | BOM / Explosion Tree | Dark | `d1e9cefe-fcab-80d7-8008-1394bcf67efc` | |
 | BOM / Authoring v1 | Dark | `d1e9cefe-fcab-80d7-8008-1398d303c5ec` | Superseded — Find# column, no Seq |
-| **BOM / Authoring v2** | **Dark** | **`d1e9cefe-fcab-80d7-8008-139d269ff559`** | **Current** — Seq, col picker, unit eff, UDF chip |
+| BOM / Authoring v2 | Dark | `d1e9cefe-fcab-80d7-8008-139d269ff559` | Superseded — no Find #, UDF as chip |
+| **BOM / Authoring final** | **Dark** | **`86f35c31-9e0e-809d-8008-139f969d722f`** | **Current** — Seq, Find #, UDF cols, unit eff, col picker open |
 | Shell (collapsed rail) | Light | `d1e9cefe-fcab-80d7-8008-1385436e319f` | |
 | Item Master / List & Search | Light | `d1e9cefe-fcab-80d7-8008-13856f83fb22` | |
 | Item Master / Column Picker | Light | `d1e9cefe-fcab-80d7-8008-1385d5f1262e` | |
 | Item Master / Edit | Light | `d1e9cefe-fcab-80d7-8008-138bde15a086` | |
 | BOM / Explosion Tree | Light | `d1e9cefe-fcab-80d7-8008-1397d2d3a99b` | |
 | BOM / Authoring v1 | Light | `d1e9cefe-fcab-80d7-8008-13997f6538b8` | Superseded |
-| **BOM / Authoring v2** | **Light** | **`d1e9cefe-fcab-80d7-8008-139dbd1988d3`** | **Current** — Seq, unit eff badge, UDF callout |
+| BOM / Authoring v2 | Light | `d1e9cefe-fcab-80d7-8008-139dbd1988d3` | Superseded |
+| **BOM / Authoring final** | **Light** | **`86f35c31-9e0e-809d-8008-13a00d8698d5`** | **Current** — Seq, Find #, UDF cols as headers, unit eff |
