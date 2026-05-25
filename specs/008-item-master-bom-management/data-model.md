@@ -104,10 +104,10 @@ organisation (iam schema)
 | `find_number` | VARCHAR(20) | NOT NULL | |
 | `reference_designators` | VARCHAR(500) | | Comma-separated (e.g. C1,C2,R5) |
 | `effectivity_method` | VARCHAR(10) | | DATE / UNIT / null (perpetual) |
-| `effective_from_date` | DATE | | |
-| `effective_to_date` | DATE | | |
-| `effective_from_unit` | VARCHAR(50) | | Serial/lot range start |
-| `effective_to_unit` | VARCHAR(50) | | Serial/lot range end |
+| `effective_from_date` | DATE | | Required when effectivity_method='DATE' |
+| `effective_to_date` | DATE | | Null = open-ended (no end boundary) |
+| `effective_from_unit` | VARCHAR(50) | | Required when effectivity_method='UNIT' |
+| `effective_to_unit` | VARCHAR(50) | | Null = open-ended (no end boundary) |
 | `created_by` | VARCHAR(255) | NOT NULL | |
 | `created_at` | TIMESTAMPTZ | NOT NULL DEFAULT now() | |
 | `modified_by` | VARCHAR(255) | NOT NULL | |

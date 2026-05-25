@@ -187,10 +187,25 @@ components:
           type: string
           nullable: true
           enum: [DATE, UNIT]
-        effectiveFromDate:   { type: string, format: date, nullable: true }
-        effectiveToDate:     { type: string, format: date, nullable: true }
-        effectiveFromUnit:   { type: string, nullable: true }
-        effectiveToUnit:     { type: string, nullable: true }
+          description: "DATE or UNIT. Null means perpetually effective in all directions."
+        effectiveFromDate:
+          type: string
+          format: date
+          nullable: true
+          description: "Required when effectivityMethod=DATE. Start of effective date range (inclusive)."
+        effectiveToDate:
+          type: string
+          format: date
+          nullable: true
+          description: "Optional. Null means open-ended (effective from effectiveFromDate with no end boundary)."
+        effectiveFromUnit:
+          type: string
+          nullable: true
+          description: "Required when effectivityMethod=UNIT. First unit serial/lot in effective range (inclusive)."
+        effectiveToUnit:
+          type: string
+          nullable: true
+          description: "Optional. Null means open-ended (effective from effectiveFromUnit with no end boundary)."
         counterfeitRiskAlert: { type: boolean, description: "true when component has HIGH/CRITICAL risk level" }
         componentObsoleted:  { type: boolean, description: "true when component item master is OBSOLETE" }
 
@@ -207,10 +222,27 @@ components:
           type: string
           nullable: true
           enum: [DATE, UNIT]
-        effectiveFromDate:   { type: string, format: date, nullable: true }
-        effectiveToDate:     { type: string, format: date, nullable: true }
-        effectiveFromUnit:   { type: string, nullable: true, maxLength: 50 }
-        effectiveToUnit:     { type: string, nullable: true, maxLength: 50 }
+          description: "DATE or UNIT. Omit for perpetually effective lines."
+        effectiveFromDate:
+          type: string
+          format: date
+          nullable: true
+          description: "Required when effectivityMethod=DATE."
+        effectiveToDate:
+          type: string
+          format: date
+          nullable: true
+          description: "Optional. Null = open-ended from effectiveFromDate."
+        effectiveFromUnit:
+          type: string
+          nullable: true
+          maxLength: 50
+          description: "Required when effectivityMethod=UNIT."
+        effectiveToUnit:
+          type: string
+          nullable: true
+          maxLength: 50
+          description: "Optional. Null = open-ended from effectiveFromUnit."
 
     BomExplosionNode:
       type: object

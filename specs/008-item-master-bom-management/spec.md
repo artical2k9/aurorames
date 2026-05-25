@@ -81,9 +81,9 @@ A design engineer assigns effectivity rules to individual BOM lines to indicate 
 
 1. **Given** a BOM line, **When** the effectivity method is set to `DATE` with `effectiveFromDate = 2025-01-01` and `effectiveToDate = 2025-12-31`, **Then** a BOM explosion for `asOfDate = 2025-06-01` includes that line, and an explosion for `asOfDate = 2026-01-01` excludes it.
 2. **Given** a BOM line, **When** the effectivity method is set to `UNIT` with `effectiveFromUnit = "SN-001"` and `effectiveToUnit = "SN-050"`, **Then** a BOM explosion for `asOfUnit = "SN-025"` includes that line and for `asOfUnit = "SN-051"` excludes it.
-3. **Given** a BOM line with effectivity method `DATE`, **When** a second line for the same find number is added with overlapping date ranges, **Then** the system returns HTTP 422 with a "date range overlap" error.
+3. **Given** a BOM line with effectivity method `DATE`, **When** a second line for the same find number is added with overlapping date ranges, **Then** the system returns HTTP 422 with an error message identifying the specific conflicting line by its find number and position (e.g., "date range overlap for BOM line find number 003 — conflicts with existing line ID {uuid}").
 4. **Given** a date range with a gap (no BOM line covers a specific date), **When** a BOM explosion is requested for that date, **Then** the system returns HTTP 422 with a "BOM effectivity gap detected" error identifying the find number and gap period.
-5. **Given** a BOM line with no effectivity set, **When** the BOM is exploded, **Then** the line is treated as perpetually effective (always included).
+5. **Given** a BOM line with effectivity method `DATE` or `UNIT`, `effectiveFromDate` (or `effectiveFromUnit`) set to a valid value, and `effectiveToDate` (or `effectiveToUnit`) left blank, **When** the BOM is exploded, **Then** the line is treated as effective from its start value with no end boundary (perpetually effective from that point). A BOM line with neither `effectiveFromDate` nor `effectiveFromUnit` set is treated as perpetually effective in both directions (always included).
 
 ---
 
@@ -143,8 +143,8 @@ A supplier quality engineer records counterfeit-part risk attributes on item mas
 - **FR-005**: System MUST support multi-level (recursive) BOM structures with unlimited nesting depth up to a configurable maximum (default 50 levels).
 - **FR-006**: System MUST version BOM structures as named revisions (e.g., "A", "B", "Rev-2") under a parent item master record.
 - **FR-007**: System MUST enforce BOM revision lifecycle states: `Draft → Released → Obsolete`. Structural changes (add/remove/modify lines) are only permitted in `Draft` state.
-- **FR-008**: System MUST support two effectivity methods per BOM line, mutually exclusive: `DATE` (effectiveFromDate / effectiveToDate) and `UNIT` (effectiveFromUnit / effectiveToUnit). Lines with no effectivity set are treated as perpetually effective.
-- **FR-009**: System MUST validate that date-effective BOM lines for the same find number do not have overlapping date ranges within a single BOM revision.
+- **FR-008**: System MUST support two effectivity methods per BOM line, mutually exclusive: `DATE` (effectiveFromDate required; effectiveToDate optional — blank means open-ended) and `UNIT` (effectiveFromUnit required; effectiveToUnit optional — blank means open-ended). Lines with no effectivity method set are treated as perpetually effective in all directions (always included). `effectiveFromDate` / `effectiveFromUnit` MUST be supplied when the corresponding effectivity method is set.
+- **FR-009**: System MUST validate that date-effective BOM lines for the same find number do not have overlapping date ranges within a single BOM revision. The overlap error response MUST identify the conflicting line by its find number and UUID (e.g., "date range overlap for BOM line find number 003 — conflicts with existing line ID {uuid}").
 - **FR-010**: System MUST return HTTP 422 when a BOM explosion detects an effectivity gap (no line covers the requested date or unit for a required find number).
 - **FR-011**: System MUST detect and reject circular BOM references at line-create time, returning HTTP 422.
 - **FR-012**: System MUST expose BOM explosion endpoints supporting both flat (list) and indented (tree) response formats, with optional `asOfDate` or `asOfUnit` filter parameters.
