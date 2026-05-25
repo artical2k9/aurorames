@@ -92,7 +92,7 @@ class PrivilegeServiceTest {
 
     @Test
     void getPrivilegeMap_returnsRoleToPrivilegesMap() {
-        Role adminRole = new Role(ORG_ID, "ADMIN");
+        Role adminRole = new Role(ORG_ID, "SYSTEM_ADMIN");
         Role viewerRole = new Role(ORG_ID, "VIEWER");
         Privilege p1 = new Privilege("iam:roles:manage", "iam", "iam-service");
         Privilege p2 = new Privilege("iam:users:view", "iam", "iam-service");
@@ -105,9 +105,9 @@ class PrivilegeServiceTest {
 
         Map<String, List<String>> map = privilegeService.getPrivilegeMap();
 
-        assertThat(map).containsKey("ADMIN");
+        assertThat(map).containsKey("SYSTEM_ADMIN");
         assertThat(map).containsKey("VIEWER");
-        assertThat(map.get("ADMIN")).containsExactlyInAnyOrder("iam:roles:manage", "iam:users:view");
+        assertThat(map.get("SYSTEM_ADMIN")).containsExactlyInAnyOrder("iam:roles:manage", "iam:users:view");
         assertThat(map.get("VIEWER")).containsExactly("iam:users:view");
     }
 

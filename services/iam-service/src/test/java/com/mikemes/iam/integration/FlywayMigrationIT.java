@@ -53,7 +53,7 @@ class FlywayMigrationIT {
                 "SELECT name FROM iam.role WHERE is_system_role = true ORDER BY name",
                 String.class);
         assertThat(names).containsExactly(
-                "ADMIN", "ENGINEER", "OPERATOR", "PLANNER", "QUALITY_INSPECTOR", "VIEWER");
+                "SYSTEM_ADMIN", "ENGINEER", "OPERATOR", "PLANNER", "QUALITY_INSPECTOR", "VIEWER");
     }
 
     @Test

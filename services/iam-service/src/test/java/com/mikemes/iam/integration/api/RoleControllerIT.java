@@ -122,7 +122,7 @@ class RoleControllerIT {
                 .build();
 
         createRealm();
-        adminToken = buildToken("ADMIN");
+        adminToken = buildToken("SYSTEM_ADMIN");
         viewerToken = buildToken("VIEWER");
         kcAdmin.close();
     }
@@ -157,7 +157,7 @@ class RoleControllerIT {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody()).hasSizeGreaterThanOrEqualTo(6);
         assertThat(response.getBody()).extracting(RoleResponse::name)
-                .contains("ADMIN", "OPERATOR", "QUALITY_INSPECTOR", "PLANNER", "ENGINEER", "VIEWER");
+                .contains("SYSTEM_ADMIN", "OPERATOR", "QUALITY_INSPECTOR", "PLANNER", "ENGINEER", "VIEWER");
     }
 
     @Test
