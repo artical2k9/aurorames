@@ -718,7 +718,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "",
+      "secret": "3cWq4bgqmaH2E8EBahPCawa44e9WR3An",
       "redirectUris": [
         "http://localhost:8888/login/oauth2/code/keycloak",
         "http://admin-service:8888/login/oauth2/code/keycloak"
@@ -871,7 +871,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "",
+      "secret": "QZd5yjjrHwvvzEvPs0eTEB3sQxFIUDIy",
       "redirectUris": [],
       "webOrigins": [],
       "notBefore": 0,
@@ -955,7 +955,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "",
+      "secret": "dUVSCS7Agk5F7a6i8SkuXJ38zhUhN6t8",
       "redirectUris": [],
       "webOrigins": [],
       "notBefore": 0,
