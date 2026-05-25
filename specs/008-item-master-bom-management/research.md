@@ -174,18 +174,20 @@ These values are used in `frontend/angular/src/styles.scss` for PrimeNG override
 **PrimeNG config**: `darkModeSelector: '.aurora-dark'` in `providePrimeNG()`. Class toggled on `document.documentElement` by `ThemeService`. Persisted to `localStorage` key `aurora-mes-theme`. Falls back to `window.matchMedia('(prefers-color-scheme: dark)').matches` on first visit.
 
 **Penpot frames** (all on page "Aurora MES / Shell", fileId `e7a86fff-661d-81c1-8008-131bc45d179c`):
-- Dark: Shell (collapsed rail), Shell (flyout open), Item Master List, Item Master Column Picker, Item Master Create, BOM / Explosion Tree
-- Light: Shell (collapsed rail — light), Item Master List (light), Item Master Column Picker (light), Item Master Edit, BOM / Explosion Tree (light)
+- Dark: Shell (collapsed rail), Shell (flyout open), Item Master List, Item Master Column Picker, Item Master Create, BOM / Explosion Tree, BOM / Authoring
+- Light: Shell (collapsed rail — light), Item Master List (light), Item Master Column Picker (light), Item Master Edit, BOM / Explosion Tree (light), BOM / Authoring (light)
 
 | Frame | Mode | Penpot ID |
 |---|---|---|
 | Shell (collapsed rail) | Dark | — |
 | Item Master / List & Search | Dark | — |
 | Item Master / Column Picker | Dark | — |
-| Item Master / Create | Dark | `d1e9cefe-fcab-80d7-8008-138bde15a086` (approx) |
+| Item Master / Create | Dark | — |
 | BOM / Explosion Tree | Dark | `d1e9cefe-fcab-80d7-8008-1394bcf67efc` |
+| BOM / Authoring | Dark | `d1e9cefe-fcab-80d7-8008-1398d303c5ec` |
 | Shell (collapsed rail) | Light | `d1e9cefe-fcab-80d7-8008-1385436e319f` |
 | Item Master / List & Search | Light | `d1e9cefe-fcab-80d7-8008-13856f83fb22` |
 | Item Master / Column Picker | Light | `d1e9cefe-fcab-80d7-8008-1385d5f1262e` |
 | Item Master / Edit | Light | `d1e9cefe-fcab-80d7-8008-138bde15a086` |
 | BOM / Explosion Tree | Light | `d1e9cefe-fcab-80d7-8008-1397d2d3a99b` |
+| BOM / Authoring | Light | `d1e9cefe-fcab-80d7-8008-13997f6538b8` |
