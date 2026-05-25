@@ -175,7 +175,6 @@ services:
       ADMIN_SERVICE_CLIENT_SECRET: ${ADMIN_SERVICE_CLIENT_SECRET:?ADMIN_SERVICE_CLIENT_SECRET must be set}
       ADMIN_SERVICE_URL: http://admin-service:8888
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mikemes}
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: ${KEYCLOAK_PUBLIC_AUTH_URI:-http://localhost:8080/realms/mikemes/protocol/openid-connect/auth}
     ports:
       - "8888:8888"
     depends_on:
