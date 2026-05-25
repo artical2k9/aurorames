@@ -202,7 +202,7 @@ class RoleControllerIT {
         assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
 
         UUID adminRoleId = jdbcTemplate.queryForObject(
-                "SELECT id FROM iam.role WHERE name = 'ADMIN' AND is_system_role = true", UUID.class);
+                "SELECT id FROM iam.role WHERE name = 'SYSTEM_ADMIN' AND is_system_role = true", UUID.class);
         assertThat(adminRoleId).isNotNull();
 
         ResponseEntity<Map> response = delete("/roles/" + adminRoleId, adminToken, Map.class);
