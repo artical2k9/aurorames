@@ -109,6 +109,43 @@ New topics (following `<service>.<domain>.<entity>.events` convention):
 
 ---
 
+## Decision 9 — BOM Line Columns & Effectivity Model
+
+### BOM Line Sequence Number vs Find Number
+
+- **Seq** (`sequence_number INT NOT NULL`): BOM line attribute — user-assigned ordering number (convention: 10, 20, 30… incrementing by 10 to allow future insertions). Defines display order on the BOM. Editable on the Authoring screen.
+- **Find #** (`find_number VARCHAR`): Item master attribute — the drawing balloon/callout number that maps the part to a location on the engineering drawing. Read-only on BOM lines; sourced from `item_master.find_number`. Displayed in the Explosion Tree view only.
+
+### Default BOM Authoring Column Order
+
+`Seq | Part Number | Description | Revision | Qty | Unit | Eff From | Eff To | Actions`
+
+Find # is omitted from the Authoring table (it is shown in the Explosion Tree view alongside the tree hierarchy).
+
+### Inline Column Chooser
+
+The column chooser is rendered as a `⊕ Columns` button at the far-right end of the table header row (not a separate panel). Clicking it opens a PrimeNG `p-overlayPanel` anchored to the button. Available columns (beyond defaults) include: Reference Designator, Make/Buy, Lead Time, and any org-defined UDF columns.
+
+### BOM Line UDFs
+
+BOM lines participate in the `mes-udf-lib` UDF system (Decision 5). UDF field definitions are scoped per org and per module (`module_key = 'bom-line'`). UDF values are stored as JSONB in `bom_line.custom_fields`. In the UI:
+
+- UDF columns are off by default and added via the column chooser.
+- Rows that have non-null UDF values display a `n UDFs` chip in the Actions area when UDF columns are hidden, to signal that hidden data exists.
+
+### Effectivity Mode — Date vs Unit
+
+`BomLine` supports two effectivity modes controlled by `item_master.effectivity_type`:
+
+| Mode | `effectivity_type` | Eff From field | Eff To field |
+|---|---|---|---|
+| Date effective | `DATE` | ISO date picker | ISO date picker (nullable = open-ended) |
+| Unit effective | `UNIT` | Unit/serial/lot number text input | Unit/serial/lot number text input (nullable = open-ended) |
+
+The UI detects `effectivity_type` from the selected part's item master record and swaps the input widget accordingly. The column header label remains "Eff From / Eff To" but a `(Unit)` badge appears on affected cells to distinguish from date values.
+
+---
+
 ## Theme Tokens — Aurora MES Dark & Light Mode
 
 Authoritative source: Penpot file "New File 1" → page "Token reference board" (fileId: `e7a86fff-661d-81c1-8008-131bc45d179c`).
@@ -174,20 +211,22 @@ These values are used in `frontend/angular/src/styles.scss` for PrimeNG override
 **PrimeNG config**: `darkModeSelector: '.aurora-dark'` in `providePrimeNG()`. Class toggled on `document.documentElement` by `ThemeService`. Persisted to `localStorage` key `aurora-mes-theme`. Falls back to `window.matchMedia('(prefers-color-scheme: dark)').matches` on first visit.
 
 **Penpot frames** (all on page "Aurora MES / Shell", fileId `e7a86fff-661d-81c1-8008-131bc45d179c`):
-- Dark: Shell (collapsed rail), Shell (flyout open), Item Master List, Item Master Column Picker, Item Master Create, BOM / Explosion Tree, BOM / Authoring
-- Light: Shell (collapsed rail — light), Item Master List (light), Item Master Column Picker (light), Item Master Edit, BOM / Explosion Tree (light), BOM / Authoring (light)
+- Dark: Shell (collapsed rail), Shell (flyout open), Item Master List, Item Master Column Picker, Item Master Create, BOM / Explosion Tree, BOM / Authoring v2 *(current)*
+- Light: Shell (collapsed rail — light), Item Master List (light), Item Master Column Picker (light), Item Master Edit, BOM / Explosion Tree (light), BOM / Authoring v2 *(current)*
 
-| Frame | Mode | Penpot ID |
-|---|---|---|
-| Shell (collapsed rail) | Dark | — |
-| Item Master / List & Search | Dark | — |
-| Item Master / Column Picker | Dark | — |
-| Item Master / Create | Dark | — |
-| BOM / Explosion Tree | Dark | `d1e9cefe-fcab-80d7-8008-1394bcf67efc` |
-| BOM / Authoring | Dark | `d1e9cefe-fcab-80d7-8008-1398d303c5ec` |
-| Shell (collapsed rail) | Light | `d1e9cefe-fcab-80d7-8008-1385436e319f` |
-| Item Master / List & Search | Light | `d1e9cefe-fcab-80d7-8008-13856f83fb22` |
-| Item Master / Column Picker | Light | `d1e9cefe-fcab-80d7-8008-1385d5f1262e` |
-| Item Master / Edit | Light | `d1e9cefe-fcab-80d7-8008-138bde15a086` |
-| BOM / Explosion Tree | Light | `d1e9cefe-fcab-80d7-8008-1397d2d3a99b` |
-| BOM / Authoring | Light | `d1e9cefe-fcab-80d7-8008-13997f6538b8` |
+| Frame | Mode | Penpot ID | Notes |
+|---|---|---|---|
+| Shell (collapsed rail) | Dark | — | |
+| Item Master / List & Search | Dark | — | |
+| Item Master / Column Picker | Dark | — | |
+| Item Master / Create | Dark | — | |
+| BOM / Explosion Tree | Dark | `d1e9cefe-fcab-80d7-8008-1394bcf67efc` | |
+| BOM / Authoring v1 | Dark | `d1e9cefe-fcab-80d7-8008-1398d303c5ec` | Superseded — Find# column, no Seq |
+| **BOM / Authoring v2** | **Dark** | **`d1e9cefe-fcab-80d7-8008-139d269ff559`** | **Current** — Seq, col picker, unit eff, UDF chip |
+| Shell (collapsed rail) | Light | `d1e9cefe-fcab-80d7-8008-1385436e319f` | |
+| Item Master / List & Search | Light | `d1e9cefe-fcab-80d7-8008-13856f83fb22` | |
+| Item Master / Column Picker | Light | `d1e9cefe-fcab-80d7-8008-1385d5f1262e` | |
+| Item Master / Edit | Light | `d1e9cefe-fcab-80d7-8008-138bde15a086` | |
+| BOM / Explosion Tree | Light | `d1e9cefe-fcab-80d7-8008-1397d2d3a99b` | |
+| BOM / Authoring v1 | Light | `d1e9cefe-fcab-80d7-8008-13997f6538b8` | Superseded |
+| **BOM / Authoring v2** | **Light** | **`d1e9cefe-fcab-80d7-8008-139dbd1988d3`** | **Current** — Seq, unit eff badge, UDF callout |
