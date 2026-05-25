@@ -19,7 +19,7 @@ Log all test failures as tracked defects before closing the story.
 | PR 2 | Phase 5 | T051–T066 | `./gradlew :services:work-order-service:check` | Depends on PR 1 merged (item master FK required for BOM parent) |
 | PR 3 | Phase 6 + 7 | T067–T087 | `./gradlew :services:work-order-service:check` | Depends on PR 2 merged; US4 and US5 share BOM domain — bundled to avoid split state |
 | PR 4 | Phase 8 | T088–T094 | `./gradlew :services:work-order-service:check` | Depends on PR 2 merged; P3 priority — raise after PR 3 |
-| PR 5 | Phase 10 | T113–T123 | `ng build --configuration=production` in `frontend/angular/` | Depends on PR 1 merged (item-master + grid preferences API live); Angular-only — no Spring Boot changes; shared grid infrastructure enables all future screens |
+| PR 5 | Phase 10 | T113–T130 | `ng build --configuration=production` in `frontend/angular/` | Depends on PR 1 merged (item-master + grid preferences API live); Angular-only — no Spring Boot changes; shared grid + shared theme infrastructure enables all future screens |
 
 **Sequencing note**: US3 (UDF, P2) is inside PR 1 with the P1 stories. US4+US5 (both P2) are PR 3. US6 (P3) is PR 4. PR 5 (Angular UI) can begin after PR 1 merges; it is independent of PRs 2–4.
 
@@ -280,13 +280,20 @@ Log all test failures as tracked defects before closing the story.
 - [ ] T118 [P] Scaffold item master feature with routing: `ng generate component features/item-master/pages/item-master-list --standalone` in `frontend/angular/`; add lazy route `/item-master → ItemMasterListComponent` to `app.routes.ts`; define `DEFAULT_ITEM_MASTER_COLUMNS: ColumnDef[]` in `frontend/angular/src/app/features/item-master/constants/default-columns.ts` — Part Number (locked), Revision (locked), Description (locked), Classification, Make/Buy, Unit of Measure, Status all `visible: true`; CAGE Code + Shelf Life Days `visible: false`
 - [ ] T119 [P] Create `ItemMasterApiService` in `frontend/angular/src/app/features/item-master/services/item-master-api.service.ts` — typed methods: `list(params: ItemMasterListParams): Observable<Page<ItemMasterDto>>`; `getById(id: string): Observable<ItemMasterDto>`; `create(req: CreateItemMasterRequest): Observable<ItemMasterDto>`; `patch(id: string, req: PatchItemMasterRequest): Observable<ItemMasterDto>`
 - [ ] T120 Create `ItemMasterListComponent` in `frontend/angular/src/app/features/item-master/pages/item-master-list/item-master-list.component.ts` — provides `GridPreferenceService` in component with `moduleKey: 'ITEM_MASTER'` and `DEFAULT_ITEM_MASTER_COLUMNS`; calls `gridPreference.load()` on init; PrimeNG `p-table` with `[columns]` bound to `activeColumns$ | async`; server-side pagination via `(onLazyLoad)`; filter bar with search, Classification dropdown, Status dropdown; settings icon button (column-picker trigger) next to "Clear filters" toggles PrimeNG `p-overlayPanel` containing `ColumnPickerComponent`; handles `(applied)` by calling `gridPreference.apply()` and `(reset)` by calling `gridPreference.reset()` — `frontend/angular/src/app/features/item-master/pages/item-master-list/`
-- [ ] T121 [P] Apply Aurora MES colour tokens as CSS custom properties in `frontend/angular/src/styles.scss` — import PrimeNG Aura dark preset; override surface, primary, and text variables with Aurora MES hex values from Penpot Token Reference Board (bg.base `#0A1628`, bg.subtle `#0D1F3C`, brand.primary `#2563EB`, text.primary `#F1F5F9`, text.secondary `#94A3B8`, border.subtle `#1E3A5F`)
+- [ ] T121 [P] Apply Aurora MES dark mode colour tokens as CSS custom properties in `frontend/angular/src/styles.scss` — import PrimeNG Aura dark preset; override surface, primary, and text variables with Aurora MES dark hex values from Penpot Token Reference Board (bg.base `#0A1628`, bg.subtle `#0D1F3C`, brand.primary `#2563EB`, text.primary `#F1F5F9`, text.secondary `#94A3B8`, border.subtle `#1E3A5F`); scope all overrides inside `.aurora-dark` class selector to avoid polluting light mode
+- [ ] T124 [P] Configure PrimeNG dark mode selector in `frontend/angular/src/app/app.config.ts` — set `darkModeSelector: '.aurora-dark'` inside `providePrimeNG()` so PrimeNG switches component theme via CSS class (not OS media query); this gives Aurora MES full user-controlled override independent of OS setting
+- [ ] T125 [P] Create `ThemeService` in `frontend/angular/src/app/shared/theme/services/theme.service.ts` — `isDark$: BehaviorSubject<boolean>` initialised from localStorage key `aurora-mes-theme`; falls back to `window.matchMedia('(prefers-color-scheme: dark)').matches` if no saved preference; `toggle()` flips state, persists to localStorage, adds/removes `.aurora-dark` on `document.documentElement`; `init()` called once at bootstrap to hydrate state before first render; export from `frontend/angular/src/app/shared/theme/index.ts` barrel
+- [ ] T126 Create `ThemeToggleComponent` (standalone) in `frontend/angular/src/app/shared/theme/components/theme-toggle/theme-toggle.component.ts` — icon button bound to `ThemeService.isDark$`; renders PrimeNG `pi-sun` icon in dark mode, `pi-moon` icon in light mode; `aria-label` reflects current action ("Switch to light mode" / "Switch to dark mode"); 36×36px touch target; no text label; export from `shared/theme/index.ts` barrel
+- [ ] T127 Add Aurora MES light mode CSS token overrides to `frontend/angular/src/styles.scss` — within `:root:not(.aurora-dark)` selector override PrimeNG Aura surface vars to light preset values; add Aurora MES light tokens: bg.base `#F8FAFC`, bg.subtle `#EFF6FF`, text.primary `#0F172A`, text.secondary `#64748B`, border.subtle `#CBD5E1`, brand.primary `#2563EB` (unchanged — blue works on both themes); ensure table stripe, overlay panel, and drawer backgrounds respond correctly
+- [ ] T128 Place `ThemeToggleComponent` in the app top navigation bar immediately left of the user avatar icon — `frontend/angular/src/app/app.component.html` (or the shell layout template); confirm 8px gap between toggle and avatar matches Penpot shell frame spec
+- [ ] T129 Call `ThemeService.init()` in `AppComponent.ngOnInit()` before any route resolves — `frontend/angular/src/app/app.component.ts`; prevents flash-of-wrong-theme on hard reload by applying the saved class synchronously before Angular renders any component
+- [ ] T130 [P] For each Penpot frame built this sprint, create a corresponding light mode variant frame on the "Aurora MES / Shell" page — "Shell (light)", "Item Master List (light)", "Column Picker (light)" — applying Aurora MES light mode tokens; document the final light + dark hex values in `specs/008-item-master-bom-management/research.md` under a `## Theme Tokens` section for future reference
 - [ ] T122 Run `ng build --configuration=production` in `frontend/angular/` — zero compilation errors
-- [ ] T123 Start dev server (`ng serve`), open browser at `http://localhost:4200/item-master`; verify: table loads with default column set; column picker opens on icon click; drag-and-drop reorders within Standard and UDF sections independently; Apply calls PUT and reorders table immediately; page refresh restores saved layout; Reset calls PUT with defaults and restores original column order
+- [ ] T123 Start dev server (`ng serve`), open browser at `http://localhost:4200/item-master`; verify: theme toggle renders next to user avatar; click toggles sun↔moon icon and switches all component colours; preference survives page refresh; column picker and table both respond to theme; OS dark preference applied on first visit when no saved preference exists
 
 **Checkpoint**: Shared grid infrastructure working. Any future screen can add column customisation by importing `GridPreferenceService` + `ColumnPickerComponent` from `shared/grid` and providing its own `moduleKey` + defaults. Item Master list fully functional end-to-end.
 
-> **Raise PR 5 after this checkpoint** (T113–T123) | CI: `ng build --configuration=production` in `frontend/angular/` | Target: `Develop`
+> **Raise PR 5 after this checkpoint** (T113–T130) | CI: `ng build --configuration=production` in `frontend/angular/` | Target: `Develop`
 
 ---
 
@@ -352,7 +359,12 @@ T114 ColumnDef model + shared/grid barrel
 T115 UserGridPreferenceApiService
 T118 ItemMasterApiService + DEFAULT_ITEM_MASTER_COLUMNS scaffold
 T119 ItemMasterListComponent scaffold
-T121 Aurora MES CSS token overrides
+T121 Aurora MES dark mode CSS token overrides
+T124 PrimeNG dark mode selector config
+T125 ThemeService
+T126 ThemeToggleComponent
+T127 Light mode CSS token overrides
+T130 Penpot light mode frame variants
 ```
 
 ---
@@ -374,4 +386,4 @@ T121 Aurora MES CSS token overrides
 - PR 2: BOM authoring + explosion (enables work order materialisation design)
 - PR 3: Effectivity + ECO (enables AS9100D §8.1 change control)
 - PR 4: AS5553 enrichment (enables supply-chain compliance queries)
-- PR 5: Angular Item Master UI with shared grid infrastructure (column picker reusable by all future screens — BOM, Work Orders, Receiving, Inventory)
+- PR 5: Angular Item Master UI with shared grid + shared theme infrastructure (column picker and dark/light toggle reusable by all future screens — BOM, Work Orders, Receiving, Inventory)
