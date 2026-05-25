@@ -14,7 +14,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health", "/actuator/info", "/login/**").permitAll()
+                .requestMatchers("/actuator/health", "/actuator/info", "/login/**", "/instances", "/instances/**").permitAll()
                 .anyRequest().authenticated()
             )
             .oauth2Login(Customizer.withDefaults())
