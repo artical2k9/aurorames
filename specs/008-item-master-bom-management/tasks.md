@@ -15,12 +15,13 @@ Log all test failures as tracked defects before closing the story.
 
 | PR | Phases | Task Range | CI Anchor | Notes |
 |---|---|---|---|---|
-| PR 1 | Phase 1 + 2 + 3 + 4 | T001–T047 | `./gradlew :services:work-order-service:check :libs:mes-udf-lib:check` | Scaffold + US1 + US3 bundled: UDF validation is part of item master create/patch; separating would require a mid-feature schema migration |
-| PR 2 | Phase 5 | T048–T061 | `./gradlew :services:work-order-service:check` | Depends on PR 1 merged (item master FK required for BOM parent) |
-| PR 3 | Phase 6 + 7 | T062–T079 | `./gradlew :services:work-order-service:check` | Depends on PR 2 merged; US4 and US5 share BOM domain — bundled to avoid split state |
-| PR 4 | Phase 8 | T080–T085 | `./gradlew :services:work-order-service:check` | Depends on PR 2 merged; P3 priority — raise after PR 3 |
+| PR 1 | Phase 1 + 2 + 3 + 4 | T001–T050, T104–T112 | `./gradlew :services:work-order-service:check :libs:mes-udf-lib:check` | Scaffold + US1 + US3 bundled: UDF validation is part of item master create/patch; separating would require a mid-feature schema migration. Grid preferences API included here as it shares the item-master service boundary |
+| PR 2 | Phase 5 | T051–T066 | `./gradlew :services:work-order-service:check` | Depends on PR 1 merged (item master FK required for BOM parent) |
+| PR 3 | Phase 6 + 7 | T067–T087 | `./gradlew :services:work-order-service:check` | Depends on PR 2 merged; US4 and US5 share BOM domain — bundled to avoid split state |
+| PR 4 | Phase 8 | T088–T094 | `./gradlew :services:work-order-service:check` | Depends on PR 2 merged; P3 priority — raise after PR 3 |
+| PR 5 | Phase 10 | T113–T123 | `ng build --configuration=production` in `frontend/angular/` | Depends on PR 1 merged (item-master + grid preferences API live); Angular-only — no Spring Boot changes; shared grid infrastructure enables all future screens |
 
-**Sequencing note**: US3 (UDF, P2) is inside PR 1 with the P1 stories. US4+US5 (both P2) are PR 3. US6 (P3) is PR 4.
+**Sequencing note**: US3 (UDF, P2) is inside PR 1 with the P1 stories. US4+US5 (both P2) are PR 3. US6 (P3) is PR 4. PR 5 (Angular UI) can begin after PR 1 merges; it is independent of PRs 2–4.
 
 ---
 
@@ -60,6 +61,7 @@ Log all test failures as tracked defects before closing the story.
 - [ ] T021 [P] Create `services/work-order-service/src/main/java/com/mes/workorder/config/SecurityConfig.java` — extends lib-common-security pattern; permits `/actuator/health` without auth; requires JWT for all other endpoints; uses `@EnableMESSecurity` annotation from lib-common-security
 - [ ] T022 [P] Implement privilege registration on startup: update `WorkOrderServiceApplication.java` to implement `ApplicationListener<ApplicationReadyEvent>` and call `PrivilegeRegistryClient.register(moduleName, privileges)` with the 5 item-master privilege keys and descriptions
 - [ ] T023 Create `services/work-order-service/src/test/java/com/mes/workorder/integration/BaseIntegrationTest.java` — abstract class with `@Testcontainers(disabledWithoutDocker = true)`, PostgreSQL 16 container, Kafka container, `@DynamicPropertySource` registering datasource URL, Kafka bootstrap servers, `mes.security.iam-service-url` mock, Keycloak issuer URI override with RSA JWT support (pattern from existing IT tests); `systemProperty 'api.version', '1.41'` per ERR-MES-036
+- [ ] T104 Create `services/work-order-service/src/main/resources/db/migration/V008__create_user_grid_preferences.sql` — DDL for `work_order.user_grid_preferences`: id UUID PK DEFAULT gen_random_uuid(), org_id UUID NOT NULL, user_id VARCHAR(255) NOT NULL (stores JWT sub claim), module_key VARCHAR(50) NOT NULL, column_config JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT now(); UNIQUE(org_id, user_id, module_key); index on (org_id, user_id)
 
 **Checkpoint**: Foundation ready — `./gradlew :services:work-order-service:build` succeeds; Flyway migration applies cleanly in a fresh Testcontainers PostgreSQL instance (verified by running FlywayMigrationIT once written in Phase 3).
 
@@ -78,6 +80,8 @@ Log all test failures as tracked defects before closing the story.
 - [ ] T026 [P] [US1] Write `ItemMasterServiceTest` (unit): uniqueness constraint throws conflict exception; shelf-life constraint throws validation exception; audit fields (createdBy, modifiedBy) populated from security context — `services/work-order-service/src/test/java/com/mes/workorder/unit/itemmaster/ItemMasterServiceTest.java`
 - [ ] T027 [P] [US1] Write `ItemMasterKafkaIT`: create item master → assert `work-order.item-master.events` receives message with eventType=ITEM_MASTER_CREATED and entityId; PATCH → assert ITEM_MASTER_UPDATED message — `services/work-order-service/src/test/java/com/mes/workorder/integration/itemmaster/ItemMasterKafkaIT.java`
 - [ ] T028 [US1] Confirm all 4 tests above FAIL (RED) with compile or assertion errors before writing any production code
+- [ ] T105 [P] [US1] Write `UserGridPreferenceControllerIT`: GET with no saved config → 200 + default column list for module; PUT saves config → 200; second GET → returns saved config; different `moduleKey` → independent config; different JWT sub (different user) → independent config — `services/work-order-service/src/test/java/com/mes/workorder/integration/itemmaster/UserGridPreferenceControllerIT.java`
+- [ ] T106 [US1] Confirm T105 FAILS (RED) before writing any preference implementation
 
 ### Implementation
 
@@ -89,6 +93,12 @@ Log all test failures as tracked defects before closing the story.
 - [ ] T034 [US1] Create `ItemMasterService.java`: `create()` (unique check, shelf-life validation, UdfValidator.validate() — no-op if no definitions exist, save, publish CREATED event), `get()` (org-scoped), `patch()` (org-scoped, validate, save, publish UPDATED event), `obsolete()`, `list()` (paginated, org-scoped) — `services/work-order-service/src/main/java/com/mes/workorder/itemmaster/service/ItemMasterService.java`
 - [ ] T035 [US1] Create `ItemMasterEventPublisher.java`: sends JSON event to `work-order.item-master.events` Kafka topic; event payload includes `eventId` (UUID), `eventType`, `entityId`, `orgId`, `actorId`, `occurredAt`, `payload` (DTO snapshot) — `services/work-order-service/src/main/java/com/mes/workorder/kafka/ItemMasterEventPublisher.java`
 - [ ] T036 [US1] Create `ItemMasterController.java`: `GET /item-master` (paginated list, classification + status + counterfeitRiskLevel filters), `POST /item-master` (201 + Location), `GET /item-master/{itemId}`, `PATCH /item-master/{itemId}`, `POST /item-master/{itemId}/obsolete`; privilege checks via `@PreAuthorize` or `RequiresPrivilege` annotation from lib-common-security — `services/work-order-service/src/main/java/com/mes/workorder/itemmaster/api/ItemMasterController.java`
+- [ ] T107 [P] [US1] Create `UserGridPreference.java` entity: all columns from V008 migration, `columnConfig` mapped as `@Column(columnDefinition="jsonb")` with Jackson JSON type converter, `@Table(name="user_grid_preferences", schema="work_order")` — `services/work-order-service/src/main/java/com/mes/workorder/preferences/domain/UserGridPreference.java`
+- [ ] T108 [US1] Create `UserGridPreferenceRepository.java`: `findByOrgIdAndUserIdAndModuleKey(UUID orgId, String userId, String moduleKey): Optional<UserGridPreference>` — `services/work-order-service/src/main/java/com/mes/workorder/preferences/repository/UserGridPreferenceRepository.java`
+- [ ] T109 [P] [US1] Create DTOs: `ColumnPreferenceEntry` record (`columnKey: String, visible: boolean, order: int`), `UserGridPreferenceDto` (moduleKey + list of entries), `UpsertUserGridPreferenceRequest` — `services/work-order-service/src/main/java/com/mes/workorder/preferences/api/dto/`
+- [ ] T110 [US1] Create `UserGridPreferenceService.java`: `get(orgId, userId, moduleKey)` returns saved column list or the module's built-in default (defaults registered via `@Bean Map<String,List<ColumnPreferenceEntry>> defaultColumnRegistry` so any service can contribute its defaults); `upsert(orgId, userId, moduleKey, entries)` saves-or-replaces via findByOrgIdAndUserIdAndModuleKey + save — `services/work-order-service/src/main/java/com/mes/workorder/preferences/service/UserGridPreferenceService.java`
+- [ ] T111 [US1] Create `UserGridPreferenceController.java`: `GET /api/v1/users/preferences/grid/{moduleKey}` (userId extracted from JWT sub claim; no additional privilege — users read their own prefs); `PUT /api/v1/users/preferences/grid/{moduleKey}` (userId from JWT sub; any authenticated user) — `services/work-order-service/src/main/java/com/mes/workorder/preferences/api/UserGridPreferenceController.java`
+- [ ] T112 [US1] Run `./gradlew :services:work-order-service:test --tests "*UserGridPreference*"` — confirm T105 goes GREEN
 - [ ] T037 [US1] Run `./gradlew :services:work-order-service:test --tests "*ItemMaster*" --tests "*FlywayMigrationIT*"` — confirm T024–T027 go GREEN
 
 **Checkpoint**: Item master CRUD end-to-end functional. Kafka events emitting. Envers audit rows present.
@@ -122,7 +132,7 @@ Log all test failures as tracked defects before closing the story.
 
 **Checkpoint**: Full item master + UDF framework functional and GREEN.
 
-> **Raise PR 1 after this checkpoint** (T001–T050) | CI: `./gradlew :services:work-order-service:check :libs:mes-udf-lib:check` | Target: `Develop`
+> **Raise PR 1 after this checkpoint** (T001–T050, T104–T112) | CI: `./gradlew :services:work-order-service:check :libs:mes-udf-lib:check` | Target: `Develop`
 
 ---
 
@@ -256,6 +266,30 @@ Log all test failures as tracked defects before closing the story.
 
 ---
 
+## Phase 10: Angular Frontend — Shared Grid Infrastructure & Item Master UI [PR 5]
+
+**Purpose**: Install PrimeNG, build the reusable shared grid column-picker system, and implement the Item Master list screen. The shared architecture means any future screen (BOM, Work Orders, Receiving, Inventory) gains persistent column customisation by providing a `moduleKey` and `DEFAULT_COLUMNS` constant — no additional infrastructure work required.
+
+**Shared module contract**: All column-picker infrastructure lives under `frontend/angular/src/app/shared/grid/`. Each feature imports the barrel, provides its `moduleKey` and defaults, and uses `ColumnPickerComponent` directly. The backend API (`/api/v1/users/preferences/grid/{moduleKey}`) is already module-agnostic (added in PR 1).
+
+- [ ] T113 Install PrimeNG + Angular CDK in `frontend/angular/`: `npm install primeng @angular/cdk`; configure `provideAnimationsAsync()` and `providePrimeNG({theme: {preset: Aura}})` in `frontend/angular/src/app/app.config.ts`
+- [ ] T114 [P] Create shared grid barrel at `frontend/angular/src/app/shared/grid/index.ts`; define `ColumnDef` interface (`{ key: string; label: string; visible: boolean; order: number; locked?: boolean; udf?: boolean }`) in `frontend/angular/src/app/shared/grid/models/column-def.model.ts`; export from barrel
+- [ ] T115 [P] Create generic `UserGridPreferenceApiService` in `frontend/angular/src/app/shared/grid/services/user-grid-preference-api.service.ts` — `getPreferences(moduleKey: string): Observable<ColumnDef[]>`; `putPreferences(moduleKey: string, columns: ColumnDef[]): Observable<void>`; calls `GET/PUT /api/v1/users/preferences/grid/{moduleKey}` on work-order-service; export from shared/grid barrel
+- [ ] T116 Create `GridPreferenceService` in `frontend/angular/src/app/shared/grid/services/grid-preference.service.ts` — not singleton (provided in component so each screen has its own instance); constructor takes `moduleKey: string` and `defaultColumns: ColumnDef[]`; exposes `activeColumns$: BehaviorSubject<ColumnDef[]>`; `load()` calls `UserGridPreferenceApiService.getPreferences()` and falls back to `defaultColumns` on 404; `apply(columns: ColumnDef[])` calls PUT then updates BehaviorSubject; `reset()` calls PUT with `defaultColumns` then updates BehaviorSubject; export from shared/grid barrel
+- [ ] T117 Create `ColumnPickerComponent` (standalone) in `frontend/angular/src/app/shared/grid/components/column-picker/column-picker.component.ts` — `@Input() columns: ColumnDef[]`; CDK `cdkDropList` + `cdkDrag` for reordering within each section; auto-splits into Standard Columns and User-Defined Fields sections (by `column.udf`); locked columns (`column.locked`) show "Required" badge, checkbox disabled, no drag handle; UDF columns show ice-blue "UDF" badge; "Reset to default" link in header emits `@Output() reset = new EventEmitter<void>()`; Apply footer button emits `@Output() applied = new EventEmitter<ColumnDef[]>()`; Cancel closes without emitting; export from shared/grid barrel
+- [ ] T118 [P] Scaffold item master feature with routing: `ng generate component features/item-master/pages/item-master-list --standalone` in `frontend/angular/`; add lazy route `/item-master → ItemMasterListComponent` to `app.routes.ts`; define `DEFAULT_ITEM_MASTER_COLUMNS: ColumnDef[]` in `frontend/angular/src/app/features/item-master/constants/default-columns.ts` — Part Number (locked), Revision (locked), Description (locked), Classification, Make/Buy, Unit of Measure, Status all `visible: true`; CAGE Code + Shelf Life Days `visible: false`
+- [ ] T119 [P] Create `ItemMasterApiService` in `frontend/angular/src/app/features/item-master/services/item-master-api.service.ts` — typed methods: `list(params: ItemMasterListParams): Observable<Page<ItemMasterDto>>`; `getById(id: string): Observable<ItemMasterDto>`; `create(req: CreateItemMasterRequest): Observable<ItemMasterDto>`; `patch(id: string, req: PatchItemMasterRequest): Observable<ItemMasterDto>`
+- [ ] T120 Create `ItemMasterListComponent` in `frontend/angular/src/app/features/item-master/pages/item-master-list/item-master-list.component.ts` — provides `GridPreferenceService` in component with `moduleKey: 'ITEM_MASTER'` and `DEFAULT_ITEM_MASTER_COLUMNS`; calls `gridPreference.load()` on init; PrimeNG `p-table` with `[columns]` bound to `activeColumns$ | async`; server-side pagination via `(onLazyLoad)`; filter bar with search, Classification dropdown, Status dropdown; settings icon button (column-picker trigger) next to "Clear filters" toggles PrimeNG `p-overlayPanel` containing `ColumnPickerComponent`; handles `(applied)` by calling `gridPreference.apply()` and `(reset)` by calling `gridPreference.reset()` — `frontend/angular/src/app/features/item-master/pages/item-master-list/`
+- [ ] T121 [P] Apply Aurora MES colour tokens as CSS custom properties in `frontend/angular/src/styles.scss` — import PrimeNG Aura dark preset; override surface, primary, and text variables with Aurora MES hex values from Penpot Token Reference Board (bg.base `#0A1628`, bg.subtle `#0D1F3C`, brand.primary `#2563EB`, text.primary `#F1F5F9`, text.secondary `#94A3B8`, border.subtle `#1E3A5F`)
+- [ ] T122 Run `ng build --configuration=production` in `frontend/angular/` — zero compilation errors
+- [ ] T123 Start dev server (`ng serve`), open browser at `http://localhost:4200/item-master`; verify: table loads with default column set; column picker opens on icon click; drag-and-drop reorders within Standard and UDF sections independently; Apply calls PUT and reorders table immediately; page refresh restores saved layout; Reset calls PUT with defaults and restores original column order
+
+**Checkpoint**: Shared grid infrastructure working. Any future screen can add column customisation by importing `GridPreferenceService` + `ColumnPickerComponent` from `shared/grid` and providing its own `moduleKey` + defaults. Item Master list fully functional end-to-end.
+
+> **Raise PR 5 after this checkpoint** (T113–T123) | CI: `ng build --configuration=production` in `frontend/angular/` | Target: `Develop`
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -267,6 +301,7 @@ Log all test failures as tracked defects before closing the story.
 - **Phase 6 (US4) + Phase 7 (US5)**: Depends on PR 2 merged (BOM entities required)
 - **Phase 8 (US6)**: Depends on PR 2 merged; independent of PR 3 (AS5553 fields in schema from PR 1)
 - **Phase 9 (Polish)**: All PRs complete
+- **Phase 10 (Angular Frontend)**: Depends on PR 1 merged (item-master API + grid preferences API live); independent of PRs 2–4 (reads item master list only; BOM/ECO screens added in future sprints)
 
 ### User Story Dependencies
 
@@ -278,6 +313,7 @@ Log all test failures as tracked defects before closing the story.
 | US4 (Effectivity) | US2 merged | US5 (same PR) |
 | US5 (ECO) | US2 merged | US4 (same PR) |
 | US6 (AS5553) | US2 merged (BOM line alert) | US4, US5 |
+| Angular UI | PR 1 merged (API live) | PRs 2–4 (frontend is read-only against item-master in this sprint) |
 
 ### Within Each Phase
 
@@ -310,6 +346,13 @@ T030 Enums (Classification, MakeBuyCode, TraceabilityMethod)
 T056 BillOfMaterials.java
 T057 BomLine.java
 T058 BomStatus / EffectivityMethod enums
+
+# Phase 10 Angular — shared infrastructure parallel before item master feature:
+T114 ColumnDef model + shared/grid barrel
+T115 UserGridPreferenceApiService
+T118 ItemMasterApiService + DEFAULT_ITEM_MASTER_COLUMNS scaffold
+T119 ItemMasterListComponent scaffold
+T121 Aurora MES CSS token overrides
 ```
 
 ---
@@ -331,3 +374,4 @@ T058 BomStatus / EffectivityMethod enums
 - PR 2: BOM authoring + explosion (enables work order materialisation design)
 - PR 3: Effectivity + ECO (enables AS9100D §8.1 change control)
 - PR 4: AS5553 enrichment (enables supply-chain compliance queries)
+- PR 5: Angular Item Master UI with shared grid infrastructure (column picker reusable by all future screens — BOM, Work Orders, Receiving, Inventory)
