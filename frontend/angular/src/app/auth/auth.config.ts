@@ -1,7 +1,7 @@
 import { AuthConfig } from 'angular-oauth2-oidc';
 
 export const authConfig: AuthConfig = {
-  issuer: 'http://localhost:8080/realms/mikemes',
+  issuer: 'http://localhost:8080/realms/mes',
   redirectUri: window.location.origin,
   clientId: 'mes-frontend',
   responseType: 'code',

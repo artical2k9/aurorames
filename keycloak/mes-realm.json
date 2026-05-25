@@ -1,0 +1,329 @@
+{
+  "id": "mes",
+  "realm": "mes",
+  "displayName": "Aurora MES",
+  "displayNameHtml": "<strong>Aurora</strong> MES",
+  "enabled": true,
+  "sslRequired": "external",
+  "notBefore": 0,
+  "defaultSignatureAlgorithm": "RS256",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "internationalizationEnabled": false,
+
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "offlineSessionIdleTimeout": 2592000,
+  "offlineSessionMaxLifespanEnabled": false,
+  "clientSessionIdleTimeout": 0,
+  "clientSessionMaxLifespan": 0,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "accessCodeLifespan": 60,
+
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "minimumQuickLoginWaitSeconds": 900,
+  "maxFailureWaitSeconds": 900,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+
+  "eventsEnabled": true,
+  "eventsExpiration": 604800,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+  "eventsListeners": ["jboss-logging", "http-sender", "mes-audit-listener"],
+  "enabledEventTypes": [
+    "LOGIN",
+    "LOGIN_ERROR",
+    "LOGOUT",
+    "LOGOUT_ERROR",
+    "REGISTER",
+    "REGISTER_ERROR",
+    "UPDATE_PASSWORD",
+    "UPDATE_PASSWORD_ERROR",
+    "UPDATE_EMAIL",
+    "UPDATE_PROFILE",
+    "RESET_PASSWORD",
+    "RESET_PASSWORD_ERROR",
+    "REFRESH_TOKEN",
+    "REFRESH_TOKEN_ERROR",
+    "CODE_TO_TOKEN",
+    "CODE_TO_TOKEN_ERROR",
+    "CLIENT_LOGIN",
+    "CLIENT_LOGIN_ERROR",
+    "TOKEN_EXCHANGE",
+    "TOKEN_EXCHANGE_ERROR"
+  ],
+
+  "roles": {
+    "realm": [
+      {
+        "name": "ADMIN",
+        "description": "Full system administration: manage users, roles, and all privileges",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "OPERATOR",
+        "description": "Production operator: execute work orders and record production data",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "QUALITY_INSPECTOR",
+        "description": "Quality inspection and sign-off on inspection records",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "PLANNER",
+        "description": "Production planning: create and manage production schedules",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "ENGINEER",
+        "description": "Engineering functions: manage BOMs, routings, and process parameters",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "VIEWER",
+        "description": "Read-only access across all MES modules",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+
+  "clientScopes": [
+    {
+      "name": "mes-claims",
+      "description": "Aurora MES custom JWT claims: org_id (tenant) and roles (coarse application roles)",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "roles-claim",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "false",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "org-id-claim",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "false",
+            "user.attribute": "org_id",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "claim.name": "org_id",
+            "jsonType.label": "String",
+            "aggregate.attrs": "false",
+            "multivalued": "false"
+          }
+        }
+      ]
+    }
+  ],
+
+  "defaultDefaultClientScopes": [
+    "mes-claims",
+    "email",
+    "profile",
+    "roles",
+    "web-origins",
+    "acr"
+  ],
+  "defaultOptionalClientScopes": [
+    "offline_access",
+    "phone",
+    "address",
+    "microprofile-jwt"
+  ],
+
+  "clients": [
+    {
+      "clientId": "mes-frontend",
+      "name": "Aurora MES Angular Frontend",
+      "description": "Public OIDC client for the Angular SPA — Authorization Code + PKCE",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "pkceCodeChallengeMethod": "S256",
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:4200/*",
+        "https://mes.example.com/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200",
+        "https://mes.example.com"
+      ],
+      "baseUrl": "http://localhost:4200",
+      "adminUrl": "",
+      "bearerOnly": false,
+      "fullScopeAllowed": false,
+      "consentRequired": false,
+      "defaultClientScopes": [
+        "mes-claims",
+        "email",
+        "profile",
+        "roles",
+        "web-origins",
+        "acr"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "iam-service-m2m",
+      "name": "IAM Service — M2M",
+      "description": "Confidential M2M client for iam-service (Client Credentials). Secret set via IAM_SERVICE_CLIENT_SECRET env var — not stored in this file.",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "secret": "",
+      "bearerOnly": false,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "email",
+        "profile",
+        "roles",
+        "web-origins"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "gateway-service-m2m",
+      "name": "Gateway Service — M2M",
+      "description": "Confidential M2M client for gateway-service. Secret set via GATEWAY_SERVICE_CLIENT_SECRET env var.",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "secret": "",
+      "bearerOnly": false,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "email",
+        "profile",
+        "roles",
+        "web-origins"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "audit-service-m2m",
+      "name": "Audit Service — M2M",
+      "description": "Confidential M2M client for audit-service. Secret set via AUDIT_SERVICE_CLIENT_SECRET env var.",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "secret": "",
+      "bearerOnly": false,
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "email",
+        "profile",
+        "roles",
+        "web-origins"
+      ],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "admin-service",
+      "name": "Admin Service — OIDC",
+      "description": "Confidential OIDC client for admin-service Spring Boot Admin Server UI. Secret set via ADMIN_SERVICE_CLIENT_SECRET env var.",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "secret": "",
+      "bearerOnly": false,
+      "fullScopeAllowed": false,
+      "redirectUris": [
+        "http://localhost:8888/login/oauth2/code/keycloak",
+        "http://admin-service:8888/login/oauth2/code/keycloak"
+      ],
+      "webOrigins": [
+        "http://localhost:8888",
+        "http://admin-service:8888"
+      ],
+      "defaultClientScopes": [
+        "openid",
+        "email",
+        "profile",
+        "roles",
+        "web-origins"
+      ],
+      "optionalClientScopes": []
+    }
+  ],
+
+  "users": [
+    {
+      "username": "admin@test.org",
+      "email": "admin@test.org",
+      "firstName": "Dev",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "org_id": ["00000000-0000-0000-0000-000000000001"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": true
+        }
+      ],
+      "realmRoles": ["ADMIN"]
+    }
+  ],
+
+  "attributes": {
+    "_providerConfig.eventsListener.http-sender.serverUri": "http://audit-service:8080/internal/keycloak-events",
+    "_providerConfig.eventsListener.http-sender.sharedSecret": ""
+  }
+}

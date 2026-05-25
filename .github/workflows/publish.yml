@@ -53,15 +53,15 @@ jobs:
       fail-fast: false
       matrix:
         service:
-          - name: mikemes-iam-service
+          - name: mes-iam-service
             dockerfile: services/iam-service/Dockerfile
-          - name: mikemes-gateway-service
+          - name: mes-gateway-service
             dockerfile: services/gateway-service/Dockerfile
-          - name: mikemes-admin-service
+          - name: mes-admin-service
             dockerfile: services/admin-service/Dockerfile
-          - name: mikemes-platform-service
+          - name: mes-platform-service
             dockerfile: services/platform-service/Dockerfile
-          - name: mikemes-audit-service
+          - name: mes-audit-service
             dockerfile: services/audit-service/Dockerfile
 
     steps:
@@ -103,7 +103,7 @@ jobs:
 
   # ── Build & Push Keycloak Image ─────────────────────────────────────────────
   publish-keycloak:
-    name: Publish mikemes-keycloak
+    name: Publish mes-keycloak
     needs: [build-spi]
     runs-on: ubuntu-latest
     permissions:
@@ -134,7 +134,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/mikemes-keycloak
+          images: ghcr.io/${{ github.repository_owner }}/mes-keycloak
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=ref,event=branch
@@ -150,5 +150,5 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=mikemes-keycloak
-          cache-to: type=gha,scope=mikemes-keycloak,mode=max
+          cache-from: type=gha,scope=mes-keycloak
+          cache-to: type=gha,scope=mes-keycloak,mode=max

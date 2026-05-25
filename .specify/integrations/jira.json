@@ -4,7 +4,7 @@
   "cloudId": "2d0ddc1c-9504-4952-a6cd-e4c522ccb319",
   "projectKey": "MES",
   "projectId": "10101",
-  "projectName": "MikeMES",
+  "projectName": "Aurora MES",
   "issueTypes": {
     "epic":    { "id": "10081", "name": "Epic" },
     "story":   { "id": "10080", "name": "Story" },

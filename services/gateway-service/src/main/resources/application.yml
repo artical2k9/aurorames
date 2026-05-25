@@ -11,7 +11,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mikemes}/protocol/openid-connect/certs
+          jwk-set-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mes}/protocol/openid-connect/certs
   cloud:
     gateway:
       routes:

@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: MikeMES Audit Service API
+  title: Aurora MES Audit Service API
   version: 1.0.0
   description: |
     Centralised audit trail query and tamper-evidence verification API.

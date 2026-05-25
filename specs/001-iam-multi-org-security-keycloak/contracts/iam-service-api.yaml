@@ -3,9 +3,9 @@ info:
   title: iam-service API
   version: "1.0.0"
   description: |
-    MikeMES Identity & Access Management service.
+    Aurora MES Identity & Access Management service.
     Manages roles, privileges, and users. Delegates authentication to Keycloak 25+.
-    All endpoints (except /internal/*) require a valid JWT issued by the MikeMES Keycloak realm.
+    All endpoints (except /internal/*) require a valid JWT issued by the MES Keycloak realm.
     All endpoints are organisation-scoped: the org_id is derived from the authenticated JWT, never from the request body.
 
 servers:

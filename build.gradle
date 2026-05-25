@@ -1,4 +1,4 @@
-// MikeMES root build — conventions applied to all Java subprojects.
+// Aurora MES root build — conventions applied to all Java subprojects.
 // Each subproject applies its own plugin on top (java-library or org.springframework.boot).
 
 plugins {
@@ -10,7 +10,7 @@ plugins {
 apply plugin: 'jacoco'
 
 allprojects {
-    group   = 'com.mikemes'
+    group   = 'com.mes'
     version = '0.1.0-SNAPSHOT'
 
     repositories {

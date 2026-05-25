@@ -2,7 +2,7 @@ openapi: "3.0.3"
 info:
   title: Admin Service API
   description: |
-    Spring Boot Admin Server for MikeMES microservice observability.
+    Spring Boot Admin Server for Aurora MES microservice observability.
     The SBA Server UI and REST aggregation API are protected by Keycloak OIDC.
     The standard SBA REST API (instance registration, health aggregation) is exposed
     internally for SBA clients; the documentation below covers only custom and
@@ -46,7 +46,7 @@ paths:
       summary: SBA client registration (standard SBA endpoint — internal use only)
       description: |
         Called automatically by `spring-boot-admin-starter-client` on each service startup.
-        Not exposed through Spring Cloud Gateway — internal `mikemes-net` network only.
+        Not exposed through Spring Cloud Gateway — internal `mes-net` network only.
         No authentication required: Docker network isolation is the security boundary.
         External APIs are secured at the gateway level; this endpoint is never gateway-routed.
         See Spring Boot Admin documentation for full schema.

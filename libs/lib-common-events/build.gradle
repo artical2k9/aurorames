@@ -19,7 +19,7 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            groupId    = 'com.mikemes'
+            groupId    = 'com.mes'
             artifactId = 'lib-common-events'
             version    = project.version
             versionMapping {

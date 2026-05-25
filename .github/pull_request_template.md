@@ -36,7 +36,7 @@ Infrastructure (Docker Compose):
 Flyway migrations (auto-applied on service start — list files added):
   services/iam-service/src/main/resources/db/migration/V<n>__<description>.sql
 
-Keycloak realm changes (if keycloak/mikemes-realm.json changed):
+Keycloak realm changes (if keycloak/mes-realm.json changed):
   Re-import: docker compose -f docker/compose-infra.yml restart keycloak
   OR apply via admin console — list specific changes made
 

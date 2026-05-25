@@ -10,15 +10,15 @@ spring:
   # Spring Security 6.5+ (Spring Boot 3.5.0 added UnreachableFilterChainException enforcement).
   autoconfigure:
     exclude:
-      - com.mikemes.common.security.config.MikeMESSecurityAutoConfiguration
+      - com.mes.common.security.config.MESSecurityAutoConfiguration
 
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${AUDIT_DB_NAME:mikemes}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${AUDIT_DB_NAME:mes}
     username: ${AUDIT_SERVICE_DB_USERNAME:audit_service}
     password: ${AUDIT_SERVICE_DB_PASSWORD:changeme}
 
   flyway:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${AUDIT_DB_NAME:mikemes}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${AUDIT_DB_NAME:mes}
     user: ${AUDIT_FLYWAY_DB_USERNAME:audit_flyway}
     password: ${AUDIT_FLYWAY_DB_PASSWORD:changeme}
     schemas: audit
@@ -49,13 +49,13 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "com.mikemes.events.audit"
+        spring.json.trusted.packages: "com.mes.events.audit"
 
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/mikemes}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/mes}
 
 management:
   endpoints:
