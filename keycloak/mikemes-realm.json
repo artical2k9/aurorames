@@ -64,7 +64,7 @@
   "roles": {
     "realm": [
       {
-        "name": "ADMIN",
+        "name": "SYSTEM_ADMIN",
         "description": "Full system administration: manage users, roles, and all privileges",
         "composite": false,
         "clientRole": false
@@ -172,8 +172,10 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
-      "pkceCodeChallengeMethod": "S256",
       "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
       "redirectUris": [
         "http://localhost:4200/*",
         "https://mes.example.com/*"
@@ -316,7 +318,7 @@
           "temporary": true
         }
       ],
-      "realmRoles": ["ADMIN"]
+      "realmRoles": ["SYSTEM_ADMIN"]
     }
   ],
 
