@@ -122,7 +122,7 @@ class RoleControllerIT {
                 .build();
 
         createRealm();
-        adminToken = buildToken("ADMIN");
+        adminToken = buildToken("SYSTEM_ADMIN");
         viewerToken = buildToken("VIEWER");
         kcAdmin.close();
     }
@@ -157,7 +157,7 @@ class RoleControllerIT {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody()).hasSizeGreaterThanOrEqualTo(6);
         assertThat(response.getBody()).extracting(RoleResponse::name)
-                .contains("ADMIN", "OPERATOR", "QUALITY_INSPECTOR", "PLANNER", "ENGINEER", "VIEWER");
+                .contains("SYSTEM_ADMIN", "OPERATOR", "QUALITY_INSPECTOR", "PLANNER", "ENGINEER", "VIEWER");
     }
 
     @Test
@@ -202,7 +202,7 @@ class RoleControllerIT {
         assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
 
         UUID adminRoleId = jdbcTemplate.queryForObject(
-                "SELECT id FROM iam.role WHERE name = 'ADMIN' AND is_system_role = true", UUID.class);
+                "SELECT id FROM iam.role WHERE name = 'SYSTEM_ADMIN' AND is_system_role = true", UUID.class);
         assertThat(adminRoleId).isNotNull();
 
         ResponseEntity<Map> response = delete("/roles/" + adminRoleId, adminToken, Map.class);

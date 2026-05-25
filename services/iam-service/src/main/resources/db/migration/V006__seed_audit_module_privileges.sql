@@ -1,5 +1,5 @@
 -- V006: Seed audit module privileges and assign them to system roles.
--- AUDIT_READ is granted to ADMIN; SYSTEM_ADMIN already covers all privileges via wildcard.
+-- All audit privileges are assigned to SYSTEM_ADMIN via this seed migration.
 
 INSERT INTO iam.privilege (privilege_key, module_name, description, registered_by_service)
 VALUES
@@ -11,7 +11,7 @@ INSERT INTO iam.role_privilege (role_id, privilege_id, org_id, granted_by)
 SELECT r.id, p.id, r.org_id, 'migration'
 FROM   iam.role r
 CROSS JOIN iam.privilege p
-WHERE  r.name = 'ADMIN'
+WHERE  r.name = 'SYSTEM_ADMIN'
   AND  r.is_system_role = true
   AND  p.module_name = 'audit'
 ON CONFLICT (role_id, privilege_id) DO NOTHING;
