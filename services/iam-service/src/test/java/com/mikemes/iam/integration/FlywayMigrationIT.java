@@ -52,7 +52,7 @@ class FlywayMigrationIT {
         var names = jdbc.queryForList(
                 "SELECT name FROM iam.role WHERE is_system_role = true ORDER BY name",
                 String.class);
-        assertThat(names).containsExactly(
+        assertThat(names).containsExactlyInAnyOrder(
                 "SYSTEM_ADMIN", "ENGINEER", "OPERATOR", "PLANNER", "QUALITY_INSPECTOR", "VIEWER");
     }
 
@@ -70,7 +70,7 @@ class FlywayMigrationIT {
                 "SELECT count(*) FROM iam.role_privilege rp "
                         + "JOIN iam.role r ON rp.role_id = r.id "
                         + "JOIN iam.privilege p ON rp.privilege_id = p.id "
-                        + "WHERE r.name = 'ADMIN' AND r.is_system_role = true "
+                        + "WHERE r.name = 'SYSTEM_ADMIN' AND r.is_system_role = true "
                         + "AND p.module_name = 'iam'",
                 Integer.class);
         assertThat(count).isEqualTo(4);
@@ -90,7 +90,7 @@ class FlywayMigrationIT {
                 "SELECT count(*) FROM iam.role_privilege rp "
                         + "JOIN iam.role r ON rp.role_id = r.id "
                         + "JOIN iam.privilege p ON rp.privilege_id = p.id "
-                        + "WHERE r.name = 'ADMIN' AND r.is_system_role = true "
+                        + "WHERE r.name = 'SYSTEM_ADMIN' AND r.is_system_role = true "
                         + "AND p.module_name = 'platform'",
                 Integer.class);
         assertThat(count).isEqualTo(2);
@@ -115,7 +115,7 @@ class FlywayMigrationIT {
     @Test
     void rolePrivilege_orgId_notNullConstraintEnforced() {
         String roleId = jdbc.queryForObject(
-                "SELECT id FROM iam.role WHERE name = 'ADMIN' LIMIT 1",
+                "SELECT id FROM iam.role WHERE name = 'SYSTEM_ADMIN' LIMIT 1",
                 String.class);
         String privId = jdbc.queryForObject(
                 "SELECT id FROM iam.privilege WHERE privilege_key = 'iam:users:view'",
