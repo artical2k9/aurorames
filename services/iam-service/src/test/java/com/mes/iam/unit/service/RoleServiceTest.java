@@ -52,7 +52,7 @@ class RoleServiceTest {
     @BeforeEach
     void setUp() {
         customRole = new Role(ORG_ID, "SENIOR_INSPECTOR");
-        systemRole = new Role(ORG_ID, "ADMIN");
+        systemRole = new Role(ORG_ID, "SYSTEM_ADMIN");
         systemRole.setSystemRole(true);
     }
 

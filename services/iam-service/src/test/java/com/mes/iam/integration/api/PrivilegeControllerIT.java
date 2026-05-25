@@ -141,7 +141,7 @@ class PrivilegeControllerIT {
                     .password(kcPass)
                     .build();
             createRealm(kcAdmin);
-            adminToken = buildToken("ADMIN");
+            adminToken = buildToken("SYSTEM_ADMIN");
             viewerToken = buildToken("VIEWER");
             kcAdmin.close();
             return;
@@ -158,7 +158,7 @@ class PrivilegeControllerIT {
                 .build();
 
         createRealm(kcAdmin);
-        adminToken = buildToken("ADMIN");
+        adminToken = buildToken("SYSTEM_ADMIN");
         viewerToken = buildToken("VIEWER");
         kcAdmin.close();
     }
@@ -192,9 +192,9 @@ class PrivilegeControllerIT {
 
     @Test
     void privilegeCache_adminRole_hasIamRolesManagePrivilege() {
-        Set<String> privileges = privilegeCache.getPrivilegesForRole("ADMIN");
+        Set<String> privileges = privilegeCache.getPrivilegesForRole("SYSTEM_ADMIN");
         assertThat(privileges)
-                .as("LocalPrivilegeCache must return iam:roles:manage for ADMIN — " +
+                .as("LocalPrivilegeCache must return iam:roles:manage for SYSTEM_ADMIN — " +
                     "if empty, Flyway seed V003 has not run or the SQL schema/table names are wrong")
                 .contains("iam:roles:manage");
     }
@@ -285,8 +285,8 @@ class PrivilegeControllerIT {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         @SuppressWarnings("unchecked")
         Map<String, List<String>> body = (Map<String, List<String>>) Objects.requireNonNull(response.getBody());
-        assertThat(body).containsKey("ADMIN");
-        List<String> adminPrivileges = body.get("ADMIN");
+        assertThat(body).containsKey("SYSTEM_ADMIN");
+        List<String> adminPrivileges = body.get("SYSTEM_ADMIN");
         assertThat(adminPrivileges).contains("iam:roles:manage");
     }
 

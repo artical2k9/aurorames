@@ -115,9 +115,9 @@ class UserControllerIT {
 
         createRealm(kcAdmin);
         enableUnmanagedAttributes(kcAdmin);
-        ensureRealmRole(kcAdmin, "ADMIN");
+        ensureRealmRole(kcAdmin, "SYSTEM_ADMIN");
         ensureRealmRole(kcAdmin, "VIEWER");
-        adminToken = buildToken("ADMIN");
+        adminToken = buildToken("SYSTEM_ADMIN");
         viewerToken = buildToken("VIEWER");
         kcAdmin.close();
     }
@@ -145,7 +145,7 @@ class UserControllerIT {
     void createUser_withAdminToken_returns201AndUserAppearsInKeycloak() {
         assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
         String email = "invite-" + UUID.randomUUID() + "@test.com";
-        CreateUserRequest request = new CreateUserRequest(email, "Alice", "Smith", List.of("ADMIN"));
+        CreateUserRequest request = new CreateUserRequest(email, "Alice", "Smith", List.of("SYSTEM_ADMIN"));
 
         ResponseEntity<UserResponse> response = post("/users", adminToken, request, UserResponse.class);
 
@@ -154,7 +154,7 @@ class UserControllerIT {
         assertThat(body.email()).isEqualTo(email);
         assertThat(body.firstName()).isEqualTo("Alice");
         assertThat(body.enabled()).isTrue();
-        assertThat(body.roles()).contains("ADMIN");
+        assertThat(body.roles()).contains("SYSTEM_ADMIN");
     }
 
     @Test
@@ -192,7 +192,7 @@ class UserControllerIT {
     @Test
     void createUser_invalidEmail_returns400() {
         assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
-        CreateUserRequest request = new CreateUserRequest("not-an-email", "A", "B", List.of("ADMIN"));
+        CreateUserRequest request = new CreateUserRequest("not-an-email", "A", "B", List.of("SYSTEM_ADMIN"));
 
         ResponseEntity<Map> response = post("/users", adminToken, request, Map.class);
 
@@ -230,7 +230,7 @@ class UserControllerIT {
         String email = "get-" + UUID.randomUUID() + "@test.com";
         UserResponse created = Objects.requireNonNull(
                 post("/users", adminToken,
-                        new CreateUserRequest(email, "Get", "Me", List.of("ADMIN")),
+                        new CreateUserRequest(email, "Get", "Me", List.of("SYSTEM_ADMIN")),
                         UserResponse.class).getBody());
 
         ResponseEntity<UserResponse> response = get("/users/" + created.id(), adminToken,
@@ -256,7 +256,7 @@ class UserControllerIT {
         String email = "roles-" + UUID.randomUUID() + "@test.com";
         UserResponse created = Objects.requireNonNull(
                 post("/users", adminToken,
-                        new CreateUserRequest(email, "Role", "User", List.of("ADMIN")),
+                        new CreateUserRequest(email, "Role", "User", List.of("SYSTEM_ADMIN")),
                         UserResponse.class).getBody());
 
         UpdateUserRolesRequest req = new UpdateUserRolesRequest(List.of("VIEWER"));

@@ -106,7 +106,7 @@ class SystemConfigControllerIT {
     @BeforeEach
     void setUp() {
         client = new TestRestTemplate();
-        when(privilegeCache.getPrivilegesForRole("ADMIN"))
+        when(privilegeCache.getPrivilegesForRole("SYSTEM_ADMIN"))
                 .thenReturn(Set.of("platform:config:manage", "platform:config:read"));
         when(privilegeCache.getPrivilegesForRole("VIEWER"))
                 .thenReturn(Set.of("platform:config:read"));
@@ -116,7 +116,7 @@ class SystemConfigControllerIT {
     void put_upsert_returns200_and_get_returns_value() {
         String key = "test.upsert.key";
         UpsertConfigRequest req = new UpsertConfigRequest("upsert-value", "Test entry");
-        String adminToken = buildToken(ORG_A, "ADMIN");
+        String adminToken = buildToken(ORG_A, "SYSTEM_ADMIN");
 
         ResponseEntity<Map> putResponse = doPut(key, req, adminToken);
         assertThat(putResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -129,8 +129,8 @@ class SystemConfigControllerIT {
     @Test
     void get_other_org_returns_404() {
         String key = "test.org-isolation.key";
-        String adminTokenA = buildToken(ORG_A, "ADMIN");
-        String adminTokenB = buildToken(ORG_B, "ADMIN");
+        String adminTokenA = buildToken(ORG_A, "SYSTEM_ADMIN");
+        String adminTokenB = buildToken(ORG_B, "SYSTEM_ADMIN");
 
         doPut(key, new UpsertConfigRequest("org-a-value", null), adminTokenA);
 
@@ -150,7 +150,7 @@ class SystemConfigControllerIT {
     @Test
     void put_is_idempotent() {
         String key = "test.idempotent.key";
-        String adminToken = buildToken(ORG_A, "ADMIN");
+        String adminToken = buildToken(ORG_A, "SYSTEM_ADMIN");
 
         doPut(key, new UpsertConfigRequest("first-value", null), adminToken);
         ResponseEntity<Map> second = doPut(key, new UpsertConfigRequest("second-value", null), adminToken);
@@ -161,7 +161,7 @@ class SystemConfigControllerIT {
     @Test
     void delete_sets_active_false() {
         String key = "test.delete.key";
-        String adminToken = buildToken(ORG_A, "ADMIN");
+        String adminToken = buildToken(ORG_A, "SYSTEM_ADMIN");
 
         doPut(key, new UpsertConfigRequest("to-delete", null), adminToken);
 
@@ -175,7 +175,7 @@ class SystemConfigControllerIT {
     @Test
     void v001_migration_applies_cleanly() {
         assertThat(POSTGRES.isRunning()).isTrue();
-        ResponseEntity<List> list = doList(buildToken(ORG_A, "ADMIN"));
+        ResponseEntity<List> list = doList(buildToken(ORG_A, "SYSTEM_ADMIN"));
         assertThat(list.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 

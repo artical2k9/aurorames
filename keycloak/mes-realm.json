@@ -5,6 +5,8 @@
   "displayNameHtml": "<strong>Aurora</strong> MES",
   "enabled": true,
   "sslRequired": "external",
+  "notBefore": 0,
+  "defaultSignatureAlgorithm": "RS256",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,

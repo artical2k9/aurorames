@@ -43,11 +43,11 @@ class UserServiceTest {
                 .thenReturn(Optional.of(userRep(USER_ID, "alice@test.com", "Alice", "Smith", true)));
 
         UserResponse response = userService.createUser("alice@test.com", "Alice", "Smith",
-                ORG_ID, List.of("ADMIN"));
+                ORG_ID, List.of("SYSTEM_ADMIN"));
 
         assertThat(response.id()).isEqualTo(USER_ID);
         assertThat(response.email()).isEqualTo("alice@test.com");
-        assertThat(response.roles()).containsExactly("ADMIN");
+        assertThat(response.roles()).containsExactly("SYSTEM_ADMIN");
     }
 
     @Test
@@ -68,14 +68,14 @@ class UserServiceTest {
         UserRepresentation u1 = userRep("id-1", "one@test.com", "One", "User", true);
         UserRepresentation u2 = userRep("id-2", "two@test.com", "Two", "User", false);
         when(keycloakAdminClient.listUsersByOrgId(ORG_ID)).thenReturn(List.of(u1, u2));
-        when(keycloakAdminClient.getUserRoles("id-1")).thenReturn(List.of("ADMIN"));
+        when(keycloakAdminClient.getUserRoles("id-1")).thenReturn(List.of("SYSTEM_ADMIN"));
         when(keycloakAdminClient.getUserRoles("id-2")).thenReturn(List.of("VIEWER"));
 
         List<UserResponse> result = userService.listUsers(ORG_ID);
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).email()).isEqualTo("one@test.com");
-        assertThat(result.get(0).roles()).containsExactly("ADMIN");
+        assertThat(result.get(0).roles()).containsExactly("SYSTEM_ADMIN");
         assertThat(result.get(1).enabled()).isFalse();
     }
 
@@ -83,7 +83,7 @@ class UserServiceTest {
     void getUser_verifiesOrgAndReturnsResponse() {
         UserRepresentation u = userRepWithOrg(USER_ID, "alice@test.com", ORG_ID);
         when(keycloakAdminClient.findUserById(USER_ID)).thenReturn(Optional.of(u));
-        when(keycloakAdminClient.getUserRoles(USER_ID)).thenReturn(List.of("ADMIN"));
+        when(keycloakAdminClient.getUserRoles(USER_ID)).thenReturn(List.of("SYSTEM_ADMIN"));
 
         UserResponse response = userService.getUser(USER_ID, ORG_ID);
 
@@ -122,7 +122,7 @@ class UserServiceTest {
     void setUserRoles_notFound_throwsUserNotFoundException() {
         when(keycloakAdminClient.findUserById(USER_ID)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.setUserRoles(USER_ID, ORG_ID, List.of("ADMIN")))
+        assertThatThrownBy(() -> userService.setUserRoles(USER_ID, ORG_ID, List.of("SYSTEM_ADMIN")))
                 .isInstanceOf(UserNotFoundException.class);
 
         verify(keycloakAdminClient, never()).setUserRoles(anyString(), anyList());

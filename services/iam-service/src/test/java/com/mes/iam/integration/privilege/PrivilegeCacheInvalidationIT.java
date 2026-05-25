@@ -80,27 +80,27 @@ class PrivilegeCacheInvalidationIT {
     @Test
     void kafkaPrivilegeChange_invalidatesCacheEntry() {
         Cache<String, Set<String>> cache = caffeineCache();
-        cache.put("ADMIN", Set.of("iam:roles:manage", "iam:users:view"));
-        assertThat(cache.getIfPresent("ADMIN")).isNotNull();
+        cache.put("SYSTEM_ADMIN", Set.of("iam:roles:manage", "iam:users:view"));
+        assertThat(cache.getIfPresent("SYSTEM_ADMIN")).isNotNull();
 
-        kafkaTemplate.send("iam.privilege-changes", "ADMIN", "ADMIN");
+        kafkaTemplate.send("iam.privilege-changes", "SYSTEM_ADMIN", "SYSTEM_ADMIN");
 
         Awaitility.await()
                 .atMost(Duration.ofSeconds(5))
-                .untilAsserted(() -> assertThat(cache.getIfPresent("ADMIN")).isNull());
+                .untilAsserted(() -> assertThat(cache.getIfPresent("SYSTEM_ADMIN")).isNull());
     }
 
     @Test
     void kafkaPrivilegeChange_onlyInvalidatesTargetedRole() {
         Cache<String, Set<String>> cache = caffeineCache();
-        cache.put("ADMIN", Set.of("iam:roles:manage"));
+        cache.put("SYSTEM_ADMIN", Set.of("iam:roles:manage"));
         cache.put("VIEWER", Set.of("iam:users:view"));
 
-        kafkaTemplate.send("iam.privilege-changes", "ADMIN", "ADMIN");
+        kafkaTemplate.send("iam.privilege-changes", "SYSTEM_ADMIN", "SYSTEM_ADMIN");
 
         Awaitility.await()
                 .atMost(Duration.ofSeconds(5))
-                .untilAsserted(() -> assertThat(cache.getIfPresent("ADMIN")).isNull());
+                .untilAsserted(() -> assertThat(cache.getIfPresent("SYSTEM_ADMIN")).isNull());
 
         assertThat(cache.getIfPresent("VIEWER"))
                 .isNotNull()
@@ -110,17 +110,17 @@ class PrivilegeCacheInvalidationIT {
     @Test
     void kafkaPrivilegeChange_multipleMessages_invalidatesAllTargetedRoles() {
         Cache<String, Set<String>> cache = caffeineCache();
-        cache.put("ADMIN", Set.of("iam:roles:manage"));
+        cache.put("SYSTEM_ADMIN", Set.of("iam:roles:manage"));
         cache.put("OPERATOR", Set.of("iam:users:view"));
         cache.put("VIEWER", Set.of("iam:privileges:view"));
 
-        kafkaTemplate.send("iam.privilege-changes", "ADMIN", "ADMIN");
+        kafkaTemplate.send("iam.privilege-changes", "SYSTEM_ADMIN", "SYSTEM_ADMIN");
         kafkaTemplate.send("iam.privilege-changes", "OPERATOR", "OPERATOR");
 
         Awaitility.await()
                 .atMost(Duration.ofSeconds(5))
                 .untilAsserted(() -> {
-                    assertThat(cache.getIfPresent("ADMIN")).isNull();
+                    assertThat(cache.getIfPresent("SYSTEM_ADMIN")).isNull();
                     assertThat(cache.getIfPresent("OPERATOR")).isNull();
                 });
 
