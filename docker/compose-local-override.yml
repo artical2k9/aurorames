@@ -2,3 +2,6 @@ services:
   admin-service:
     image: ghcr.io/artical2k9/mes-admin-service:local
     pull_policy: never
+  work-order-service:
+    image: ghcr.io/artical2k9/mes-work-order-service:local
+    pull_policy: never
