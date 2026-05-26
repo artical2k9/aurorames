@@ -18,17 +18,17 @@ import org.testcontainers.utility.DockerImageName;
 public abstract class BaseIntegrationTest {
 
     @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")
+    protected static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")
             .withDatabaseName("mes")
             .withUsername("work_order_user")
             .withPassword("secret");
 
     @Container
-    static final KafkaContainer KAFKA = new KafkaContainer(
+    protected static final KafkaContainer KAFKA = new KafkaContainer(
             DockerImageName.parse("apache/kafka:3.7.1").asCompatibleSubstituteFor("confluentinc/cp-kafka"));
 
     @RegisterExtension
-    static final KeycloakTestSupport KEYCLOAK = new KeycloakTestSupport();
+    protected static final KeycloakTestSupport KEYCLOAK = new KeycloakTestSupport();
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
