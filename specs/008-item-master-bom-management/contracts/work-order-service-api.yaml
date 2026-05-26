@@ -324,6 +324,7 @@ components:
         displayOrder:  { type: integer }
         active:        { type: boolean }
         createdAt:     { type: string, format: date-time }
+        modifiedAt:    { type: string, format: date-time }
 
     CreateUdfFieldRequest:
       type: object

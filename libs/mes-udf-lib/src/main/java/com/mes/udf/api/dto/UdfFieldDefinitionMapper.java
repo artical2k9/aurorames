@@ -11,7 +11,6 @@ public final class UdfFieldDefinitionMapper {
     public static UdfFieldDefinitionDto toDto(UdfFieldDefinition entity) {
         var dto = new UdfFieldDefinitionDto();
         dto.setId(entity.getId());
-        dto.setOrgId(entity.getOrgId());
         dto.setModuleKey(entity.getModuleKey());
         dto.setFieldKey(entity.getFieldKey());
         dto.setLabel(entity.getLabel());

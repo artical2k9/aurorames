@@ -11,7 +11,6 @@ import java.util.UUID;
 public class UdfFieldDefinitionDto {
 
     private UUID id;
-    private UUID orgId;
     private ModuleKey moduleKey;
     private String fieldKey;
     private String label;
@@ -30,12 +29,6 @@ public class UdfFieldDefinitionDto {
     }
     public void setId(UUID id) {
         this.id = id;
-    }
-    public UUID getOrgId() {
-        return orgId;
-    }
-    public void setOrgId(UUID orgId) {
-        this.orgId = orgId;
     }
     public ModuleKey getModuleKey() {
         return moduleKey;
