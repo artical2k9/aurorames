@@ -11,6 +11,9 @@ dependencies {
     // ── JPA — UdfFieldDefinition entity and repository ────────────────────────
     api 'org.springframework.boot:spring-boot-starter-data-jpa'
 
+    // ── Envers — @Audited on UdfFieldDefinition ───────────────────────────────
+    api libs.hibernate.envers
+
     // ── Web — REST controller for /udf/fields endpoint ────────────────────────
     api 'org.springframework.boot:spring-boot-starter-web'
 
@@ -28,6 +31,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
     compileOnly    'org.springframework.boot:spring-boot-configuration-processor'
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // ── Privilege annotation — provided by consuming service at runtime ───────
+    compileOnly project(':libs:lib-common-security')
 
     // ── Tests ─────────────────────────────────────────────────────────────────
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
