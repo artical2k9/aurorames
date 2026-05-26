@@ -15,7 +15,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
 @EmbeddedKafka(partitions = 1,
-        topics = {"iam.privilege-changes"},
+        topics = {"iam.privilege-changes", "work-order.item-master.events"},
         bootstrapServersProperty = "spring.kafka.bootstrap-servers")
 public abstract class BaseIntegrationTest {
 

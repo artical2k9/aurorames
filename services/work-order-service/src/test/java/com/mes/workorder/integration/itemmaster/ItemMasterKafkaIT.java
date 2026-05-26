@@ -9,6 +9,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -27,6 +28,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ItemMasterKafkaIT extends BaseIntegrationTest {
 
     static final String TOPIC = "work-order.item-master.events";
+
+    @Autowired
+    EmbeddedKafkaBroker embeddedKafka;
 
     @Autowired
     ObjectMapper objectMapper;
@@ -105,7 +109,7 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
 
     private JsonNode pollForEvent(String topic, String eventType, int timeoutSeconds) throws Exception {
         Properties props = new Properties();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafka.getBrokersAsString());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group-" + UUID.randomUUID());
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
