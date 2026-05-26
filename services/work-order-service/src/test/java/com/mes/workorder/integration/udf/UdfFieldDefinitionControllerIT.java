@@ -81,7 +81,7 @@ class UdfFieldDefinitionControllerIT extends BaseIntegrationTest {
     }
 
     @Test
-    void duplicateFieldKeyReturns409() {
+    void duplicateFieldKeyReturns409AndErrorResponseShape() {
         String token = adminToken();
         Map<String, Object> req = textFieldRequest("code_ref_004", false);
         restTemplate.exchange(UDF_URL, HttpMethod.POST, jsonRequest(token, req), Map.class);
@@ -90,6 +90,8 @@ class UdfFieldDefinitionControllerIT extends BaseIntegrationTest {
                 UDF_URL, HttpMethod.POST, jsonRequest(token, req), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).containsKeys("status", "error", "message", "timestamp");
+        assertThat(response.getBody().get("status")).isEqualTo(409);
     }
 
     @Test
@@ -129,6 +131,21 @@ class UdfFieldDefinitionControllerIT extends BaseIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody().get("message").toString())
                 .contains("record(s) have values");
+    }
+
+    @Test
+    void deleteNonExistentFieldReturns404() {
+        String adminToken = adminToken();
+        String nonExistentId = UUID.randomUUID().toString();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(adminToken);
+        ResponseEntity<Map> response = restTemplate.exchange(
+                UDF_URL + "/" + nonExistentId, HttpMethod.DELETE,
+                new HttpEntity<>(headers), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsKeys("status", "error", "message", "timestamp");
     }
 
     @Test
