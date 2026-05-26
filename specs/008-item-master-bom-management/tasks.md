@@ -39,19 +39,19 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 **Purpose**: Create the two new Gradle subprojects and wire them into build, CI, Docker, and SonarCloud.
 
-- [ ] T001 Add `:libs:mes-udf-lib` and `:services:work-order-service` to `settings.gradle` (include both subprojects)
-- [ ] T002 Create `libs/mes-udf-lib/build.gradle` — plain Java library, `group = 'com.mes'`, dependencies: spring-boot-starter-data-jpa, spring-boot-starter-web, spring-boot-starter-validation; publish block targeting mavenLocal
-- [ ] T003 Create `services/work-order-service/build.gradle` — Spring Boot plugin, dependencies: lib-common-security, lib-common-audit, mes-udf-lib, spring-boot-starter-web, spring-boot-starter-data-jpa, spring-boot-starter-validation, spring-boot-starter-actuator, flyway-core, flyway-database-postgresql, spring-kafka, postgresql (runtime), springdoc-openapi-webmvc, spring-boot-admin-starter-client; testImplementation: spring-boot-starter-test, testcontainers-junit-jupiter, testcontainers-postgresql, testcontainers-kafka
-- [ ] T004 [P] Create `services/work-order-service/src/main/java/com/mes/workorder/WorkOrderServiceApplication.java` — `@SpringBootApplication`, `@EnableJpaAuditing`, `ApplicationReadyEvent` listener stub for privilege registration
-- [ ] T005 [P] Create `services/work-order-service/src/main/resources/application.yml` — server.port 8095, datasource (work_order schema), Flyway locations, Keycloak issuer URI, IAM service URL, Kafka bootstrap, mes.bom.max-depth: 50, Spring Boot Admin client URL, autoconfigure exclusions
-- [ ] T006 [P] Create `services/work-order-service/Dockerfile` — multi-stage, Eclipse Temurin 21, matching pattern of `services/platform-service/Dockerfile`
-- [ ] T007 Add `work-order-service` service block to `docker/compose-infra.yml` — build context, port 8095:8095, network mes-net, env vars (datasource URL, Keycloak issuer URI, IAM service URL, Kafka, MES_SECURITY_WEBHOOK_TOKEN), depends_on postgres+kafka+keycloak, healthcheck `wget http://localhost:8095/actuator/health`
-- [ ] T008 [P] Add `work-order-service` service block to `docker/compose-prod.yml` — image `ghcr.io/artical2k9/mes-work-order-service:${TAG}`, same env pattern as compose-infra
-- [ ] T009 [P] Add `work-order-service:local` override to `docker/compose-local-override.yml`
-- [ ] T010 Add `work-order-service` to `.github/workflows/publish.yml` image build matrix (alongside existing service names)
-- [ ] T011 Add `services/work-order-service/src/main/java` and `libs/mes-udf-lib/src/main/java` to `sonar.sources` in `sonar-project.properties`; add corresponding test paths to `sonar.tests`
-- [ ] T012 [P] Create `libs/mes-udf-lib/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` — entry: `com.mes.udf.config.UdfAutoConfiguration`; create stub `UdfAutoConfiguration.java` in `libs/mes-udf-lib/src/main/java/com/mes/udf/config/`
-- [ ] T013 [P] Run `./gradlew :libs:mes-udf-lib:build :services:work-order-service:build -x test` — confirm both modules compile with zero errors before proceeding
+- [X] T001 Add `:libs:mes-udf-lib` and `:services:work-order-service` to `settings.gradle` (include both subprojects)
+- [X] T002 Create `libs/mes-udf-lib/build.gradle` — plain Java library, `group = 'com.mes'`, dependencies: spring-boot-starter-data-jpa, spring-boot-starter-web, spring-boot-starter-validation; publish block targeting mavenLocal
+- [X] T003 Create `services/work-order-service/build.gradle` — Spring Boot plugin, dependencies: lib-common-security, lib-common-audit, mes-udf-lib, spring-boot-starter-web, spring-boot-starter-data-jpa, spring-boot-starter-validation, spring-boot-starter-actuator, flyway-core, flyway-database-postgresql, spring-kafka, postgresql (runtime), springdoc-openapi-webmvc, spring-boot-admin-starter-client; testImplementation: spring-boot-starter-test, testcontainers-junit-jupiter, testcontainers-postgresql, testcontainers-kafka
+- [X] T004 [P] Create `services/work-order-service/src/main/java/com/mes/workorder/WorkOrderServiceApplication.java` — `@SpringBootApplication`, `@EnableJpaAuditing`, `ApplicationReadyEvent` listener stub for privilege registration
+- [X] T005 [P] Create `services/work-order-service/src/main/resources/application.yml` — server.port 8095, datasource (work_order schema), Flyway locations, Keycloak issuer URI, IAM service URL, Kafka bootstrap, mes.bom.max-depth: 50, Spring Boot Admin client URL, autoconfigure exclusions
+- [X] T006 [P] Create `services/work-order-service/Dockerfile` — multi-stage, Eclipse Temurin 21, matching pattern of `services/platform-service/Dockerfile`
+- [X] T007 Add `work-order-service` service block to `docker/compose-infra.yml` — build context, port 8095:8095, network mes-net, env vars (datasource URL, Keycloak issuer URI, IAM service URL, Kafka, MES_SECURITY_WEBHOOK_TOKEN), depends_on postgres+kafka+keycloak, healthcheck `wget http://localhost:8095/actuator/health`
+- [X] T008 [P] Add `work-order-service` service block to `docker/compose-prod.yml` — image `ghcr.io/artical2k9/mes-work-order-service:${TAG}`, same env pattern as compose-infra
+- [X] T009 [P] Add `work-order-service:local` override to `docker/compose-local-override.yml`
+- [X] T010 Add `work-order-service` to `.github/workflows/publish.yml` image build matrix (alongside existing service names)
+- [X] T011 Add `services/work-order-service/src/main/java` and `libs/mes-udf-lib/src/main/java` to `sonar.sources` in `sonar-project.properties`; add corresponding test paths to `sonar.tests`
+- [X] T012 [P] Create `libs/mes-udf-lib/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` — entry: `com.mes.udf.config.UdfAutoConfiguration`; create stub `UdfAutoConfiguration.java` in `libs/mes-udf-lib/src/main/java/com/mes/udf/config/`
+- [X] T013 [P] Run `./gradlew :libs:mes-udf-lib:build :services:work-order-service:build -x test` — confirm both modules compile with zero errors before proceeding
 
 **Checkpoint**: Both modules compile. Docker Compose can build the work-order-service image.
 
