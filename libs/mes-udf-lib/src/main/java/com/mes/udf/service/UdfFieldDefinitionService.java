@@ -24,13 +24,16 @@ public class UdfFieldDefinitionService {
     private final UdfFieldDefinitionRepository repository;
     private final Optional<UdfUsageChecker> usageChecker;
     private final Optional<UdfValueNullifier> valueNullifier;
+    private final Optional<UdfAffectedRecordsFinder> affectedRecordsFinder;
 
     public UdfFieldDefinitionService(UdfFieldDefinitionRepository repository,
                                      Optional<UdfUsageChecker> usageChecker,
-                                     Optional<UdfValueNullifier> valueNullifier) {
+                                     Optional<UdfValueNullifier> valueNullifier,
+                                     Optional<UdfAffectedRecordsFinder> affectedRecordsFinder) {
         this.repository = repository;
         this.usageChecker = usageChecker;
         this.valueNullifier = valueNullifier;
+        this.affectedRecordsFinder = affectedRecordsFinder;
     }
 
     public UdfFieldDefinition define(UUID orgId, CreateUdfFieldRequest req) {
@@ -57,7 +60,7 @@ public class UdfFieldDefinitionService {
 
     public void deactivate(UUID orgId, UUID fieldId, boolean force) {
         UdfFieldDefinition def = repository.findByOrgIdAndId(orgId, fieldId)
-                .orElseThrow(() -> new UdfDefinitionConflictException(
+                .orElseThrow(() -> new UdfFieldNotFoundException(
                         "UDF field not found: " + fieldId));
 
         long usageCount = usageChecker
@@ -71,8 +74,11 @@ public class UdfFieldDefinitionService {
         }
 
         if (force && usageCount > 0) {
-            LOG.info("Force-deleting UDF field '{}' on org {} — nullifying values in {} record(s)",
-                    def.getFieldKey(), orgId, usageCount);
+            affectedRecordsFinder.ifPresent(finder -> {
+                List<UUID> ids = finder.findAffectedIds(orgId, def.getFieldKey());
+                LOG.info("Force-deleting UDF field '{}' on org {} — nullifying {} record(s): {}",
+                        def.getFieldKey(), orgId, ids.size(), ids);
+            });
             valueNullifier.ifPresent(n -> n.nullifyValues(orgId, def.getFieldKey()));
         }
 

@@ -1,10 +1,12 @@
 package com.mes.workorder.api;
 
 import com.mes.udf.service.UdfDefinitionConflictException;
+import com.mes.udf.service.UdfFieldNotFoundException;
 import com.mes.udf.service.UdfValidationException;
 import com.mes.workorder.itemmaster.service.ItemMasterConflictException;
 import com.mes.workorder.itemmaster.service.ItemMasterNotFoundException;
 import com.mes.workorder.itemmaster.service.ItemMasterValidationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -31,6 +33,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), "not_found",
                         ex.getMessage(), Instant.now()));
+    }
+
+    @ExceptionHandler(UdfFieldNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUdfNotFound(UdfFieldNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), "not_found",
+                        ex.getMessage(), Instant.now()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), "conflict",
+                        "Data integrity violation", Instant.now()));
     }
 
     @ExceptionHandler(ItemMasterConflictException.class)
