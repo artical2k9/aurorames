@@ -4,7 +4,10 @@ import com.mes.udf.api.dto.CreateUdfFieldRequest;
 import com.mes.udf.api.dto.UdfFieldDefinitionMapper;
 import com.mes.udf.domain.ModuleKey;
 import com.mes.udf.domain.UdfFieldDefinition;
+import com.mes.udf.domain.UdfFieldType;
 import com.mes.udf.repository.UdfFieldDefinitionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +18,8 @@ import java.util.UUID;
 @Service
 @Transactional
 public class UdfFieldDefinitionService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(UdfFieldDefinitionService.class);
 
     private final UdfFieldDefinitionRepository repository;
     private final Optional<UdfUsageChecker> usageChecker;
@@ -34,6 +39,12 @@ public class UdfFieldDefinitionService {
             throw new UdfDefinitionConflictException(
                     "UDF field already defined: " + req.getFieldKey()
                     + " on module " + req.getModuleKey());
+        }
+        if (req.getFieldType() == UdfFieldType.LIST
+                && (req.getListOptions() == null || req.getListOptions().isEmpty())) {
+            throw new UdfValidationException(
+                    "LIST-type field '" + req.getFieldKey()
+                    + "' requires at least one entry in listOptions");
         }
         UdfFieldDefinition entity = UdfFieldDefinitionMapper.fromRequest(orgId, req);
         return repository.save(entity);
@@ -60,6 +71,8 @@ public class UdfFieldDefinitionService {
         }
 
         if (force && usageCount > 0) {
+            LOG.info("Force-deleting UDF field '{}' on org {} — nullifying values in {} record(s)",
+                    def.getFieldKey(), orgId, usageCount);
             valueNullifier.ifPresent(n -> n.nullifyValues(orgId, def.getFieldKey()));
         }
 
