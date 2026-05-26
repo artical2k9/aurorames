@@ -96,6 +96,11 @@ public class ItemMasterController {
 
     private UUID extractOrgId(Jwt jwt) {
         String orgId = jwt.getClaimAsString("org_id");
+        if (orgId == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "org_id claim missing from token");
+        }
         return UUID.fromString(orgId);
     }
 }

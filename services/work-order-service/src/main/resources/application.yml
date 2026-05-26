@@ -19,6 +19,8 @@ spring:
       hibernate:
         default_schema: work_order
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        org.hibernate.envers.default_schema: work_order
+        org.hibernate.envers.audit_table_schema: work_order
   boot:
     admin:
       client:
@@ -50,8 +52,8 @@ management:
 
 mes:
   security:
-    webhook-token: ${MES_SECURITY_WEBHOOK_TOKEN:changeme}
-    iam-service-url: ${IAM_SERVICE_URL:http://iam-service:8080}
+    webhook-token: ${MES_SECURITY_WEBHOOK_TOKEN}
+    iam-service-url: ${IAM_SERVICE_URL:http://iam-service:8085}
     privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL_SECONDS:300}
   bom:
     max-depth: ${BOM_MAX_DEPTH:50}

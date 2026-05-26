@@ -2,6 +2,7 @@ package com.mes.workorder;
 
 import com.mes.common.security.privilege.PrivilegeRegistration;
 import com.mes.common.security.privilege.PrivilegeRegistryClient;
+import com.mes.workorder.health.PrivilegeRegistrationHealthIndicator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
@@ -19,9 +20,12 @@ public class WorkOrderServiceApplication implements ApplicationListener<Applicat
     private static final Logger log = LoggerFactory.getLogger(WorkOrderServiceApplication.class);
 
     private final PrivilegeRegistryClient privilegeRegistryClient;
+    private final PrivilegeRegistrationHealthIndicator privilegeHealthIndicator;
 
-    public WorkOrderServiceApplication(PrivilegeRegistryClient privilegeRegistryClient) {
+    public WorkOrderServiceApplication(PrivilegeRegistryClient privilegeRegistryClient,
+                                       PrivilegeRegistrationHealthIndicator privilegeHealthIndicator) {
         this.privilegeRegistryClient = privilegeRegistryClient;
+        this.privilegeHealthIndicator = privilegeHealthIndicator;
     }
 
     public static void main(String[] args) {
@@ -38,6 +42,7 @@ public class WorkOrderServiceApplication implements ApplicationListener<Applicat
                     new PrivilegeRegistration("item-master:eco:manage",     "Create and approve ECOs"),
                     new PrivilegeRegistration("item-master:udf:manage",     "Define and delete UDF fields")
             ));
+            privilegeHealthIndicator.markRegistered();
             log.info("item-master privileges registered with IAM service");
         } catch (Exception e) {
             log.warn("Failed to register item-master privileges on startup (non-fatal): {}", e.getMessage());

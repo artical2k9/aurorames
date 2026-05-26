@@ -2,12 +2,14 @@ package com.mes.workorder.integration.itemmaster;
 
 import com.mes.workorder.integration.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.Map;
 import java.util.UUID;
@@ -18,6 +20,9 @@ class ItemMasterControllerIT extends BaseIntegrationTest {
 
     static final String ORG_ID = "00000000-0000-0000-0000-000000000001";
     static final String BASE_URL = "/api/v1/item-master";
+
+    @Autowired
+    JdbcTemplate jdbcTemplate;
 
     @Test
     void postCreatesRecordAndReturns201WithLocationHeader() {
@@ -88,6 +93,39 @@ class ItemMasterControllerIT extends BaseIntegrationTest {
                 BASE_URL, HttpMethod.POST, jsonRequest(token, request), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    @Test
+    void createAndPatchWritesTwoEnversAuditRows() {
+        String token = engineerToken();
+        ResponseEntity<Map> created = restTemplate.exchange(
+                BASE_URL, HttpMethod.POST,
+                jsonRequest(token, createRequest("BRKT-AUD", "A")), Map.class);
+        String location = created.getHeaders().getLocation().getPath();
+        String itemId = location.substring(location.lastIndexOf('/') + 1);
+
+        restTemplate.exchange(
+                BASE_URL + "/" + itemId, HttpMethod.PATCH,
+                jsonRequest(token, Map.of("description", "Audited update")), Map.class);
+
+        Integer auditRows = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM work_order.item_master_aud WHERE id = ?::uuid",
+                Integer.class, itemId);
+        assertThat(auditRows).isEqualTo(2);
+    }
+
+    @Test
+    void postWithNoPrivilegesReturns403() {
+        if (!KEYCLOAK.isRunning()) return;
+        String username = "viewer-" + UUID.randomUUID();
+        KEYCLOAK.createUser(username, "pass", ORG_ID, java.util.List.of());
+        String token = KEYCLOAK.fetchToken(username, "pass");
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BASE_URL, HttpMethod.POST,
+                jsonRequest(token, createRequest("BRKT-403", "A")), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

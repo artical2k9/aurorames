@@ -2,7 +2,7 @@ package com.mes.workorder.config;
 
 import com.mes.common.security.annotation.EnableMESSecurity;
 import com.mes.workorder.filter.WebhookTokenFilter;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -12,17 +12,18 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableMESSecurity
+@EnableConfigurationProperties(WorkOrderSecurityProperties.class)
 public class SecurityConfig {
 
     @Bean
     @Order(1)
     public SecurityFilterChain internalSecurityFilterChain(
             HttpSecurity http,
-            @Value("${mes.security.webhook-token}") String webhookToken) throws Exception {
+            WorkOrderSecurityProperties securityProperties) throws Exception {
         return http
                 .securityMatcher("/internal/**")
                 .csrf(csrf -> csrf.disable())
-                .addFilterBefore(new WebhookTokenFilter(webhookToken),
+                .addFilterBefore(new WebhookTokenFilter(securityProperties.getWebhookToken()),
                         UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
                 .build();

@@ -6,6 +6,8 @@ import com.mes.workorder.preferences.domain.UserGridPreference;
 import com.mes.workorder.preferences.repository.UserGridPreferenceRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,7 @@ import java.util.UUID;
 @Transactional
 public class UserGridPreferenceService {
 
+    private static final Logger log = LoggerFactory.getLogger(UserGridPreferenceService.class);
     private static final TypeReference<List<ColumnPreferenceEntry>> COLUMN_TYPE = new TypeReference<>() {};
 
     private final UserGridPreferenceRepository repository;
@@ -37,7 +40,14 @@ public class UserGridPreferenceService {
     public UserGridPreferenceDto get(UUID orgId, String userId, String moduleKey) {
         return repository.findByOrgIdAndUserIdAndModuleKey(orgId, userId, moduleKey)
                 .map(pref -> {
-                    List<ColumnPreferenceEntry> cols = objectMapper.convertValue(pref.getColumnConfig(), COLUMN_TYPE);
+                    List<ColumnPreferenceEntry> cols;
+                    try {
+                        cols = objectMapper.convertValue(pref.getColumnConfig(), COLUMN_TYPE);
+                    } catch (IllegalArgumentException e) {
+                        log.warn("Corrupted column_config for org={} user={} module={}, returning defaults: {}",
+                                orgId, userId, moduleKey, e.getMessage());
+                        cols = defaultColumnRegistry.getOrDefault(moduleKey, List.of());
+                    }
                     return new UserGridPreferenceDto(moduleKey, cols);
                 })
                 .orElseGet(() -> {

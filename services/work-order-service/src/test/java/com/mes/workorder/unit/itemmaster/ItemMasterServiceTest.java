@@ -10,21 +10,17 @@ import com.mes.workorder.itemmaster.service.ItemMasterConflictException;
 import com.mes.workorder.itemmaster.service.ItemMasterService;
 import com.mes.workorder.itemmaster.service.ItemMasterValidationException;
 import com.mes.workorder.kafka.ItemMasterEventPublisher;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.util.List;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,12 +33,6 @@ class ItemMasterServiceTest {
     ItemMasterService service;
 
     UUID orgId = UUID.randomUUID();
-
-    @BeforeEach
-    void setUp() {
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("engineer-user", null, List.of()));
-    }
 
     @Test
     void createThrowsConflictWhenPartNumberRevisionAlreadyExists() {
@@ -65,14 +55,13 @@ class ItemMasterServiceTest {
     }
 
     @Test
-    void createPopulatesAuditFieldsFromSecurityContext() {
+    void createPublishesKafkaEventAfterSave() {
         when(repository.existsByOrgIdAndPartNumberAndRevision(any(), any(), any())).thenReturn(false);
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        ItemMaster saved = service.create(orgId, "BRKT-001", "A", validRequest());
+        service.create(orgId, "BRKT-001", "A", validRequest());
 
-        assertThat(saved.getCreatedBy()).isEqualTo("engineer-user");
-        assertThat(saved.getModifiedBy()).isEqualTo("engineer-user");
+        verify(eventPublisher).publishCreated(any(ItemMaster.class));
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

@@ -12,10 +12,13 @@ services:
       POSTGRES_DB: mes
       POSTGRES_USER: ${IAM_DB_USER:-iam_user}
       POSTGRES_PASSWORD: ${IAM_DB_PASSWORD:?IAM_DB_PASSWORD must be set}
+      WORK_ORDER_DB_USER: ${WORK_ORDER_DB_USER:?WORK_ORDER_DB_USER must be set}
+      WORK_ORDER_DB_PASSWORD: ${WORK_ORDER_DB_PASSWORD:?WORK_ORDER_DB_PASSWORD must be set}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./postgres:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${IAM_DB_USER:-iam_user} -d mes"]
       interval: 10s
@@ -268,7 +271,7 @@ services:
       WORK_ORDER_DB_USER: ${WORK_ORDER_DB_USER:?WORK_ORDER_DB_USER must be set}
       WORK_ORDER_DB_PASSWORD: ${WORK_ORDER_DB_PASSWORD:?WORK_ORDER_DB_PASSWORD must be set}
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mes}
-      IAM_SERVICE_URL: http://iam-service:8080
+      IAM_SERVICE_URL: http://iam-service:8085
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MES_SECURITY_WEBHOOK_TOKEN: ${MES_SECURITY_WEBHOOK_TOKEN:?MES_SECURITY_WEBHOOK_TOKEN must be set}
       ADMIN_SERVICE_URL: http://admin-service:8888

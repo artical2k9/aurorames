@@ -1,4 +1,11 @@
 -- V007: Seed item-master module privileges and assign to SYSTEM_ADMIN and ENGINEER roles.
+--
+-- PREREQUISITE: work_order_user must have INSERT on iam.privilege and iam.role_privilege.
+-- In Docker Compose this is handled by docker/postgres/20-cross-schema-grants.sh (init script).
+-- In production PostgreSQL, run as a DBA before deploying this service:
+--   GRANT USAGE ON SCHEMA iam TO work_order_user;
+--   GRANT SELECT, INSERT ON iam.privilege, iam.role_privilege, iam.role TO work_order_user;
+-- This migration will fail with "permission denied" if the grants are missing.
 
 INSERT INTO iam.privilege (privilege_key, module_name, description, registered_by_service)
 VALUES

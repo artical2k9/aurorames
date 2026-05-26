@@ -9,8 +9,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.Type;
 import org.hibernate.envers.Audited;
@@ -108,14 +106,6 @@ public class ItemMaster {
     @LastModifiedDate
     @Column(name = "modified_at", nullable = false)
     private Instant modifiedAt;
-
-    @PrePersist
-    @PreUpdate
-    void enforceShelfLifeConstraint() {
-        if (shelfLifeControlled && shelfLifeDays == null) {
-            throw new IllegalStateException("shelfLifeDays is required when shelfLifeControlled is true");
-        }
-    }
 
     // ── Getters and setters ───────────────────────────────────────────────────
 

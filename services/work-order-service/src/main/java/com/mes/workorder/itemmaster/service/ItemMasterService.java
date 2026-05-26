@@ -8,10 +8,8 @@ import com.mes.workorder.itemmaster.domain.ItemMaster;
 import com.mes.workorder.itemmaster.domain.ItemStatus;
 import com.mes.workorder.itemmaster.repository.ItemMasterRepository;
 import com.mes.workorder.kafka.ItemMasterEventPublisher;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +23,7 @@ public class ItemMasterService {
     private final ItemMasterEventPublisher eventPublisher;
 
     public ItemMasterService(ItemMasterRepository repository,
-                              @Lazy ItemMasterEventPublisher eventPublisher) {
+                              ItemMasterEventPublisher eventPublisher) {
         this.repository = repository;
         this.eventPublisher = eventPublisher;
     }
@@ -41,13 +39,9 @@ public class ItemMasterService {
         entity.setOrgId(orgId);
         entity.setPartNumber(partNumber);
         entity.setRevision(revision);
-        entity.setCreatedBy(currentUser());
-        entity.setModifiedBy(currentUser());
 
         ItemMaster saved = repository.save(entity);
-        if (eventPublisher != null) {
-            eventPublisher.publishCreated(saved);
-        }
+        eventPublisher.publishCreated(saved);
         return saved;
     }
 
@@ -67,19 +61,15 @@ public class ItemMasterService {
         validateShelfLife(effectiveControlled, effectiveDays);
 
         ItemMasterMapper.applyPatch(req, entity);
-        entity.setModifiedBy(currentUser());
 
         ItemMaster saved = repository.save(entity);
-        if (eventPublisher != null) {
-            eventPublisher.publishUpdated(saved);
-        }
+        eventPublisher.publishUpdated(saved);
         return saved;
     }
 
     public ItemMaster obsolete(UUID orgId, UUID itemId) {
         ItemMaster entity = get(orgId, itemId);
         entity.setStatus(ItemStatus.OBSOLETE);
-        entity.setModifiedBy(currentUser());
         return repository.save(entity);
     }
 
@@ -99,10 +89,5 @@ public class ItemMasterService {
         if (controlled && days == null) {
             throw new ItemMasterValidationException("shelfLifeDays is required when shelfLifeControlled is true");
         }
-    }
-
-    private String currentUser() {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null ? auth.getName() : "system";
     }
 }
