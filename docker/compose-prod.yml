@@ -91,7 +91,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ../keycloak/mikemes-realm.json:/opt/keycloak/data/import/mikemes-realm.json:ro
+      - ../keycloak/mes-realm.json:/opt/keycloak/data/import/mes-realm.json:ro
     depends_on:
       kafka:
         condition: service_healthy
