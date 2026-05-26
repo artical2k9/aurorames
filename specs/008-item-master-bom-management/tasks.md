@@ -9,6 +9,16 @@
 **TDD**: Per Constitution §II — write tests FIRST, confirm FAILING before any implementation.
 Log all test failures as tracked defects before closing the story.
 
+**Commit convention**: Every task gets its own commit tagged with the task ID. Format:
+```
+[type](MES-8): description [TXXX]
+
+Ref: MES-8
+Task: TXXX
+```
+Example: `[feat](MES-8): add ItemMaster JPA entity [T027]`
+The `Task: TXXX` footer links each commit back to this file without requiring Jira sub-issues.
+
 ---
 
 ## PR Strategy
