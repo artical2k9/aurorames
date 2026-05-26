@@ -7,6 +7,7 @@ import com.mes.workorder.itemmaster.api.dto.CreateItemMasterRequest;
 import com.mes.workorder.itemmaster.api.dto.ItemMasterMapper;
 import com.mes.workorder.itemmaster.api.dto.PatchItemMasterRequest;
 import com.mes.workorder.itemmaster.domain.Classification;
+import com.mes.workorder.itemmaster.domain.CounterfeitRiskLevel;
 import com.mes.workorder.itemmaster.domain.ItemMaster;
 import com.mes.workorder.itemmaster.domain.ItemStatus;
 import com.mes.workorder.itemmaster.repository.ItemMasterRepository;
@@ -18,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.stream.Collectors;  // used by validateUdf
 
 @Service
 @Transactional
@@ -82,19 +83,15 @@ public class ItemMasterService {
     public ItemMaster obsolete(UUID orgId, UUID itemId) {
         ItemMaster entity = get(orgId, itemId);
         entity.setStatus(ItemStatus.OBSOLETE);
-        return repository.save(entity);
+        ItemMaster saved = repository.save(entity);
+        eventPublisher.publishUpdated(saved);
+        return saved;
     }
 
     @Transactional(readOnly = true)
-    public Page<ItemMaster> list(UUID orgId, ItemStatus status, Classification classification, Pageable pageable) {
-        if (status != null && classification != null) {
-            return repository.findAllByOrgIdAndStatusAndClassification(orgId, status, classification, pageable);
-        } else if (status != null) {
-            return repository.findAllByOrgIdAndStatus(orgId, status, pageable);
-        } else if (classification != null) {
-            return repository.findAllByOrgIdAndClassification(orgId, classification, pageable);
-        }
-        return repository.findAllByOrgId(orgId, pageable);
+    public Page<ItemMaster> list(UUID orgId, ItemStatus status, Classification classification,
+                                 CounterfeitRiskLevel riskLevel, Pageable pageable) {
+        return repository.findAllFiltered(orgId, status, classification, riskLevel, pageable);
     }
 
     private void validateShelfLife(boolean controlled, Integer days) {

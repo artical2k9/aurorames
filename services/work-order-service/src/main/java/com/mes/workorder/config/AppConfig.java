@@ -3,6 +3,7 @@ package com.mes.workorder.config;
 import com.mes.udf.service.UdfAffectedRecordsFinder;
 import com.mes.udf.service.UdfUsageChecker;
 import com.mes.udf.service.UdfValueNullifier;
+import com.mes.workorder.itemmaster.repository.ItemMasterRepository;
 import com.mes.workorder.preferences.api.dto.ColumnPreferenceEntry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,10 +42,15 @@ public class AppConfig {
     }
 
     @Bean
-    public UdfValueNullifier udfValueNullifier(JdbcTemplate jdbcTemplate) {
-        return (orgId, fieldKey) -> jdbcTemplate.update(
-                "UPDATE work_order.item_master SET custom_fields = custom_fields - ? WHERE org_id = ?",
-                fieldKey, orgId);
+    public UdfValueNullifier udfValueNullifier(ItemMasterRepository repository,
+                                               UdfAffectedRecordsFinder finder) {
+        return (orgId, fieldKey) -> finder.findAffectedIds(orgId, fieldKey).forEach(id ->
+                repository.findByOrgIdAndId(orgId, id).ifPresent(item -> {
+                    if (item.getCustomFields() != null) {
+                        item.getCustomFields().remove(fieldKey);
+                        repository.save(item);
+                    }
+                }));
     }
 
     @Bean
