@@ -212,8 +212,8 @@ These values are used in `frontend/angular/src/styles.scss` for PrimeNG override
 **PrimeNG config**: `darkModeSelector: '.aurora-dark'` in `providePrimeNG()`. Class toggled on `document.documentElement` by `ThemeService`. Persisted to `localStorage` key `aurora-mes-theme`. Falls back to `window.matchMedia('(prefers-color-scheme: dark)').matches` on first visit.
 
 **Penpot frames** (all on page "Aurora MES / Shell", fileId `e7a86fff-661d-81c1-8008-131bc45d179c`):
-- Dark: Shell (collapsed rail), Shell (flyout open), Item Master List, Item Master Column Picker, Item Master Create, BOM / Explosion Tree, BOM / Authoring v2 *(current)*
-- Light: Shell (collapsed rail — light), Item Master List (light), Item Master Column Picker (light), Item Master Edit, BOM / Explosion Tree (light), BOM / Authoring v2 *(current)*
+- Dark: Shell (collapsed rail), Shell (flyout open), Item Master List, Item Master Column Picker, Item Master Create, BOM / Explosion Tree, BOM / Authoring final, BOM / Header Edit *(current)*
+- Light: Shell (collapsed rail — light), Item Master List (light), Item Master Column Picker (light), Item Master Edit, BOM / Explosion Tree (light), BOM / Authoring final (light), BOM / Header Edit (light) *(current)*
 
 | Frame | Mode | Penpot ID | Notes |
 |---|---|---|---|
@@ -225,6 +225,7 @@ These values are used in `frontend/angular/src/styles.scss` for PrimeNG override
 | BOM / Authoring v1 | Dark | `d1e9cefe-fcab-80d7-8008-1398d303c5ec` | Superseded — Find# column, no Seq |
 | BOM / Authoring v2 | Dark | `d1e9cefe-fcab-80d7-8008-139d269ff559` | Superseded — no Find #, UDF as chip |
 | **BOM / Authoring final** | **Dark** | **`86f35c31-9e0e-809d-8008-139f969d722f`** | **Current** — Seq, Find #, UDF cols, unit eff, col picker open |
+| **BOM / Header Edit** | **Dark** | **`ae108caa-e755-807c-8008-140ccbadbeac`** | **Current** — modal: Part Number (RO), BOM Description, Reason for Revision, Production Line, BOM Header Properties (Type + Effectivity), BOM Header UDFs |
 | Shell (collapsed rail) | Light | `d1e9cefe-fcab-80d7-8008-1385436e319f` | |
 | Item Master / List & Search | Light | `d1e9cefe-fcab-80d7-8008-13856f83fb22` | |
 | Item Master / Column Picker | Light | `d1e9cefe-fcab-80d7-8008-1385d5f1262e` | |
@@ -233,3 +234,4 @@ These values are used in `frontend/angular/src/styles.scss` for PrimeNG override
 | BOM / Authoring v1 | Light | `d1e9cefe-fcab-80d7-8008-13997f6538b8` | Superseded |
 | BOM / Authoring v2 | Light | `d1e9cefe-fcab-80d7-8008-139dbd1988d3` | Superseded |
 | **BOM / Authoring final** | **Light** | **`86f35c31-9e0e-809d-8008-13a00d8698d5`** | **Current** — Seq, Find #, UDF cols as headers, unit eff |
+| **BOM / Header Edit** | **Light** | **`ae108caa-e755-807c-8008-140d20b38509`** | **Current** — modal: same fields as dark, light theme |
