@@ -1,0 +1,141 @@
+package com.mes.workorder.integration.udf;
+
+import com.mes.workorder.integration.BaseIntegrationTest;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class ItemMasterWithUdfIT extends BaseIntegrationTest {
+
+    static final String ORG_ID = "00000000-0000-0000-0000-000000000001";
+    static final String UDF_URL = "/udf/fields";
+    static final String ITEM_URL = "/api/v1/item-master";
+
+    @Test
+    void requiredUdfMissingOnCreateReturns422() {
+        String adminToken = adminToken();
+        restTemplate.exchange(UDF_URL, HttpMethod.POST,
+                jsonRequest(adminToken, requiredTextField("drawing_ref_a")), Map.class);
+
+        String engineerToken = engineerToken();
+        ResponseEntity<Map> response = restTemplate.exchange(
+                ITEM_URL, HttpMethod.POST,
+                jsonRequest(engineerToken, baseItemRequest("BRKT-UDF01", "A")),
+                Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        String body = response.getBody().toString();
+        assertThat(body).contains("drawing_ref_a");
+    }
+
+    @Test
+    void presentUdfReturns201AndGetReturnsCustomFields() {
+        String adminToken = adminToken();
+        restTemplate.exchange(UDF_URL, HttpMethod.POST,
+                jsonRequest(adminToken, requiredTextField("drawing_ref_b")), Map.class);
+
+        String engineerToken = engineerToken();
+        Map<String, Object> req = baseItemRequest("BRKT-UDF02", "A");
+        req.put("customFields", Map.of("drawing_ref_b", "DRW-001"));
+        ResponseEntity<Map> created = restTemplate.exchange(
+                ITEM_URL, HttpMethod.POST, jsonRequest(engineerToken, req), Map.class);
+
+        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        String location = created.getHeaders().getLocation().getPath();
+        String itemId = location.substring(location.lastIndexOf('/') + 1);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(engineerToken);
+        ResponseEntity<Map> retrieved = restTemplate.exchange(
+                ITEM_URL + "/" + itemId, HttpMethod.GET,
+                new HttpEntity<>(headers), Map.class);
+
+        assertThat(retrieved.getStatusCode()).isEqualTo(HttpStatus.OK);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> customFields = (Map<String, Object>) retrieved.getBody().get("customFields");
+        assertThat(customFields).containsEntry("drawing_ref_b", "DRW-001");
+    }
+
+    @Test
+    void numberRangeViolationReturns422() {
+        String adminToken = adminToken();
+        Map<String, Object> numReq = new HashMap<>(Map.of(
+                "moduleKey", "ITEM_MASTER",
+                "fieldKey", "thickness_c",
+                "label", "Thickness mm",
+                "fieldType", "NUMBER",
+                "required", false,
+                "validationRules", Map.of("min", 0, "max", 50)
+        ));
+        restTemplate.exchange(UDF_URL, HttpMethod.POST, jsonRequest(adminToken, numReq), Map.class);
+
+        String engineerToken = engineerToken();
+        Map<String, Object> req = baseItemRequest("BRKT-UDF03", "A");
+        req.put("customFields", Map.of("thickness_c", 200));
+        ResponseEntity<Map> response = restTemplate.exchange(
+                ITEM_URL, HttpMethod.POST, jsonRequest(engineerToken, req), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+
+    private String adminToken() {
+        if (!KEYCLOAK.isRunning()) {
+            return "test-admin-token";
+        }
+        String username = "admin-" + UUID.randomUUID();
+        KEYCLOAK.createUser(username, "pass", ORG_ID, List.of("SYSTEM_ADMIN"));
+        return KEYCLOAK.fetchToken(username, "pass");
+    }
+
+    private String engineerToken() {
+        if (!KEYCLOAK.isRunning()) {
+            return "test-engineer-token";
+        }
+        String username = "engineer-" + UUID.randomUUID();
+        KEYCLOAK.createUser(username, "pass", ORG_ID, List.of("ENGINEER"));
+        return KEYCLOAK.fetchToken(username, "pass");
+    }
+
+    private Map<String, Object> requiredTextField(String fieldKey) {
+        return Map.of(
+                "moduleKey", "ITEM_MASTER",
+                "fieldKey", fieldKey,
+                "label", "Field " + fieldKey,
+                "fieldType", "TEXT",
+                "required", true
+        );
+    }
+
+    private HashMap<String, Object> baseItemRequest(String partNumber, String revision) {
+        return new HashMap<>(Map.of(
+                "partNumber", partNumber,
+                "revision", revision,
+                "description", "Test bracket",
+                "unitOfMeasure", "EA",
+                "classification", "FABRICATED",
+                "makeBuyCode", "MAKE",
+                "traceabilityMethod", "SERIAL"
+        ));
+    }
+
+    private HttpEntity<Map<String, Object>> jsonRequest(String token, Map<String, Object> body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        return new HttpEntity<>(body, headers);
+    }
+}
