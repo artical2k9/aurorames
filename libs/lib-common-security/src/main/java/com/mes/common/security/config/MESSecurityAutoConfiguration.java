@@ -29,8 +29,9 @@ public class MESSecurityAutoConfiguration {
     @ConditionalOnMissingBean
     public PrivilegeRegistryClient privilegeRegistryClient(
             RestClient.Builder builder,
-            @Value("${mes.security.iam-service-url:http://localhost:8085}") String iamServiceUrl) {
-        return new PrivilegeRegistryClient(builder, iamServiceUrl);
+            @Value("${mes.security.iam-service-url:http://localhost:8085}") String iamServiceUrl,
+            @Value("${mes.security.webhook-token:}") String webhookToken) {
+        return new PrivilegeRegistryClient(builder, iamServiceUrl, webhookToken);
     }
 
     @Bean

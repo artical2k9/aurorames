@@ -26,7 +26,8 @@ public class AppConfig {
             if (auth == null || !auth.isAuthenticated()) {
                 return Optional.of("system");
             }
-            return Optional.of(auth.getName());
+            var name = auth.getName();
+            return Optional.of(name != null ? name : "system");
         };
     }
 

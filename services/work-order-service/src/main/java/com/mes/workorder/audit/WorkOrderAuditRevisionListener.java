@@ -9,6 +9,7 @@ public class WorkOrderAuditRevisionListener implements RevisionListener {
     public void newRevision(Object revisionEntity) {
         WorkOrderRevisionEntity rev = (WorkOrderRevisionEntity) revisionEntity;
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        rev.setActor(auth != null ? auth.getName() : "system");
+        String name = auth != null ? auth.getName() : null;
+        rev.setActor(name != null ? name : "system");
     }
 }

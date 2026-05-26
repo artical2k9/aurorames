@@ -46,6 +46,10 @@ public class ItemMasterEventPublisher {
 
     private String actorId() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth != null ? auth.getName() : "system";
+        if (auth == null) {
+            return "system";
+        }
+        var name = auth.getName();
+        return name != null ? name : "system";
     }
 }

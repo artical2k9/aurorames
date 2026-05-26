@@ -14,17 +14,21 @@ import java.util.Map;
 public class PrivilegeRegistryClient {
 
     private final RestClient restClient;
+    private final String webhookToken;
     private final int maxAttempts;
     private final long retryDelayMs;
 
     public PrivilegeRegistryClient(
             RestClient.Builder builder,
-            @Value("${mes.security.iam-service-url:http://localhost:8085}") String iamServiceUrl) {
-        this(builder, iamServiceUrl, 3, 100L);
+            @Value("${mes.security.iam-service-url:http://localhost:8085}") String iamServiceUrl,
+            @Value("${mes.security.webhook-token:}") String webhookToken) {
+        this(builder, iamServiceUrl, webhookToken, 3, 100L);
     }
 
-    PrivilegeRegistryClient(RestClient.Builder builder, String iamServiceUrl, int maxAttempts, long retryDelayMs) {
+    PrivilegeRegistryClient(RestClient.Builder builder, String iamServiceUrl, String webhookToken,
+                            int maxAttempts, long retryDelayMs) {
         this.restClient = builder.baseUrl(iamServiceUrl).build();
+        this.webhookToken = webhookToken;
         this.maxAttempts = maxAttempts;
         this.retryDelayMs = retryDelayMs;
     }
@@ -36,6 +40,7 @@ public class PrivilegeRegistryClient {
             try {
                 return restClient.get()
                         .uri("/internal/privileges")
+                        .header("Authorization", "Bearer " + webhookToken)
                         .retrieve()
                         .body(PrivilegeManifest.class);
             } catch (HttpClientErrorException e) {
