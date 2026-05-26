@@ -256,6 +256,40 @@ services:
     networks:
       - mes-net
 
+  # ── Work Order Service ────────────────────────────────────────────────────────
+  work-order-service:
+    build:
+      context: ..
+      dockerfile: services/work-order-service/Dockerfile
+    container_name: work-order-service
+    restart: unless-stopped
+    environment:
+      WORK_ORDER_DB_URL: jdbc:postgresql://postgres:5432/mes?currentSchema=work_order
+      WORK_ORDER_DB_USER: ${WORK_ORDER_DB_USER:?WORK_ORDER_DB_USER must be set}
+      WORK_ORDER_DB_PASSWORD: ${WORK_ORDER_DB_PASSWORD:?WORK_ORDER_DB_PASSWORD must be set}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mes}
+      IAM_SERVICE_URL: http://iam-service:8080
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MES_SECURITY_WEBHOOK_TOKEN: ${MES_SECURITY_WEBHOOK_TOKEN:?MES_SECURITY_WEBHOOK_TOKEN must be set}
+      ADMIN_SERVICE_URL: http://admin-service:8888
+    ports:
+      - "8095:8095"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8095/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - mes-net
+
 volumes:
   postgres-data:
     driver: local
