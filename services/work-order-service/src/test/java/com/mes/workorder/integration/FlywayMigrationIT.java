@@ -65,7 +65,10 @@ class FlywayMigrationIT extends BaseIntegrationTest {
         try (Connection conn = dataSource.getConnection();
              ResultSet rs = conn.getMetaData().getTables(null, "work_order", "%", new String[]{"TABLE"})) {
             while (rs.next()) {
-                tables.add(rs.getString("TABLE_NAME"));
+                String name = rs.getString("TABLE_NAME");
+                if (!name.startsWith("flyway_")) {
+                    tables.add(name);
+                }
             }
         }
         return tables;
