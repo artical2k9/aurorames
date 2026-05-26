@@ -31,7 +31,8 @@ public class AppConfig {
     public UdfUsageChecker udfUsageChecker(JdbcTemplate jdbcTemplate) {
         return (orgId, fieldKey) -> {
             Long count = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM work_order.item_master WHERE org_id = ? AND custom_fields ?? ?",
+                    "SELECT COUNT(*) FROM work_order.item_master"
+                    + " WHERE org_id = ? AND jsonb_exists(custom_fields, ?)",
                     Long.class, orgId, fieldKey);
             return count != null ? count : 0L;
         };
