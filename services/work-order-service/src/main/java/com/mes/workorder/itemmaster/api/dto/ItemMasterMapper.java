@@ -9,7 +9,6 @@ public final class ItemMasterMapper {
     public static ItemMasterDto toDto(ItemMaster entity) {
         ItemMasterDto dto = new ItemMasterDto();
         dto.setId(entity.getId());
-        dto.setOrgId(entity.getOrgId());
         dto.setPartNumber(entity.getPartNumber());
         dto.setRevision(entity.getRevision());
         dto.setDescription(entity.getDescription());

@@ -19,9 +19,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 import java.net.URI;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -38,7 +39,7 @@ public class UdfFieldDefinitionController {
     public ResponseEntity<List<UdfFieldDefinitionDto>> list(
             @RequestParam String module,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID orgId = extractOrgId(jwt);
+        UUID orgId = JwtClaimsExtractor.orgId(jwt);
         ModuleKey moduleKey = ModuleKey.valueOf(module);
         List<UdfFieldDefinitionDto> dtos = service.list(orgId, moduleKey).stream()
                 .map(UdfFieldDefinitionMapper::toDto)
@@ -51,7 +52,7 @@ public class UdfFieldDefinitionController {
     public ResponseEntity<UdfFieldDefinitionDto> define(
             @Valid @RequestBody CreateUdfFieldRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID orgId = extractOrgId(jwt);
+        UUID orgId = JwtClaimsExtractor.orgId(jwt);
         var entity = service.define(orgId, request);
         URI location = URI.create("/udf/fields/" + entity.getId());
         return ResponseEntity.created(location).body(UdfFieldDefinitionMapper.toDto(entity));
@@ -63,18 +64,9 @@ public class UdfFieldDefinitionController {
             @PathVariable UUID fieldId,
             @RequestParam(defaultValue = "false") boolean force,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID orgId = extractOrgId(jwt);
+        UUID orgId = JwtClaimsExtractor.orgId(jwt);
         service.deactivate(orgId, fieldId, force);
         return ResponseEntity.noContent().build();
     }
 
-    private UUID extractOrgId(Jwt jwt) {
-        String orgId = jwt.getClaimAsString("org_id");
-        if (orgId == null) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.BAD_REQUEST,
-                    "org_id claim missing from token");
-        }
-        return UUID.fromString(orgId);
-    }
 }

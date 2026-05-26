@@ -14,7 +14,6 @@ import java.util.UUID;
 public class ItemMasterDto {
 
     private UUID id;
-    private UUID orgId;
     private String partNumber;
     private String revision;
     private String description;
@@ -43,12 +42,6 @@ public class ItemMasterDto {
     }
     public void setId(UUID id) {
         this.id = id;
-    }
-    public UUID getOrgId() {
-        return orgId;
-    }
-    public void setOrgId(UUID orgId) {
-        this.orgId = orgId;
     }
     public String getPartNumber() {
         return partNumber;
