@@ -1,5 +1,6 @@
 package com.mes.workorder.config;
 
+import com.mes.udf.service.UdfAffectedRecordsFinder;
 import com.mes.udf.service.UdfUsageChecker;
 import com.mes.udf.service.UdfValueNullifier;
 import com.mes.workorder.preferences.api.dto.ColumnPreferenceEntry;
@@ -12,6 +13,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @Configuration
 public class AppConfig {
@@ -43,6 +45,14 @@ public class AppConfig {
         return (orgId, fieldKey) -> jdbcTemplate.update(
                 "UPDATE work_order.item_master SET custom_fields = custom_fields - ? WHERE org_id = ?",
                 fieldKey, orgId);
+    }
+
+    @Bean
+    public UdfAffectedRecordsFinder udfAffectedRecordsFinder(JdbcTemplate jdbcTemplate) {
+        return (orgId, fieldKey) -> jdbcTemplate.queryForList(
+                "SELECT id FROM work_order.item_master"
+                + " WHERE org_id = ? AND jsonb_exists(custom_fields, ?)",
+                UUID.class, orgId, fieldKey);
     }
 
     @Bean
