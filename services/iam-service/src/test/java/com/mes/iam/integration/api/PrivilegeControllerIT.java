@@ -48,6 +48,7 @@ class PrivilegeControllerIT {
 
     static final UUID SYSTEM_ORG_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     static final String TEST_REALM = "mes-test";
+    static final String WEBHOOK_TOKEN = "test-webhook-secret-privilege-it";
 
     // When TEST_POSTGRES_URL is set, containers are provided externally (docker/compose-test.yml).
     // When unset, Testcontainers starts them automatically.
@@ -118,6 +119,7 @@ class PrivilegeControllerIT {
             registry.add("keycloak.admin.username", KEYCLOAK::getAdminUsername);
             registry.add("keycloak.admin.password", KEYCLOAK::getAdminPassword);
         }
+        registry.add("iam.webhook.token", () -> WEBHOOK_TOKEN);
     }
 
     @Autowired TestRestTemplate restTemplate;
@@ -207,7 +209,7 @@ class PrivilegeControllerIT {
                 "quality",
                 List.of(new PrivilegeItemRequest("quality:inspection:view", "View inspections")));
 
-        ResponseEntity<Void> response = post("/privileges/register", adminToken, request, Void.class);
+        ResponseEntity<Void> response = post("/internal/privileges/register", WEBHOOK_TOKEN, request, Void.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
     }
@@ -220,8 +222,8 @@ class PrivilegeControllerIT {
                 "quality",
                 List.of(new PrivilegeItemRequest("quality:inspection:sign-off", "Sign off")));
 
-        post("/privileges/register", adminToken, request, Void.class);
-        post("/privileges/register", adminToken, request, Void.class);
+        post("/internal/privileges/register", WEBHOOK_TOKEN, request, Void.class);
+        post("/internal/privileges/register", WEBHOOK_TOKEN, request, Void.class);
 
         Integer count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM iam.privilege WHERE privilege_key = 'quality:inspection:sign-off'",
@@ -237,7 +239,7 @@ class PrivilegeControllerIT {
                 "quality",
                 List.of(new PrivilegeItemRequest("InvalidKey", "Bad format")));
 
-        ResponseEntity<Map> response = post("/privileges/register", adminToken, request, Map.class);
+        ResponseEntity<Map> response = post("/internal/privileges/register", WEBHOOK_TOKEN, request, Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
@@ -248,7 +250,7 @@ class PrivilegeControllerIT {
                 "quality",
                 List.of(new PrivilegeItemRequest("quality:inspection:view", "View")));
 
-        ResponseEntity<Map> response = post("/privileges/register", null, request, Map.class);
+        ResponseEntity<Map> response = post("/internal/privileges/register", null, request, Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
@@ -305,7 +307,7 @@ class PrivilegeControllerIT {
         RegisterPrivilegesRequest registerReq = new RegisterPrivilegesRequest(
                 "test-module",
                 List.of(new PrivilegeItemRequest("test-module:feature:read", "Read feature")));
-        post("/privileges/register", adminToken, registerReq, Void.class);
+        post("/internal/privileges/register", WEBHOOK_TOKEN, registerReq, Void.class);
 
         UUID privilegeId = jdbcTemplate.queryForObject(
                 "SELECT id FROM iam.privilege WHERE privilege_key = 'test-module:feature:read'",

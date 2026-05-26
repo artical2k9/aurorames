@@ -143,7 +143,7 @@ class InternalControllerIT {
     }
 
     @Test
-    void getPrivilegeManifest_validToken_returns200WithEmptyManifest() {
+    void getPrivilegeManifest_validToken_returns200WithSeededPrivileges() {
         ResponseEntity<PrivilegeManifest> response = restTemplate.exchange(
                 "/internal/privileges",
                 HttpMethod.GET,
@@ -152,7 +152,8 @@ class InternalControllerIT {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().rolePrivileges()).isEmpty();
+        // Flyway V003 seeds SYSTEM_ADMIN with iam:* privileges — manifest is never empty
+        assertThat(response.getBody().rolePrivileges()).containsKey("SYSTEM_ADMIN");
     }
 
     @Test
