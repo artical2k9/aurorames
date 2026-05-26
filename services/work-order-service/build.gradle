@@ -1,0 +1,50 @@
+// work-order-service — Item Master, BOM, and ECO management for Aurora MES.
+// Owns the work_order PostgreSQL schema. Publishes domain events to Kafka.
+
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    // ── Shared libraries ──────────────────────────────────────────────────────
+    implementation project(':libs:lib-common-security')
+    implementation project(':libs:lib-common-audit')
+    implementation project(':libs:mes-udf-lib')
+
+    // ── Spring Boot Admin client self-registration ────────────────────────────
+    implementation libs.spring.boot.admin.client
+
+    // ── Web + Persistence + Validation ───────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // ── Flyway ────────────────────────────────────────────────────────────────
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    // ── Kafka — domain event publishing ──────────────────────────────────────
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    // ── PostgreSQL driver ─────────────────────────────────────────────────────
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // ── JSONB — approved_suppliers, custom_fields, column_config ─────────────
+    implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.9.0'
+
+    // ── Jackson ───────────────────────────────────────────────────────────────
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // ── API documentation ─────────────────────────────────────────────────────
+    implementation libs.springdoc.openapi.webmvc
+
+    // ── Tests ─────────────────────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:kafka'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation(testFixtures(project(':libs:lib-common-security')))
+}
