@@ -1,7 +1,9 @@
 package com.mes.workorder.integration.udf;
 
 import com.mes.workorder.integration.BaseIntegrationTest;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -42,19 +44,32 @@ class UdfFieldDefinitionControllerIT extends BaseIntegrationTest {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
-        ResponseEntity<Map> response = restTemplate.exchange(
+        ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                 UDF_URL + "?module=ITEM_MASTER", HttpMethod.GET,
-                new HttpEntity<>(headers), Map.class);
+                new HttpEntity<>(headers),
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {});
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotEmpty();
+        assertThat(response.getBody())
+                .anyMatch(f -> "code_ref_002".equals(f.get("fieldKey")));
+    }
+
+    @Test
+    void getWithInvalidModuleReturns400() {
+        String token = adminToken();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        ResponseEntity<Map> response = restTemplate.exchange(
+                UDF_URL + "?module=NOT_A_MODULE", HttpMethod.GET,
+                new HttpEntity<>(headers), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
     void engineerPostReturns403() {
-        if (!KEYCLOAK.isRunning()) {
-            return;
-        }
-        String adminToken = adminToken();
+        Assumptions.assumeTrue(KEYCLOAK.isRunning(), "Requires Keycloak for privilege enforcement");
         String engineerToken = engineerToken();
 
         ResponseEntity<Map> response = restTemplate.exchange(
@@ -78,6 +93,21 @@ class UdfFieldDefinitionControllerIT extends BaseIntegrationTest {
     }
 
     @Test
+    void listTypeWithoutOptionsReturns422() {
+        String token = adminToken();
+        Map<String, Object> req = Map.of(
+                "moduleKey", "ITEM_MASTER",
+                "fieldKey", "material_no_opts",
+                "label", "Material",
+                "fieldType", "LIST"
+        );
+        ResponseEntity<Map> response = restTemplate.exchange(
+                UDF_URL, HttpMethod.POST, jsonRequest(token, req), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    @Test
     void deleteWithValuesWithoutForceReturns409() {
         String adminToken = adminToken();
         ResponseEntity<Map> created = restTemplate.exchange(
@@ -97,6 +127,8 @@ class UdfFieldDefinitionControllerIT extends BaseIntegrationTest {
                 new HttpEntity<>(headers), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody().get("message").toString())
+                .contains("record(s) have values");
     }
 
     @Test
