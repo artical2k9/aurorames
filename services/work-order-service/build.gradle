@@ -49,6 +49,15 @@ dependencies {
     testImplementation(testFixtures(project(':libs:lib-common-security')))
 }
 
+// Copy IAM service migrations to iam-bootstrap/ in the test classpath so
+// BaseIntegrationTest.bootstrapIamSchema() can prime the iam.* tables before
+// work-order-service's own Flyway runs V007 (which INSERTs into iam.privilege).
+processTestResources {
+    from('../iam-service/src/main/resources/db/migration') {
+        into 'iam-bootstrap'
+    }
+}
+
 test {
     def dockerHost = System.getenv('DOCKER_HOST')
     if (dockerHost) {

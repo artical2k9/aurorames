@@ -13,8 +13,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.nio.file.Path;
-
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
 @EmbeddedKafka(partitions = 1,
@@ -50,18 +48,13 @@ public abstract class BaseIntegrationTest {
     }
 
     private static void bootstrapIamSchema() {
-        // Resolve the IAM migration directory relative to the work-order-service project dir.
-        // Gradle sets user.dir to the subproject directory when running tests.
-        String iamMigrations = Path.of(System.getProperty("user.dir"))
-                .resolve("../iam-service/src/main/resources/db/migration")
-                .normalize()
-                .toAbsolutePath()
-                .toString();
-
+        // IAM migration SQL files are copied to iam-bootstrap/ in the test classpath
+        // by the processTestResources Gradle task in work-order-service/build.gradle.
+        // This avoids filesystem path resolution issues across environments.
         Flyway.configure()
                 .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
                 .schemas("iam")
-                .locations("filesystem:" + iamMigrations)
+                .locations("classpath:iam-bootstrap")
                 .load()
                 .migrate();
     }
