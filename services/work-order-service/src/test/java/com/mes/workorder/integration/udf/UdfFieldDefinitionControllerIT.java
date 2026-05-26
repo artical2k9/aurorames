@@ -208,6 +208,7 @@ class UdfFieldDefinitionControllerIT extends BaseIntegrationTest {
                 "revision", revision,
                 "description", "Test bracket",
                 "unitOfMeasure", "EA",
+                "cageCode", "CAGE01",
                 "classification", "FABRICATED",
                 "makeBuyCode", "MAKE",
                 "traceabilityMethod", "SERIAL"

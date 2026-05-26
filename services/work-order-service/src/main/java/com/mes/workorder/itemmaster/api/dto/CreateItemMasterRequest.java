@@ -25,7 +25,7 @@ public class CreateItemMasterRequest {
     @NotBlank @Size(max = 20)
     private String unitOfMeasure;
 
-    @Size(max = 10)
+    @NotBlank @Size(max = 10)
     private String cageCode;
 
     @NotNull

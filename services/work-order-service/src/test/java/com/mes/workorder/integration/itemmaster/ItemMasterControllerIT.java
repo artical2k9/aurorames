@@ -136,8 +136,9 @@ class ItemMasterControllerIT extends BaseIntegrationTest {
         if (!KEYCLOAK.isRunning()) {
             return "test-engineer-token";
         }
-        KEYCLOAK.createUser("engineer-" + UUID.randomUUID(), "pass", ORG_ID, java.util.List.of("ENGINEER"));
-        return KEYCLOAK.fetchToken("engineer-" + UUID.randomUUID(), "pass");
+        String username = "engineer-" + UUID.randomUUID();
+        KEYCLOAK.createUser(username, "pass", ORG_ID, java.util.List.of("ENGINEER"));
+        return KEYCLOAK.fetchToken(username, "pass");
     }
 
     private Map<String, Object> createRequest(String partNumber, String revision) {
@@ -146,6 +147,7 @@ class ItemMasterControllerIT extends BaseIntegrationTest {
                 "revision", revision,
                 "description", "Aluminium bracket",
                 "unitOfMeasure", "EA",
+                "cageCode", "CAGE01",
                 "classification", "FABRICATED",
                 "makeBuyCode", "MAKE",
                 "traceabilityMethod", "SERIAL"

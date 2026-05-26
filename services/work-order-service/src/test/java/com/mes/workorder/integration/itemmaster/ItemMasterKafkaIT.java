@@ -85,6 +85,7 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
                 "revision", revision,
                 "description", "Test item",
                 "unitOfMeasure", "EA",
+                "cageCode", "CAGE01",
                 "classification", "FABRICATED",
                 "makeBuyCode", "MAKE",
                 "traceabilityMethod", "SERIAL"
