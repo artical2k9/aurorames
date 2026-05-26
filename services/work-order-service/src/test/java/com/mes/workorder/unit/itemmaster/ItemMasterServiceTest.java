@@ -1,5 +1,7 @@
 package com.mes.workorder.unit.itemmaster;
 
+import com.mes.udf.domain.ModuleKey;
+import com.mes.udf.service.UdfValidator;
 import com.mes.workorder.itemmaster.api.dto.CreateItemMasterRequest;
 import com.mes.workorder.itemmaster.domain.Classification;
 import com.mes.workorder.itemmaster.domain.ItemMaster;
@@ -16,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,6 +31,7 @@ class ItemMasterServiceTest {
 
     @Mock ItemMasterRepository repository;
     @Mock ItemMasterEventPublisher eventPublisher;
+    @Mock UdfValidator udfValidator;
 
     @InjectMocks
     ItemMasterService service;
@@ -57,6 +61,7 @@ class ItemMasterServiceTest {
     @Test
     void createPublishesKafkaEventAfterSave() {
         when(repository.existsByOrgIdAndPartNumberAndRevision(any(), any(), any())).thenReturn(false);
+        when(udfValidator.validate(any(), any(ModuleKey.class), any())).thenReturn(List.of());
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.create(orgId, "BRKT-001", "A", validRequest());

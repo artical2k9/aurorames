@@ -1,9 +1,12 @@
 package com.mes.workorder.config;
 
+import com.mes.udf.service.UdfUsageChecker;
+import com.mes.udf.service.UdfValueNullifier;
 import com.mes.workorder.preferences.api.dto.ColumnPreferenceEntry;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.AuditorAware;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
@@ -22,6 +25,23 @@ public class AppConfig {
             }
             return Optional.of(auth.getName());
         };
+    }
+
+    @Bean
+    public UdfUsageChecker udfUsageChecker(JdbcTemplate jdbcTemplate) {
+        return (orgId, fieldKey) -> {
+            Long count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM work_order.item_master WHERE org_id = ? AND custom_fields ?? ?",
+                    Long.class, orgId, fieldKey);
+            return count != null ? count : 0L;
+        };
+    }
+
+    @Bean
+    public UdfValueNullifier udfValueNullifier(JdbcTemplate jdbcTemplate) {
+        return (orgId, fieldKey) -> jdbcTemplate.update(
+                "UPDATE work_order.item_master SET custom_fields = custom_fields - ? WHERE org_id = ?",
+                fieldKey, orgId);
     }
 
     @Bean

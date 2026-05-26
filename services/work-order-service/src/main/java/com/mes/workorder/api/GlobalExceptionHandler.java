@@ -1,5 +1,6 @@
 package com.mes.workorder.api;
 
+import com.mes.udf.service.UdfDefinitionConflictException;
 import com.mes.workorder.itemmaster.service.ItemMasterConflictException;
 import com.mes.workorder.itemmaster.service.ItemMasterNotFoundException;
 import com.mes.workorder.itemmaster.service.ItemMasterValidationException;
@@ -23,6 +24,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ItemMasterConflictException.class)
     public ResponseEntity<ErrorResponse> handleConflict(ItemMasterConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("conflict", ex.getMessage()));
+    }
+
+    @ExceptionHandler(UdfDefinitionConflictException.class)
+    public ResponseEntity<ErrorResponse> handleUdfConflict(UdfDefinitionConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse("conflict", ex.getMessage()));
     }
