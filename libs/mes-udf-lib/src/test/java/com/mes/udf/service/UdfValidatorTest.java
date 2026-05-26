@@ -162,6 +162,39 @@ class UdfValidatorTest {
         assertThat(violations).isEmpty();
     }
 
+    @Test
+    void booleanRequiredFieldAbsentReturnsViolation() {
+        when(repository.findByOrgIdAndModuleKeyAndActiveTrue(orgId, ModuleKey.ITEM_MASTER))
+                .thenReturn(List.of(requiredBooleanField("is_critical")));
+
+        List<UdfViolation> violations = validator.validate(orgId, ModuleKey.ITEM_MASTER, Map.of());
+
+        assertThat(violations).hasSize(1);
+        assertThat(violations.get(0).fieldKey()).isEqualTo("is_critical");
+    }
+
+    @Test
+    void numberRequiredFieldAbsentReturnsViolation() {
+        when(repository.findByOrgIdAndModuleKeyAndActiveTrue(orgId, ModuleKey.ITEM_MASTER))
+                .thenReturn(List.of(requiredNumberField("thickness_mm")));
+
+        List<UdfViolation> violations = validator.validate(orgId, ModuleKey.ITEM_MASTER, Map.of());
+
+        assertThat(violations).hasSize(1);
+        assertThat(violations.get(0).fieldKey()).isEqualTo("thickness_mm");
+    }
+
+    @Test
+    void listRequiredFieldAbsentReturnsViolation() {
+        when(repository.findByOrgIdAndModuleKeyAndActiveTrue(orgId, ModuleKey.ITEM_MASTER))
+                .thenReturn(List.of(requiredListField("material_class", List.of("ALUMINUM", "STEEL"))));
+
+        List<UdfViolation> violations = validator.validate(orgId, ModuleKey.ITEM_MASTER, Map.of());
+
+        assertThat(violations).hasSize(1);
+        assertThat(violations.get(0).fieldKey()).isEqualTo("material_class");
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private UdfFieldDefinition requiredTextField(String fieldKey) {
@@ -208,6 +241,34 @@ class UdfValidatorTest {
         def.setFieldType(UdfFieldType.BOOLEAN);
         def.setModuleKey(ModuleKey.ITEM_MASTER);
         def.setRequired(false);
+        return def;
+    }
+
+    private UdfFieldDefinition requiredBooleanField(String fieldKey) {
+        var def = new UdfFieldDefinition();
+        def.setFieldKey(fieldKey);
+        def.setFieldType(UdfFieldType.BOOLEAN);
+        def.setModuleKey(ModuleKey.ITEM_MASTER);
+        def.setRequired(true);
+        return def;
+    }
+
+    private UdfFieldDefinition requiredNumberField(String fieldKey) {
+        var def = new UdfFieldDefinition();
+        def.setFieldKey(fieldKey);
+        def.setFieldType(UdfFieldType.NUMBER);
+        def.setModuleKey(ModuleKey.ITEM_MASTER);
+        def.setRequired(true);
+        return def;
+    }
+
+    private UdfFieldDefinition requiredListField(String fieldKey, List<String> options) {
+        var def = new UdfFieldDefinition();
+        def.setFieldKey(fieldKey);
+        def.setFieldType(UdfFieldType.LIST);
+        def.setModuleKey(ModuleKey.ITEM_MASTER);
+        def.setRequired(true);
+        def.setListOptions(options);
         return def;
     }
 

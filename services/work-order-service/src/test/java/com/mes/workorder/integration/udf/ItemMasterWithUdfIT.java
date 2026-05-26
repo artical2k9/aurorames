@@ -69,6 +69,29 @@ class ItemMasterWithUdfIT extends BaseIntegrationTest {
     }
 
     @Test
+    void listTypeInvalidOptionReturns422() {
+        String adminToken = adminToken();
+        Map<String, Object> listReq = new HashMap<>(Map.of(
+                "moduleKey", "ITEM_MASTER",
+                "fieldKey", "material_standard_d",
+                "label", "Material Standard",
+                "fieldType", "LIST",
+                "listOptions", List.of("AMS2750", "AMS4000", "ASTM-B209")
+        ));
+        restTemplate.exchange(UDF_URL, HttpMethod.POST, jsonRequest(adminToken, listReq), Map.class);
+
+        String engineerToken = engineerToken();
+        Map<String, Object> req = baseItemRequest("BRKT-UDF04", "A");
+        req.put("customFields", Map.of("material_standard_d", "ISO-9001"));
+        ResponseEntity<Map> response = restTemplate.exchange(
+                ITEM_URL, HttpMethod.POST, jsonRequest(engineerToken, req), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        assertThat(response.getBody().get("message").toString())
+                .contains("material_standard_d");
+    }
+
+    @Test
     void numberRangeViolationReturns422() {
         String adminToken = adminToken();
         Map<String, Object> numReq = new HashMap<>(Map.of(
