@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: work-order-service
+  datasource:
+    url: ${WORK_ORDER_DB_URL:jdbc:postgresql://localhost:5432/mes?currentSchema=work_order}
+    username: ${WORK_ORDER_DB_USER:work_order_user}
+    password: ${WORK_ORDER_DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    schemas: work_order
+    default-schema: work_order
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: work_order
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  boot:
+    admin:
+      client:
+        url: ${ADMIN_SERVICE_URL:http://admin-service:8888}
+        instance:
+          prefer-ip: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mes}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+server:
+  port: 8095
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers
+  endpoint:
+    health:
+      show-details: when-authorized
+
+mes:
+  security:
+    webhook-token: ${MES_SECURITY_WEBHOOK_TOKEN:changeme}
+    iam-service-url: ${IAM_SERVICE_URL:http://iam-service:8080}
+    privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL_SECONDS:300}
+  bom:
+    max-depth: ${BOM_MAX_DEPTH:50}
