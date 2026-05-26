@@ -32,7 +32,8 @@ class FlywayMigrationIT extends BaseIntegrationTest {
                 "item_master_aud",
                 "bill_of_materials_aud",
                 "bom_line_aud",
-                "engineering_change_order_aud"
+                "engineering_change_order_aud",
+                "udf_field_definition_aud"
         );
     }
 

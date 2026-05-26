@@ -4,6 +4,8 @@ import com.mes.udf.domain.ModuleKey;
 import com.mes.udf.domain.UdfFieldType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 import java.util.Map;
@@ -14,9 +16,13 @@ public class CreateUdfFieldRequest {
     private ModuleKey moduleKey;
 
     @NotBlank
+    @Size(max = 100)
+    @Pattern(regexp = "^[a-z][a-z0-9_]{0,99}$",
+             message = "must start with a lowercase letter; only lowercase letters, digits, and underscores allowed")
     private String fieldKey;
 
     @NotBlank
+    @Size(max = 255)
     private String label;
 
     @NotNull
