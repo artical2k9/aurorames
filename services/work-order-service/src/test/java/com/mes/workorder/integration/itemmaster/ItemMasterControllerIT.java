@@ -116,7 +116,9 @@ class ItemMasterControllerIT extends BaseIntegrationTest {
 
     @Test
     void postWithNoPrivilegesReturns403() {
-        if (!KEYCLOAK.isRunning()) return;
+        if (!KEYCLOAK.isRunning()) {
+            return;
+        }
         String username = "viewer-" + UUID.randomUUID();
         KEYCLOAK.createUser(username, "pass", ORG_ID, java.util.List.of());
         String token = KEYCLOAK.fetchToken(username, "pass");

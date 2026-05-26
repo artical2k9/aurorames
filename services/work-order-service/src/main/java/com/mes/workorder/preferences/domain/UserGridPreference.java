@@ -40,15 +40,37 @@ public class UserGridPreference {
 
     // ── Getters and setters ───────────────────────────────────────────────────
 
-    public UUID getId() { return id; }
-    public UUID getOrgId() { return orgId; }
-    public void setOrgId(UUID orgId) { this.orgId = orgId; }
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
-    public String getModuleKey() { return moduleKey; }
-    public void setModuleKey(String moduleKey) { this.moduleKey = moduleKey; }
-    public List<Map<String, Object>> getColumnConfig() { return columnConfig; }
-    public void setColumnConfig(List<Map<String, Object>> columnConfig) { this.columnConfig = columnConfig; }
-    public Instant getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+    public UUID getId() {
+        return id;
+    }
+    public UUID getOrgId() {
+        return orgId;
+    }
+    public void setOrgId(UUID orgId) {
+        this.orgId = orgId;
+    }
+    public String getUserId() {
+        return userId;
+    }
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+    public String getModuleKey() {
+        return moduleKey;
+    }
+    public void setModuleKey(String moduleKey) {
+        this.moduleKey = moduleKey;
+    }
+    public List<Map<String, Object>> getColumnConfig() {
+        return columnConfig;
+    }
+    public void setColumnConfig(List<Map<String, Object>> columnConfig) {
+        this.columnConfig = columnConfig;
+    }
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
+    public void setUpdatedAt(Instant updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }

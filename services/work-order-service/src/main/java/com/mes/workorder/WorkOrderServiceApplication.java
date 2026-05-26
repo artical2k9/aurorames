@@ -17,7 +17,7 @@ import java.util.List;
 @EnableJpaAuditing
 public class WorkOrderServiceApplication implements ApplicationListener<ApplicationReadyEvent> {
 
-    private static final Logger log = LoggerFactory.getLogger(WorkOrderServiceApplication.class);
+    private static final Logger LOG = LoggerFactory.getLogger(WorkOrderServiceApplication.class);
 
     private final PrivilegeRegistryClient privilegeRegistryClient;
     private final PrivilegeRegistrationHealthIndicator privilegeHealthIndicator;
@@ -43,9 +43,9 @@ public class WorkOrderServiceApplication implements ApplicationListener<Applicat
                     new PrivilegeRegistration("item-master:udf:manage",     "Define and delete UDF fields")
             ));
             privilegeHealthIndicator.markRegistered();
-            log.info("item-master privileges registered with IAM service");
+            LOG.info("item-master privileges registered with IAM service");
         } catch (Exception e) {
-            log.warn("Failed to register item-master privileges on startup (non-fatal): {}", e.getMessage());
+            LOG.warn("Failed to register item-master privileges on startup (non-fatal): {}", e.getMessage());
         }
     }
 }

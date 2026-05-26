@@ -34,28 +34,76 @@ public class PatchItemMasterRequest {
 
     // ── Getters and setters ───────────────────────────────────────────────────
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public String getUnitOfMeasure() { return unitOfMeasure; }
-    public void setUnitOfMeasure(String unitOfMeasure) { this.unitOfMeasure = unitOfMeasure; }
-    public String getCageCode() { return cageCode; }
-    public void setCageCode(String cageCode) { this.cageCode = cageCode; }
-    public MakeBuyCode getMakeBuyCode() { return makeBuyCode; }
-    public void setMakeBuyCode(MakeBuyCode makeBuyCode) { this.makeBuyCode = makeBuyCode; }
-    public TraceabilityMethod getTraceabilityMethod() { return traceabilityMethod; }
-    public void setTraceabilityMethod(TraceabilityMethod traceabilityMethod) { this.traceabilityMethod = traceabilityMethod; }
-    public Boolean getShelfLifeControlled() { return shelfLifeControlled; }
-    public void setShelfLifeControlled(Boolean shelfLifeControlled) { this.shelfLifeControlled = shelfLifeControlled; }
-    public Integer getShelfLifeDays() { return shelfLifeDays; }
-    public void setShelfLifeDays(Integer shelfLifeDays) { this.shelfLifeDays = shelfLifeDays; }
-    public String getStepPartRef() { return stepPartRef; }
-    public void setStepPartRef(String stepPartRef) { this.stepPartRef = stepPartRef; }
-    public CounterfeitRiskLevel getCounterfeitRiskLevel() { return counterfeitRiskLevel; }
-    public void setCounterfeitRiskLevel(CounterfeitRiskLevel counterfeitRiskLevel) { this.counterfeitRiskLevel = counterfeitRiskLevel; }
-    public List<String> getApprovedSuppliers() { return approvedSuppliers; }
-    public void setApprovedSuppliers(List<String> approvedSuppliers) { this.approvedSuppliers = approvedSuppliers; }
-    public Boolean getVerificationRequired() { return verificationRequired; }
-    public void setVerificationRequired(Boolean verificationRequired) { this.verificationRequired = verificationRequired; }
-    public Map<String, Object> getCustomFields() { return customFields; }
-    public void setCustomFields(Map<String, Object> customFields) { this.customFields = customFields; }
+    public String getDescription() {
+        return description;
+    }
+    public void setDescription(String description) {
+        this.description = description;
+    }
+    public String getUnitOfMeasure() {
+        return unitOfMeasure;
+    }
+    public void setUnitOfMeasure(String unitOfMeasure) {
+        this.unitOfMeasure = unitOfMeasure;
+    }
+    public String getCageCode() {
+        return cageCode;
+    }
+    public void setCageCode(String cageCode) {
+        this.cageCode = cageCode;
+    }
+    public MakeBuyCode getMakeBuyCode() {
+        return makeBuyCode;
+    }
+    public void setMakeBuyCode(MakeBuyCode makeBuyCode) {
+        this.makeBuyCode = makeBuyCode;
+    }
+    public TraceabilityMethod getTraceabilityMethod() {
+        return traceabilityMethod;
+    }
+    public void setTraceabilityMethod(TraceabilityMethod traceabilityMethod) {
+        this.traceabilityMethod = traceabilityMethod;
+    }
+    public Boolean getShelfLifeControlled() {
+        return shelfLifeControlled;
+    }
+    public void setShelfLifeControlled(Boolean shelfLifeControlled) {
+        this.shelfLifeControlled = shelfLifeControlled;
+    }
+    public Integer getShelfLifeDays() {
+        return shelfLifeDays;
+    }
+    public void setShelfLifeDays(Integer shelfLifeDays) {
+        this.shelfLifeDays = shelfLifeDays;
+    }
+    public String getStepPartRef() {
+        return stepPartRef;
+    }
+    public void setStepPartRef(String stepPartRef) {
+        this.stepPartRef = stepPartRef;
+    }
+    public CounterfeitRiskLevel getCounterfeitRiskLevel() {
+        return counterfeitRiskLevel;
+    }
+    public void setCounterfeitRiskLevel(CounterfeitRiskLevel counterfeitRiskLevel) {
+        this.counterfeitRiskLevel = counterfeitRiskLevel;
+    }
+    public List<String> getApprovedSuppliers() {
+        return approvedSuppliers;
+    }
+    public void setApprovedSuppliers(List<String> approvedSuppliers) {
+        this.approvedSuppliers = approvedSuppliers;
+    }
+    public Boolean getVerificationRequired() {
+        return verificationRequired;
+    }
+    public void setVerificationRequired(Boolean verificationRequired) {
+        this.verificationRequired = verificationRequired;
+    }
+    public Map<String, Object> getCustomFields() {
+        return customFields;
+    }
+    public void setCustomFields(Map<String, Object> customFields) {
+        this.customFields = customFields;
+    }
 }

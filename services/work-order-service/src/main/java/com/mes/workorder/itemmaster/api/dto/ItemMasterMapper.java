@@ -54,17 +54,41 @@ public final class ItemMasterMapper {
     }
 
     public static void applyPatch(PatchItemMasterRequest patch, ItemMaster entity) {
-        if (patch.getDescription() != null) entity.setDescription(patch.getDescription());
-        if (patch.getUnitOfMeasure() != null) entity.setUnitOfMeasure(patch.getUnitOfMeasure());
-        if (patch.getCageCode() != null) entity.setCageCode(patch.getCageCode());
-        if (patch.getMakeBuyCode() != null) entity.setMakeBuyCode(patch.getMakeBuyCode());
-        if (patch.getTraceabilityMethod() != null) entity.setTraceabilityMethod(patch.getTraceabilityMethod());
-        if (patch.getShelfLifeControlled() != null) entity.setShelfLifeControlled(patch.getShelfLifeControlled());
-        if (patch.getShelfLifeDays() != null) entity.setShelfLifeDays(patch.getShelfLifeDays());
-        if (patch.getStepPartRef() != null) entity.setStepPartRef(patch.getStepPartRef());
-        if (patch.getCounterfeitRiskLevel() != null) entity.setCounterfeitRiskLevel(patch.getCounterfeitRiskLevel());
-        if (patch.getApprovedSuppliers() != null) entity.setApprovedSuppliers(patch.getApprovedSuppliers());
-        if (patch.getVerificationRequired() != null) entity.setVerificationRequired(patch.getVerificationRequired());
-        if (patch.getCustomFields() != null) entity.setCustomFields(patch.getCustomFields());
+        if (patch.getDescription() != null) {
+            entity.setDescription(patch.getDescription());
+        }
+        if (patch.getUnitOfMeasure() != null) {
+            entity.setUnitOfMeasure(patch.getUnitOfMeasure());
+        }
+        if (patch.getCageCode() != null) {
+            entity.setCageCode(patch.getCageCode());
+        }
+        if (patch.getMakeBuyCode() != null) {
+            entity.setMakeBuyCode(patch.getMakeBuyCode());
+        }
+        if (patch.getTraceabilityMethod() != null) {
+            entity.setTraceabilityMethod(patch.getTraceabilityMethod());
+        }
+        if (patch.getShelfLifeControlled() != null) {
+            entity.setShelfLifeControlled(patch.getShelfLifeControlled());
+        }
+        if (patch.getShelfLifeDays() != null) {
+            entity.setShelfLifeDays(patch.getShelfLifeDays());
+        }
+        if (patch.getStepPartRef() != null) {
+            entity.setStepPartRef(patch.getStepPartRef());
+        }
+        if (patch.getCounterfeitRiskLevel() != null) {
+            entity.setCounterfeitRiskLevel(patch.getCounterfeitRiskLevel());
+        }
+        if (patch.getApprovedSuppliers() != null) {
+            entity.setApprovedSuppliers(patch.getApprovedSuppliers());
+        }
+        if (patch.getVerificationRequired() != null) {
+            entity.setVerificationRequired(patch.getVerificationRequired());
+        }
+        if (patch.getCustomFields() != null) {
+            entity.setCustomFields(patch.getCustomFields());
+        }
     }
 }

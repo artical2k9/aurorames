@@ -11,6 +11,10 @@ public class WorkOrderSecurityProperties {
     @NotBlank(message = "mes.security.webhook-token must not be blank — set MES_SECURITY_WEBHOOK_TOKEN env var")
     private String webhookToken;
 
-    public String getWebhookToken() { return webhookToken; }
-    public void setWebhookToken(String webhookToken) { this.webhookToken = webhookToken; }
+    public String getWebhookToken() {
+        return webhookToken;
+    }
+    public void setWebhookToken(String webhookToken) {
+        this.webhookToken = webhookToken;
+    }
 }

@@ -82,7 +82,9 @@ class UserGridPreferenceControllerIT extends BaseIntegrationTest {
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private String engineerToken() {
-        if (!KEYCLOAK.isRunning()) return "test-token-" + UUID.randomUUID();
+        if (!KEYCLOAK.isRunning()) {
+            return "test-token-" + UUID.randomUUID();
+        }
         String user = "eng-pref-" + UUID.randomUUID();
         KEYCLOAK.createUser(user, "pass", ORG_ID, List.of("ENGINEER"));
         return KEYCLOAK.fetchToken(user, "pass");

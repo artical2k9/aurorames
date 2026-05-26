@@ -38,48 +38,136 @@ public class ItemMasterDto {
 
     // ── Getters and setters ───────────────────────────────────────────────────
 
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-    public UUID getOrgId() { return orgId; }
-    public void setOrgId(UUID orgId) { this.orgId = orgId; }
-    public String getPartNumber() { return partNumber; }
-    public void setPartNumber(String partNumber) { this.partNumber = partNumber; }
-    public String getRevision() { return revision; }
-    public void setRevision(String revision) { this.revision = revision; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public String getUnitOfMeasure() { return unitOfMeasure; }
-    public void setUnitOfMeasure(String unitOfMeasure) { this.unitOfMeasure = unitOfMeasure; }
-    public String getCageCode() { return cageCode; }
-    public void setCageCode(String cageCode) { this.cageCode = cageCode; }
-    public Classification getClassification() { return classification; }
-    public void setClassification(Classification classification) { this.classification = classification; }
-    public MakeBuyCode getMakeBuyCode() { return makeBuyCode; }
-    public void setMakeBuyCode(MakeBuyCode makeBuyCode) { this.makeBuyCode = makeBuyCode; }
-    public TraceabilityMethod getTraceabilityMethod() { return traceabilityMethod; }
-    public void setTraceabilityMethod(TraceabilityMethod traceabilityMethod) { this.traceabilityMethod = traceabilityMethod; }
-    public boolean isShelfLifeControlled() { return shelfLifeControlled; }
-    public void setShelfLifeControlled(boolean shelfLifeControlled) { this.shelfLifeControlled = shelfLifeControlled; }
-    public Integer getShelfLifeDays() { return shelfLifeDays; }
-    public void setShelfLifeDays(Integer shelfLifeDays) { this.shelfLifeDays = shelfLifeDays; }
-    public String getStepPartRef() { return stepPartRef; }
-    public void setStepPartRef(String stepPartRef) { this.stepPartRef = stepPartRef; }
-    public CounterfeitRiskLevel getCounterfeitRiskLevel() { return counterfeitRiskLevel; }
-    public void setCounterfeitRiskLevel(CounterfeitRiskLevel counterfeitRiskLevel) { this.counterfeitRiskLevel = counterfeitRiskLevel; }
-    public List<String> getApprovedSuppliers() { return approvedSuppliers; }
-    public void setApprovedSuppliers(List<String> approvedSuppliers) { this.approvedSuppliers = approvedSuppliers; }
-    public boolean isVerificationRequired() { return verificationRequired; }
-    public void setVerificationRequired(boolean verificationRequired) { this.verificationRequired = verificationRequired; }
-    public Map<String, Object> getCustomFields() { return customFields; }
-    public void setCustomFields(Map<String, Object> customFields) { this.customFields = customFields; }
-    public ItemStatus getStatus() { return status; }
-    public void setStatus(ItemStatus status) { this.status = status; }
-    public String getCreatedBy() { return createdBy; }
-    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-    public String getModifiedBy() { return modifiedBy; }
-    public void setModifiedBy(String modifiedBy) { this.modifiedBy = modifiedBy; }
-    public Instant getModifiedAt() { return modifiedAt; }
-    public void setModifiedAt(Instant modifiedAt) { this.modifiedAt = modifiedAt; }
+    public UUID getId() {
+        return id;
+    }
+    public void setId(UUID id) {
+        this.id = id;
+    }
+    public UUID getOrgId() {
+        return orgId;
+    }
+    public void setOrgId(UUID orgId) {
+        this.orgId = orgId;
+    }
+    public String getPartNumber() {
+        return partNumber;
+    }
+    public void setPartNumber(String partNumber) {
+        this.partNumber = partNumber;
+    }
+    public String getRevision() {
+        return revision;
+    }
+    public void setRevision(String revision) {
+        this.revision = revision;
+    }
+    public String getDescription() {
+        return description;
+    }
+    public void setDescription(String description) {
+        this.description = description;
+    }
+    public String getUnitOfMeasure() {
+        return unitOfMeasure;
+    }
+    public void setUnitOfMeasure(String unitOfMeasure) {
+        this.unitOfMeasure = unitOfMeasure;
+    }
+    public String getCageCode() {
+        return cageCode;
+    }
+    public void setCageCode(String cageCode) {
+        this.cageCode = cageCode;
+    }
+    public Classification getClassification() {
+        return classification;
+    }
+    public void setClassification(Classification classification) {
+        this.classification = classification;
+    }
+    public MakeBuyCode getMakeBuyCode() {
+        return makeBuyCode;
+    }
+    public void setMakeBuyCode(MakeBuyCode makeBuyCode) {
+        this.makeBuyCode = makeBuyCode;
+    }
+    public TraceabilityMethod getTraceabilityMethod() {
+        return traceabilityMethod;
+    }
+    public void setTraceabilityMethod(TraceabilityMethod traceabilityMethod) {
+        this.traceabilityMethod = traceabilityMethod;
+    }
+    public boolean isShelfLifeControlled() {
+        return shelfLifeControlled;
+    }
+    public void setShelfLifeControlled(boolean shelfLifeControlled) {
+        this.shelfLifeControlled = shelfLifeControlled;
+    }
+    public Integer getShelfLifeDays() {
+        return shelfLifeDays;
+    }
+    public void setShelfLifeDays(Integer shelfLifeDays) {
+        this.shelfLifeDays = shelfLifeDays;
+    }
+    public String getStepPartRef() {
+        return stepPartRef;
+    }
+    public void setStepPartRef(String stepPartRef) {
+        this.stepPartRef = stepPartRef;
+    }
+    public CounterfeitRiskLevel getCounterfeitRiskLevel() {
+        return counterfeitRiskLevel;
+    }
+    public void setCounterfeitRiskLevel(CounterfeitRiskLevel counterfeitRiskLevel) {
+        this.counterfeitRiskLevel = counterfeitRiskLevel;
+    }
+    public List<String> getApprovedSuppliers() {
+        return approvedSuppliers;
+    }
+    public void setApprovedSuppliers(List<String> approvedSuppliers) {
+        this.approvedSuppliers = approvedSuppliers;
+    }
+    public boolean isVerificationRequired() {
+        return verificationRequired;
+    }
+    public void setVerificationRequired(boolean verificationRequired) {
+        this.verificationRequired = verificationRequired;
+    }
+    public Map<String, Object> getCustomFields() {
+        return customFields;
+    }
+    public void setCustomFields(Map<String, Object> customFields) {
+        this.customFields = customFields;
+    }
+    public ItemStatus getStatus() {
+        return status;
+    }
+    public void setStatus(ItemStatus status) {
+        this.status = status;
+    }
+    public String getCreatedBy() {
+        return createdBy;
+    }
+    public void setCreatedBy(String createdBy) {
+        this.createdBy = createdBy;
+    }
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+    public String getModifiedBy() {
+        return modifiedBy;
+    }
+    public void setModifiedBy(String modifiedBy) {
+        this.modifiedBy = modifiedBy;
+    }
+    public Instant getModifiedAt() {
+        return modifiedAt;
+    }
+    public void setModifiedAt(Instant modifiedAt) {
+        this.modifiedAt = modifiedAt;
+    }
 }

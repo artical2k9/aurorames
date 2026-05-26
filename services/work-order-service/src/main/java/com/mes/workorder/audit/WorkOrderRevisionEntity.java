@@ -30,8 +30,16 @@ public class WorkOrderRevisionEntity {
     @Column(name = "actor", length = 255)
     private String actor;
 
-    public int getRev() { return rev; }
-    public long getRevtstmp() { return revtstmp; }
-    public String getActor() { return actor; }
-    public void setActor(String actor) { this.actor = actor; }
+    public int getRev() {
+        return rev;
+    }
+    public long getRevtstmp() {
+        return revtstmp;
+    }
+    public String getActor() {
+        return actor;
+    }
+    public void setActor(String actor) {
+        this.actor = actor;
+    }
 }

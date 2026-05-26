@@ -71,7 +71,9 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private String engineerToken() {
-        if (!KEYCLOAK.isRunning()) return "test-token";
+        if (!KEYCLOAK.isRunning()) {
+            return "test-token";
+        }
         String user = "eng-kafka-" + UUID.randomUUID();
         KEYCLOAK.createUser(user, "pass", "00000000-0000-0000-0000-000000000001", List.of("ENGINEER"));
         return KEYCLOAK.fetchToken(user, "pass");

@@ -20,7 +20,7 @@ import java.util.UUID;
 @Transactional
 public class UserGridPreferenceService {
 
-    private static final Logger log = LoggerFactory.getLogger(UserGridPreferenceService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(UserGridPreferenceService.class);
     private static final TypeReference<List<ColumnPreferenceEntry>> COLUMN_TYPE = new TypeReference<>() {};
 
     private final UserGridPreferenceRepository repository;
@@ -44,7 +44,7 @@ public class UserGridPreferenceService {
                     try {
                         cols = objectMapper.convertValue(pref.getColumnConfig(), COLUMN_TYPE);
                     } catch (IllegalArgumentException e) {
-                        log.warn("Corrupted column_config for org={} user={} module={}, returning defaults: {}",
+                        LOG.warn("Corrupted column_config for org={} user={} module={}, returning defaults: {}",
                                 orgId, userId, moduleKey, e.getMessage());
                         cols = defaultColumnRegistry.getOrDefault(moduleKey, List.of());
                     }
