@@ -113,6 +113,7 @@ services:
       IAM_DB_PASSWORD: ${IAM_DB_PASSWORD:?IAM_DB_PASSWORD must be set}
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mes}
       KEYCLOAK_WEBHOOK_SECRET: ${KEYCLOAK_WEBHOOK_SECRET:?KEYCLOAK_WEBHOOK_SECRET must be set}
+      IAM_WEBHOOK_TOKEN: ${IAM_WEBHOOK_TOKEN:?IAM_WEBHOOK_TOKEN must be set}
       MES_SECURITY_WEBHOOK_TOKEN: ${MES_SECURITY_WEBHOOK_TOKEN:?MES_SECURITY_WEBHOOK_TOKEN must be set}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       ADMIN_SERVICE_URL: http://admin-service:8888
@@ -283,6 +284,8 @@ services:
       kafka:
         condition: service_healthy
       keycloak:
+        condition: service_healthy
+      iam-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8095/actuator/health || exit 1"]

@@ -71,7 +71,8 @@ public class PrivilegeRegistryClient {
         while (attempt < maxAttempts) {
             try {
                 restClient.post()
-                        .uri("/privileges/register")
+                        .uri("/internal/privileges/register")
+                        .header("Authorization", "Bearer " + webhookToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(body)
                         .retrieve()

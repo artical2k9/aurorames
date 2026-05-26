@@ -16,6 +16,9 @@ psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<-EOSQL
     END
     \$\$;
 
+    -- Allow work_order_user to create its own schema in the mes database
+    GRANT CONNECT, CREATE ON DATABASE "${POSTGRES_DB}" TO "${WORK_ORDER_USER}";
+
     -- Pre-create iam schema so the GRANT USAGE and ALTER DEFAULT PRIVILEGES can be set
     -- before the IAM service Flyway runs. Tables are created later by iam-service.
     CREATE SCHEMA IF NOT EXISTS iam;
