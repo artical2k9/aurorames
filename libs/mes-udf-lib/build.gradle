@@ -1,0 +1,51 @@
+// mes-udf-lib — Reusable User-Defined Fields framework for Aurora MES.
+// Provides UdfFieldDefinition JPA entity, UdfValidator service, and REST controller
+// autoconfiguration. Published to mavenLocal(); consumed by work-order-service and
+// future domain services that require org-scoped custom fields.
+
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    // ── JPA — UdfFieldDefinition entity and repository ────────────────────────
+    api 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    // ── Web — REST controller for /udf/fields endpoint ────────────────────────
+    api 'org.springframework.boot:spring-boot-starter-web'
+
+    // ── Validation — Bean Validation on UDF definition DTOs ──────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // ── JSONB — list_options and validation_rules stored as JSONB ─────────────
+    implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.9.0'
+
+    // ── Jackson ───────────────────────────────────────────────────────────────
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // ── Autoconfiguration support ─────────────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    compileOnly    'org.springframework.boot:spring-boot-configuration-processor'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // ── Tests ─────────────────────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+apply plugin: 'maven-publish'
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId    = 'com.mes'
+            artifactId = 'mes-udf-lib'
+            version    = project.version
+            versionMapping {
+                usage('java-api') { fromResolutionOf('runtimeClasspath') }
+                usage('java-runtime') { fromResolutionResult() }
+            }
+        }
+    }
+}
