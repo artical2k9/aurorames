@@ -3,6 +3,7 @@ package com.mes.udf.api.dto;
 import com.mes.udf.domain.ModuleKey;
 import com.mes.udf.domain.UdfFieldType;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,6 +22,8 @@ public class UdfFieldDefinitionDto {
     private Map<String, Object> validationRules;
     private int displayOrder;
     private boolean active;
+    private Instant createdAt;
+    private Instant modifiedAt;
 
     public UUID getId() {
         return id;
@@ -93,5 +96,17 @@ public class UdfFieldDefinitionDto {
     }
     public void setActive(boolean active) {
         this.active = active;
+    }
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+    public Instant getModifiedAt() {
+        return modifiedAt;
+    }
+    public void setModifiedAt(Instant modifiedAt) {
+        this.modifiedAt = modifiedAt;
     }
 }

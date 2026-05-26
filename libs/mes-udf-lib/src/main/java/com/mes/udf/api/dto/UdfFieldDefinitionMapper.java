@@ -22,6 +22,8 @@ public final class UdfFieldDefinitionMapper {
         dto.setValidationRules(entity.getValidationRules());
         dto.setDisplayOrder(entity.getDisplayOrder());
         dto.setActive(entity.isActive());
+        dto.setCreatedAt(entity.getCreatedAt());
+        dto.setModifiedAt(entity.getModifiedAt());
         return dto;
     }
 
