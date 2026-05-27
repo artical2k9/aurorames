@@ -6,6 +6,7 @@ import com.mes.workorder.integration.BaseIntegrationTest;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -108,8 +109,10 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
         return path.substring(path.lastIndexOf('/') + 1);
     }
 
-    // Opens a consumer, forces partition assignment via a short poll, then seeks
-    // to the end so subsequent polls only see events published after this call.
+    // Opens a consumer with manual partition assignment (synchronous, no group coordinator
+    // roundtrip) and seeks to end. Calls position() on each partition to force eager
+    // materialization of the lazy seekToEnd — consumer is firmly positioned at end
+    // BEFORE the caller's test action publishes any events.
     private KafkaConsumer<String, String> openConsumerAtEnd(String topic) {
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafka.getBrokersAsString());
@@ -118,9 +121,12 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
-        consumer.subscribe(List.of(topic));
-        consumer.poll(Duration.ofMillis(100)); // triggers partition assignment
-        consumer.seekToEnd(consumer.assignment());
+        List<TopicPartition> partitions = consumer.partitionsFor(topic).stream()
+                .map(pi -> new TopicPartition(pi.topic(), pi.partition()))
+                .toList();
+        consumer.assign(partitions);
+        consumer.seekToEnd(partitions);
+        partitions.forEach(consumer::position); // force eager materialization
         return consumer;
     }
 
