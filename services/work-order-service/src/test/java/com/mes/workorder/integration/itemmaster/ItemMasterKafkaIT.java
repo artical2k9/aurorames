@@ -17,7 +17,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -39,17 +38,20 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
     @Test
     void createPublishesItemMasterCreatedEvent() throws Exception {
         String token = engineerToken();
-        ResponseEntity<Map> created = restTemplate.exchange(
-                "/api/v1/item-master",
-                HttpMethod.POST,
-                jsonRequest(token, createRequest("BRKT-EVT-001", "A")),
-                Map.class);
-        String entityId = extractIdFromLocation(created.getHeaders().getLocation().getPath());
+        // Position consumer at end BEFORE creating so earlier-test events are skipped.
+        try (KafkaConsumer<String, String> consumer = openConsumerAtEnd(TOPIC)) {
+            ResponseEntity<Map> created = restTemplate.exchange(
+                    "/api/v1/item-master",
+                    HttpMethod.POST,
+                    jsonRequest(token, createRequest("BRKT-EVT-001", "A")),
+                    Map.class);
+            String entityId = extractIdFromLocation(created.getHeaders().getLocation().getPath());
 
-        JsonNode event = pollForEvent(TOPIC, "ITEM_MASTER_CREATED", 5);
+            JsonNode event = pollForEvent(consumer, "ITEM_MASTER_CREATED", 5);
 
-        assertThat(event).isNotNull();
-        assertThat(event.path("entityId").asText()).isEqualTo(entityId);
+            assertThat(event).isNotNull();
+            assertThat(event.path("entityId").asText()).isEqualTo(entityId);
+        }
     }
 
     @Test
@@ -62,15 +64,18 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
                 Map.class);
         String itemId = extractIdFromLocation(created.getHeaders().getLocation().getPath());
 
-        restTemplate.exchange(
-                "/api/v1/item-master/" + itemId,
-                HttpMethod.PATCH,
-                jsonRequest(token, Map.of("description", "Updated")),
-                Map.class);
+        // Position consumer at end AFTER create (skips CREATED event) and BEFORE patch.
+        try (KafkaConsumer<String, String> consumer = openConsumerAtEnd(TOPIC)) {
+            restTemplate.exchange(
+                    "/api/v1/item-master/" + itemId,
+                    HttpMethod.PATCH,
+                    jsonRequest(token, Map.of("description", "Updated")),
+                    Map.class);
 
-        JsonNode event = pollForEvent(TOPIC, "ITEM_MASTER_UPDATED", 5);
-        assertThat(event).isNotNull();
-        assertThat(event.path("entityId").asText()).isEqualTo(itemId);
+            JsonNode event = pollForEvent(consumer, "ITEM_MASTER_UPDATED", 5);
+            assertThat(event).isNotNull();
+            assertThat(event.path("entityId").asText()).isEqualTo(itemId);
+        }
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
@@ -103,26 +108,31 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
         return path.substring(path.lastIndexOf('/') + 1);
     }
 
-    private JsonNode pollForEvent(String topic, String eventType, int timeoutSeconds) throws Exception {
+    // Opens a consumer, forces partition assignment via a short poll, then seeks
+    // to the end so subsequent polls only see events published after this call.
+    private KafkaConsumer<String, String> openConsumerAtEnd(String topic) {
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafka.getBrokersAsString());
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group-" + UUID.randomUUID());
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+        consumer.subscribe(List.of(topic));
+        consumer.poll(Duration.ofMillis(100)); // triggers partition assignment
+        consumer.seekToEnd(consumer.assignment());
+        return consumer;
+    }
 
-        List<JsonNode> events = new ArrayList<>();
+    private JsonNode pollForEvent(KafkaConsumer<String, String> consumer, String eventType, int timeoutSeconds)
+            throws Exception {
         long deadline = System.currentTimeMillis() + (timeoutSeconds * 1000L);
-
-        try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {
-            consumer.subscribe(List.of(topic));
-            while (System.currentTimeMillis() < deadline) {
-                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(500));
-                for (var record : records) {
-                    JsonNode node = objectMapper.readTree(record.value());
-                    if (eventType.equals(node.path("eventType").asText())) {
-                        return node;
-                    }
+        while (System.currentTimeMillis() < deadline) {
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(500));
+            for (var record : records) {
+                JsonNode node = objectMapper.readTree(record.value());
+                if (eventType.equals(node.path("eventType").asText())) {
+                    return node;
                 }
             }
         }
