@@ -1,7 +1,9 @@
 package com.mes.workorder.integration.udf;
 
 import com.mes.workorder.integration.BaseIntegrationTest;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -9,6 +11,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +23,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UdfFieldDefinitionControllerIT extends BaseIntegrationTest {
 
     static final String ORG_ID = "00000000-0000-0000-0000-000000000001";
+
+    @Autowired
+    JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void cleanUdfDefinitions() {
+        // ItemMasterWithUdfIT leaves required UDF definitions (e.g. drawing_ref_a, drawing_ref_b)
+        // active in the shared database. Without cleanup, those required fields cause item master
+        // creation requests in this class to fail with 422, making usage-count checks see 0 rows.
+        jdbcTemplate.update("DELETE FROM work_order.udf_field_definition WHERE org_id = ?",
+                UUID.fromString(ORG_ID));
+    }
     static final String UDF_URL = "/udf/fields";
     static final String ITEM_URL = "/api/v1/item-master";
 
