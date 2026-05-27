@@ -1,7 +1,6 @@
 package com.mes.workorder.integration.udf;
 
 import com.mes.workorder.integration.BaseIntegrationTest;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
@@ -69,7 +68,6 @@ class UdfFieldDefinitionControllerIT extends BaseIntegrationTest {
 
     @Test
     void engineerPostReturns403() {
-        Assumptions.assumeTrue(KEYCLOAK.isRunning(), "Requires Keycloak for privilege enforcement");
         String engineerToken = engineerToken();
 
         ResponseEntity<Map> response = restTemplate.exchange(
@@ -174,21 +172,11 @@ class UdfFieldDefinitionControllerIT extends BaseIntegrationTest {
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private String adminToken() {
-        if (!KEYCLOAK.isRunning()) {
-            return "test-admin-token";
-        }
-        String username = "admin-" + UUID.randomUUID();
-        KEYCLOAK.createUser(username, "pass", ORG_ID, List.of("SYSTEM_ADMIN"));
-        return KEYCLOAK.fetchToken(username, "pass");
+        return buildToken(ORG_ID, List.of("SYSTEM_ADMIN"));
     }
 
     private String engineerToken() {
-        if (!KEYCLOAK.isRunning()) {
-            return "test-engineer-token";
-        }
-        String username = "engineer-" + UUID.randomUUID();
-        KEYCLOAK.createUser(username, "pass", ORG_ID, List.of("ENGINEER"));
-        return KEYCLOAK.fetchToken(username, "pass");
+        return buildToken(ORG_ID, List.of("ENGINEER"));
     }
 
     private Map<String, Object> textFieldRequest(String fieldKey, boolean required) {

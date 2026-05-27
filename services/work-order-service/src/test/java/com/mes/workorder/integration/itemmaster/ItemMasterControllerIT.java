@@ -11,8 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -116,12 +116,7 @@ class ItemMasterControllerIT extends BaseIntegrationTest {
 
     @Test
     void postWithNoPrivilegesReturns403() {
-        if (!KEYCLOAK.isRunning()) {
-            return;
-        }
-        String username = "viewer-" + UUID.randomUUID();
-        KEYCLOAK.createUser(username, "pass", ORG_ID, java.util.List.of());
-        String token = KEYCLOAK.fetchToken(username, "pass");
+        String token = buildToken(ORG_ID, List.of());
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 BASE_URL, HttpMethod.POST,
@@ -133,12 +128,7 @@ class ItemMasterControllerIT extends BaseIntegrationTest {
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private String engineerToken() {
-        if (!KEYCLOAK.isRunning()) {
-            return "test-engineer-token";
-        }
-        String username = "engineer-" + UUID.randomUUID();
-        KEYCLOAK.createUser(username, "pass", ORG_ID, java.util.List.of("ENGINEER"));
-        return KEYCLOAK.fetchToken(username, "pass");
+        return buildToken(ORG_ID, List.of("ENGINEER"));
     }
 
     private Map<String, Object> createRequest(String partNumber, String revision) {

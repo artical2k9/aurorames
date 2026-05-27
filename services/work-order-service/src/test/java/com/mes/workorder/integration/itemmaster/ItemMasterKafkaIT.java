@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ItemMasterKafkaIT extends BaseIntegrationTest {
 
     static final String TOPIC = "work-order.item-master.events";
+    static final String ORG_ID = "00000000-0000-0000-0000-000000000001";
 
     @Autowired
     EmbeddedKafkaBroker embeddedKafka;
@@ -75,12 +76,7 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private String engineerToken() {
-        if (!KEYCLOAK.isRunning()) {
-            return "test-token";
-        }
-        String user = "eng-kafka-" + UUID.randomUUID();
-        KEYCLOAK.createUser(user, "pass", "00000000-0000-0000-0000-000000000001", List.of("ENGINEER"));
-        return KEYCLOAK.fetchToken(user, "pass");
+        return buildToken(ORG_ID, List.of("ENGINEER"));
     }
 
     private Map<String, Object> createRequest(String partNumber, String revision) {

@@ -12,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -116,21 +115,11 @@ class ItemMasterWithUdfIT extends BaseIntegrationTest {
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private String adminToken() {
-        if (!KEYCLOAK.isRunning()) {
-            return "test-admin-token";
-        }
-        String username = "admin-" + UUID.randomUUID();
-        KEYCLOAK.createUser(username, "pass", ORG_ID, List.of("SYSTEM_ADMIN"));
-        return KEYCLOAK.fetchToken(username, "pass");
+        return buildToken(ORG_ID, List.of("SYSTEM_ADMIN"));
     }
 
     private String engineerToken() {
-        if (!KEYCLOAK.isRunning()) {
-            return "test-engineer-token";
-        }
-        String username = "engineer-" + UUID.randomUUID();
-        KEYCLOAK.createUser(username, "pass", ORG_ID, List.of("ENGINEER"));
-        return KEYCLOAK.fetchToken(username, "pass");
+        return buildToken(ORG_ID, List.of("ENGINEER"));
     }
 
     private Map<String, Object> requiredTextField(String fieldKey) {
