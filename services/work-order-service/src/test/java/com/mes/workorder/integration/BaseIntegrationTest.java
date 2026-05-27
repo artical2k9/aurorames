@@ -82,11 +82,18 @@ public abstract class BaseIntegrationTest {
         }
     }
 
-    @Container
+    // No @Container — started once in static initializer so the Testcontainers JUnit 5
+    // extension never stops/restarts it between test classes. A @Container static field
+    // is stopped in afterAll() per class, which changes the port and breaks the cached
+    // Spring context's HikariCP pool (ERR-MES-040). Ryuk cleans up on JVM exit.
     protected static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")
             .withDatabaseName("mes")
             .withUsername("work_order_user")
             .withPassword("secret");
+
+    static {
+        POSTGRES.start();
+    }
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
