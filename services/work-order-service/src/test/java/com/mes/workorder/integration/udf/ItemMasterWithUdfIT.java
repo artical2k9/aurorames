@@ -6,7 +6,6 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import java.util.HashMap;
@@ -132,23 +131,4 @@ class ItemMasterWithUdfIT extends BaseIntegrationTest {
         );
     }
 
-    private HashMap<String, Object> baseItemRequest(String partNumber, String revision) {
-        return new HashMap<>(Map.of(
-                "partNumber", partNumber,
-                "revision", revision,
-                "description", "Test bracket",
-                "unitOfMeasure", "EA",
-                "cageCode", "CAGE01",
-                "classification", "FABRICATED",
-                "makeBuyCode", "MAKE",
-                "traceabilityMethod", "SERIAL"
-        ));
-    }
-
-    private HttpEntity<Map<String, Object>> jsonRequest(String token, Map<String, Object> body) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(token);
-        return new HttpEntity<>(body, headers);
-    }
 }

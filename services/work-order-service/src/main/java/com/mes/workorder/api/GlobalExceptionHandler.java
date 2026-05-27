@@ -19,6 +19,9 @@ import java.time.Instant;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final String ERROR_CONFLICT = "conflict";
+    private static final String ERROR_VALIDATION = "validation_error";
+
     record ErrorResponse(int status, String error, String message, Instant timestamp) {}
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -45,35 +48,35 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), "conflict",
+                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ERROR_CONFLICT,
                         "Data integrity violation", Instant.now()));
     }
 
     @ExceptionHandler(ItemMasterConflictException.class)
     public ResponseEntity<ErrorResponse> handleConflict(ItemMasterConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), "conflict",
+                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ERROR_CONFLICT,
                         ex.getMessage(), Instant.now()));
     }
 
     @ExceptionHandler(UdfDefinitionConflictException.class)
     public ResponseEntity<ErrorResponse> handleUdfConflict(UdfDefinitionConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), "conflict",
+                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ERROR_CONFLICT,
                         ex.getMessage(), Instant.now()));
     }
 
     @ExceptionHandler(UdfValidationException.class)
     public ResponseEntity<ErrorResponse> handleUdfValidation(UdfValidationException ex) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body(new ErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY.value(), "validation_error",
+                .body(new ErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY.value(), ERROR_VALIDATION,
                         ex.getMessage(), Instant.now()));
     }
 
     @ExceptionHandler(ItemMasterValidationException.class)
     public ResponseEntity<ErrorResponse> handleValidation(ItemMasterValidationException ex) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body(new ErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY.value(), "validation_error",
+                .body(new ErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY.value(), ERROR_VALIDATION,
                         ex.getMessage(), Instant.now()));
     }
 
@@ -84,7 +87,7 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .orElse("Validation failed");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "validation_error",
+                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ERROR_VALIDATION,
                         message, Instant.now()));
     }
 }

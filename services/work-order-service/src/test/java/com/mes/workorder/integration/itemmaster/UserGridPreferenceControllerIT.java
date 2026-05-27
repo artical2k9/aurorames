@@ -6,7 +6,6 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
@@ -90,10 +89,4 @@ class UserGridPreferenceControllerIT extends BaseIntegrationTest {
         return new HttpEntity<>(h);
     }
 
-    private HttpEntity<Map<String, Object>> jsonRequest(String token, Map<String, Object> body) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(token);
-        return new HttpEntity<>(body, headers);
-    }
 }

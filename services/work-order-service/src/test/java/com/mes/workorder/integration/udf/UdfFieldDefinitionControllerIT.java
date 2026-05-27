@@ -9,11 +9,9 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -206,24 +204,8 @@ class UdfFieldDefinitionControllerIT extends BaseIntegrationTest {
 
     private Map<String, Object> itemRequest(String partNumber, String revision,
                                             Map<String, Object> customFields) {
-        var req = new HashMap<String, Object>(Map.of(
-                "partNumber", partNumber,
-                "revision", revision,
-                "description", "Test bracket",
-                "unitOfMeasure", "EA",
-                "cageCode", "CAGE01",
-                "classification", "FABRICATED",
-                "makeBuyCode", "MAKE",
-                "traceabilityMethod", "SERIAL"
-        ));
+        Map<String, Object> req = baseItemRequest(partNumber, revision);
         req.put("customFields", customFields);
         return req;
-    }
-
-    private HttpEntity<Map<String, Object>> jsonRequest(String token, Map<String, Object> body) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(token);
-        return new HttpEntity<>(body, headers);
     }
 }

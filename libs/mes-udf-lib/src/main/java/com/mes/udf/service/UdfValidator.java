@@ -38,19 +38,17 @@ public class UdfValidator {
             Object value = fields.get(key);
 
             if (def.isRequired() && value == null) {
-                violations.add(new UdfViolation(key,
-                        "Field '" + key + "' is required"));
-                continue;
+                violations.add(new UdfViolation(key, fieldError(key, "is required")));
+            } else if (value != null) {
+                violations.addAll(validateType(def, key, value));
             }
-
-            if (value == null) {
-                continue;
-            }
-
-            violations.addAll(validateType(def, key, value));
         }
 
         return violations;
+    }
+
+    private static String fieldError(String key, String detail) {
+        return "Field '" + key + "' " + detail;
     }
 
     private List<UdfViolation> validateType(UdfFieldDefinition def, String key, Object value) {
@@ -76,8 +74,7 @@ public class UdfValidator {
         }
         int max = ((Number) rules.get("maxLength")).intValue();
         if (value.toString().length() > max) {
-            v.add(new UdfViolation(key,
-                    "Field '" + key + "' exceeds maxLength of " + max));
+            v.add(new UdfViolation(key, fieldError(key, "exceeds maxLength of " + max)));
         }
     }
 
@@ -88,7 +85,7 @@ public class UdfValidator {
             d = value instanceof Number ? ((Number) value).doubleValue()
                     : Double.parseDouble(value.toString());
         } catch (NumberFormatException e) {
-            v.add(new UdfViolation(key, "Field '" + key + "' must be a number"));
+            v.add(new UdfViolation(key, fieldError(key, "must be a number")));
             return;
         }
 
@@ -100,15 +97,13 @@ public class UdfValidator {
         if (rules.containsKey("min")) {
             double min = ((Number) rules.get("min")).doubleValue();
             if (d < min) {
-                v.add(new UdfViolation(key,
-                        "Field '" + key + "' is below minimum of " + min));
+                v.add(new UdfViolation(key, fieldError(key, "is below minimum of " + min)));
             }
         }
         if (rules.containsKey("max")) {
             double max = ((Number) rules.get("max")).doubleValue();
             if (d > max) {
-                v.add(new UdfViolation(key,
-                        "Field '" + key + "' exceeds maximum of " + max));
+                v.add(new UdfViolation(key, fieldError(key, "exceeds maximum of " + max)));
             }
         }
     }
@@ -119,8 +114,7 @@ public class UdfValidator {
         }
         String s = value.toString().toLowerCase(Locale.ROOT);
         if (!s.equals("true") && !s.equals("false")) {
-            v.add(new UdfViolation(key,
-                    "Field '" + key + "' must be a boolean (true/false)"));
+            v.add(new UdfViolation(key, fieldError(key, "must be a boolean (true/false)")));
         }
     }
 
@@ -128,8 +122,7 @@ public class UdfValidator {
         try {
             LocalDate.parse(value.toString());
         } catch (DateTimeParseException e) {
-            v.add(new UdfViolation(key,
-                    "Field '" + key + "' must be a valid ISO date (YYYY-MM-DD)"));
+            v.add(new UdfViolation(key, fieldError(key, "must be a valid ISO date (YYYY-MM-DD)")));
         }
     }
 
@@ -140,8 +133,7 @@ public class UdfValidator {
             return;
         }
         if (!options.contains(value.toString())) {
-            v.add(new UdfViolation(key,
-                    "Field '" + key + "' must be one of: " + options));
+            v.add(new UdfViolation(key, fieldError(key, "must be one of: " + options)));
         }
     }
 }

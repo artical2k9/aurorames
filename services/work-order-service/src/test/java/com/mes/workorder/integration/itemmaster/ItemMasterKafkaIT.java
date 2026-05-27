@@ -11,10 +11,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 import java.time.Duration;
@@ -44,7 +41,7 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
             ResponseEntity<Map> created = restTemplate.exchange(
                     "/api/v1/item-master",
                     HttpMethod.POST,
-                    jsonRequest(token, createRequest("BRKT-EVT-001", "A")),
+                    jsonRequest(token, baseItemRequest("BRKT-EVT-001", "A")),
                     Map.class);
             String entityId = extractIdFromLocation(created.getHeaders().getLocation().getPath());
 
@@ -61,7 +58,7 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
         ResponseEntity<Map> created = restTemplate.exchange(
                 "/api/v1/item-master",
                 HttpMethod.POST,
-                jsonRequest(token, createRequest("BRKT-EVT-002", "A")),
+                jsonRequest(token, baseItemRequest("BRKT-EVT-002", "A")),
                 Map.class);
         String itemId = extractIdFromLocation(created.getHeaders().getLocation().getPath());
 
@@ -73,6 +70,7 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
                     jsonRequest(token, Map.of("description", "Updated")),
                     Map.class);
 
+
             JsonNode event = pollForEvent(consumer, "ITEM_MASTER_UPDATED", 5);
             assertThat(event).isNotNull();
             assertThat(event.path("entityId").asText()).isEqualTo(itemId);
@@ -83,26 +81,6 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
 
     private String engineerToken() {
         return buildToken(ORG_ID, List.of("ENGINEER"));
-    }
-
-    private Map<String, Object> createRequest(String partNumber, String revision) {
-        return new java.util.HashMap<>(Map.of(
-                "partNumber", partNumber,
-                "revision", revision,
-                "description", "Test item",
-                "unitOfMeasure", "EA",
-                "cageCode", "CAGE01",
-                "classification", "FABRICATED",
-                "makeBuyCode", "MAKE",
-                "traceabilityMethod", "SERIAL"
-        ));
-    }
-
-    private HttpEntity<Map<String, Object>> jsonRequest(String token, Map<String, Object> body) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(token);
-        return new HttpEntity<>(body, headers);
     }
 
     private String extractIdFromLocation(String path) {
@@ -135,8 +113,8 @@ class ItemMasterKafkaIT extends BaseIntegrationTest {
         long deadline = System.currentTimeMillis() + (timeoutSeconds * 1000L);
         while (System.currentTimeMillis() < deadline) {
             ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(500));
-            for (var record : records) {
-                JsonNode node = objectMapper.readTree(record.value());
+            for (var msg : records) {
+                JsonNode node = objectMapper.readTree(msg.value());
                 if (eventType.equals(node.path("eventType").asText())) {
                     return node;
                 }

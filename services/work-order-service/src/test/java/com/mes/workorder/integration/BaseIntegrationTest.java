@@ -16,6 +16,9 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -25,7 +28,9 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -150,4 +155,24 @@ public abstract class BaseIntegrationTest {
 
     @Autowired
     protected TestRestTemplate restTemplate;
+
+    protected HttpEntity<Map<String, Object>> jsonRequest(String token, Map<String, Object> body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(token);
+        return new HttpEntity<>(body, headers);
+    }
+
+    protected static Map<String, Object> baseItemRequest(String partNumber, String revision) {
+        return new HashMap<>(Map.of(
+                "partNumber", partNumber,
+                "revision", revision,
+                "description", "Test item",
+                "unitOfMeasure", "EA",
+                "cageCode", "CAGE01",
+                "classification", "FABRICATED",
+                "makeBuyCode", "MAKE",
+                "traceabilityMethod", "SERIAL"
+        ));
+    }
 }
