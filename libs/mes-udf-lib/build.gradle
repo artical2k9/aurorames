@@ -7,6 +7,13 @@ plugins {
     id 'java-library'
 }
 
+// Spring Framework 6 requires parameter names in bytecode to resolve @RequestParam /
+// @PathVariable without explicit annotation values. The Spring Boot Gradle plugin adds
+// this flag automatically for service modules, but library modules must add it explicitly.
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs << '-parameters'
+}
+
 dependencies {
     // ── JPA — UdfFieldDefinition entity and repository ────────────────────────
     api 'org.springframework.boot:spring-boot-starter-data-jpa'
