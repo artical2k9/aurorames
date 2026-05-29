@@ -9,6 +9,7 @@ import org.springframework.web.client.RestClient;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 @Component
 public class PrivilegeRegistryClient {
@@ -34,50 +35,35 @@ public class PrivilegeRegistryClient {
     }
 
     public PrivilegeManifest fetchManifest() {
-        int attempt = 0;
-        Exception lastException = null;
-        while (attempt < maxAttempts) {
-            try {
-                return restClient.get()
+        return executeWithRetry(
+                () -> restClient.get()
                         .uri("/internal/privileges")
                         .header("Authorization", "Bearer " + webhookToken)
                         .retrieve()
-                        .body(PrivilegeManifest.class);
-            } catch (HttpClientErrorException e) {
-                throw new PrivilegeRegistryException("Registry returned " + e.getStatusCode(), e);
-            } catch (HttpServerErrorException.ServiceUnavailable e) {
-                attempt++;
-                lastException = e;
-                if (attempt < maxAttempts && retryDelayMs > 0) {
-                    try {
-                        Thread.sleep(retryDelayMs);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        throw new PrivilegeRegistryException("Retry interrupted", ie);
-                    }
-                }
-            } catch (Exception e) {
-                throw new PrivilegeRegistryException("Failed to fetch privilege manifest", e);
-            }
-        }
-        throw new PrivilegeRegistryException(
-                "Registry unavailable after " + maxAttempts + " attempts", lastException);
+                        .body(PrivilegeManifest.class),
+                "Failed to fetch privilege manifest");
     }
 
     public void register(String moduleName, List<PrivilegeRegistration> privileges) {
+        Map<String, Object> body = Map.of("moduleName", moduleName, "privileges", privileges);
+        executeWithRetry(() -> {
+            restClient.post()
+                    .uri("/internal/privileges/register")
+                    .header("Authorization", "Bearer " + webhookToken)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
+            return null;
+        }, "Failed to register privileges");
+    }
+
+    private <T> T executeWithRetry(Supplier<T> action, String errorContext) {
         int attempt = 0;
         Exception lastException = null;
-        Map<String, Object> body = Map.of("moduleName", moduleName, "privileges", privileges);
         while (attempt < maxAttempts) {
             try {
-                restClient.post()
-                        .uri("/internal/privileges/register")
-                        .header("Authorization", "Bearer " + webhookToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(body)
-                        .retrieve()
-                        .toBodilessEntity();
-                return;
+                return action.get();
             } catch (HttpClientErrorException e) {
                 throw new PrivilegeRegistryException("Registry returned " + e.getStatusCode(), e);
             } catch (HttpServerErrorException.ServiceUnavailable e) {
@@ -92,7 +78,7 @@ public class PrivilegeRegistryClient {
                     }
                 }
             } catch (Exception e) {
-                throw new PrivilegeRegistryException("Failed to register privileges", e);
+                throw new PrivilegeRegistryException(errorContext, e);
             }
         }
         throw new PrivilegeRegistryException(
