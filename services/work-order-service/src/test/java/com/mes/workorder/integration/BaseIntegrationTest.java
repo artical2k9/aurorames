@@ -37,7 +37,8 @@ import java.util.UUID;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
 @EmbeddedKafka(partitions = 1,
-        topics = {"iam.privilege-changes", "work-order.item-master.events", "work-order.bom.events"},
+        topics = {"iam.privilege-changes", "work-order.item-master.events",
+                  "work-order.bom.events", "work-order.eco.events"},
         bootstrapServersProperty = "spring.kafka.bootstrap-servers")
 @Import(BaseIntegrationTest.TestSecurityConfig.class)
 public abstract class BaseIntegrationTest {
