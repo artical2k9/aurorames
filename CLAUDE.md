@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at:
-specs/007-system-activity-audit-logging/plan.md
+specs/008-item-master-bom-management/plan.md
 <!-- SPECKIT END -->
 
 ## Branching Strategy
@@ -73,17 +73,23 @@ Before transitioning any Jira issue to Done:
 Every commit message **must** follow this format exactly — square brackets around `type` are **literal and required**:
 
 ```
-[type](MES-NNN): short description
+[type](MES-NNN): short description [TXXX]
 
 Ref: MES-NNN
+Task: TXXX
 ```
 
-**Correct:** `[feat](MES-5): add CaffeinePrivilegeCache with Kafka invalidation`
-**Wrong:** `feat(MES-5): add CaffeinePrivilegeCache with Kafka invalidation`
+**Correct:** `[feat](MES-8): add ItemMaster JPA entity and Flyway migration [T027]`
+**Wrong:** `feat(MES-8): add ItemMaster JPA entity and Flyway migration`
+**Wrong:** `[feat](MES-8): add ItemMaster JPA entity` (missing task ID)
 
 Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`, `sec`
 
-The ticket key **must** appear in the headline — this is what the GitHub for Jira app scans to link commits to issues. Use `Ref: MES-NNN` in the footer (not `Closes`).
+**Rules:**
+- The ticket key **must** appear in the headline — this is what the GitHub for Jira app scans to link commits to issues. Use `Ref: MES-NNN` in the footer (not `Closes`).
+- The task ID **must** appear as `[TXXX]` at the end of the headline and as `Task: TXXX` in the footer — this links every commit to a specific row in `tasks.md` for full implementation traceability without requiring Jira sub-issues.
+- One task = one commit. If a task requires multiple commits, each still references the same task ID.
+- If a commit genuinely covers multiple tasks (trivially related setup steps only), list all: `[T001, T002]` and `Task: T001, T002`.
 
 ---
 

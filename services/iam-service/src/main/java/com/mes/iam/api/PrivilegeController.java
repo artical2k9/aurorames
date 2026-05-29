@@ -25,7 +25,7 @@ public class PrivilegeController {
         this.privilegeService = privilegeService;
     }
 
-    @PostMapping("/privileges/register")
+    @PostMapping("/internal/privileges/register")
     public ResponseEntity<Void> registerPrivileges(@Valid @RequestBody RegisterPrivilegesRequest request) {
         privilegeService.registerManifest(request.moduleName(), request.privileges());
         return ResponseEntity.noContent().build();

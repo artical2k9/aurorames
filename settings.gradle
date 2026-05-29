@@ -26,3 +26,7 @@ include 'libs:lib-common-events'
 include 'libs:lib-keycloak-audit-spi'
 // include 'libs:lib-common-domain'
 // include 'libs:lib-common-test'
+
+// Phase 8 — Item Master & BOM Management (MES-8)
+include 'libs:mes-udf-lib'
+include 'services:work-order-service'

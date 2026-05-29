@@ -63,6 +63,8 @@ jobs:
             dockerfile: services/platform-service/Dockerfile
           - name: mes-audit-service
             dockerfile: services/audit-service/Dockerfile
+          - name: mes-work-order-service
+            dockerfile: services/work-order-service/Dockerfile
 
     steps:
       - name: Checkout

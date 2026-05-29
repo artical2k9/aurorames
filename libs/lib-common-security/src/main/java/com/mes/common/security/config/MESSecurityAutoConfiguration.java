@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.core.annotation.AnnotationTemplateExpressionDefaults;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.client.RestClient;
 
@@ -29,8 +30,9 @@ public class MESSecurityAutoConfiguration {
     @ConditionalOnMissingBean
     public PrivilegeRegistryClient privilegeRegistryClient(
             RestClient.Builder builder,
-            @Value("${mes.security.iam-service-url:http://localhost:8085}") String iamServiceUrl) {
-        return new PrivilegeRegistryClient(builder, iamServiceUrl);
+            @Value("${mes.security.iam-service-url:http://localhost:8085}") String iamServiceUrl,
+            @Value("${mes.security.webhook-token:}") String webhookToken) {
+        return new PrivilegeRegistryClient(builder, iamServiceUrl, webhookToken);
     }
 
     @Bean
@@ -53,6 +55,8 @@ public class MESSecurityAutoConfiguration {
             HttpSecurity http,
             MESJwtAuthenticationConverter converter) throws Exception {
         return http
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .anyRequest().authenticated())

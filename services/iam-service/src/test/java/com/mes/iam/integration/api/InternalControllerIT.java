@@ -30,6 +30,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 
+import com.mes.common.security.privilege.PrivilegeManifest;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -138,6 +140,31 @@ class InternalControllerIT {
         post("/internal/keycloak-events", WEBHOOK_TOKEN, logout);
 
         assertThat(consumeFromTopic("iam.events", 2)).hasSize(2);
+    }
+
+    @Test
+    void getPrivilegeManifest_validToken_returns200WithSeededPrivileges() {
+        ResponseEntity<PrivilegeManifest> response = restTemplate.exchange(
+                "/internal/privileges",
+                HttpMethod.GET,
+                new HttpEntity<>(bearerHeaders(WEBHOOK_TOKEN)),
+                PrivilegeManifest.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        // Flyway V003 seeds SYSTEM_ADMIN with iam:* privileges — manifest is never empty
+        assertThat(response.getBody().rolePrivileges()).containsKey("SYSTEM_ADMIN");
+    }
+
+    @Test
+    void getPrivilegeManifest_invalidToken_returns401() {
+        ResponseEntity<Map> response = restTemplate.exchange(
+                "/internal/privileges",
+                HttpMethod.GET,
+                new HttpEntity<>(bearerHeaders("wrong-token")),
+                Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

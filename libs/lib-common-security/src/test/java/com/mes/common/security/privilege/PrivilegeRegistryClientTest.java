@@ -25,7 +25,7 @@ class PrivilegeRegistryClientTest {
 
     @BeforeEach
     void setUp() {
-        client = new PrivilegeRegistryClient(RestClient.builder(), wm.baseUrl(), 3, 0L);
+        client = new PrivilegeRegistryClient(RestClient.builder(), wm.baseUrl(), "test-token", 3, 0L);
     }
 
     @Test

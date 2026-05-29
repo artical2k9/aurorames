@@ -1,0 +1,772 @@
+openapi: "3.1.0"
+info:
+  title: work-order-service API — Item Master & BOM
+  version: "1.0.0"
+  description: |
+    Item Master records, multi-level Bills of Materials, Engineering Change Orders,
+    and User-Defined Fields for Aurora MES.
+    All endpoints require a valid Keycloak-issued JWT. The `org_id` claim scopes all data.
+    Privileges: item-master:records:view, item-master:records:manage,
+                item-master:bom:manage, item-master:eco:manage, item-master:udf:manage.
+
+servers:
+  - url: http://localhost:8095
+    description: Local development (direct)
+  - url: http://localhost:8080/api/work-order
+    description: Via Spring Cloud Gateway
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema: { type: integer, default: 0, minimum: 0 }
+    SizeParam:
+      name: size
+      in: query
+      schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+
+  schemas:
+
+    # ── Item Master ─────────────────────────────────────────────────────────
+
+    ItemMasterDto:
+      type: object
+      required: [id, partNumber, revision, description, unitOfMeasure, classification,
+                 makeBuyCode, traceabilityMethod, shelfLifeControlled, status,
+                 createdBy, createdAt, modifiedBy, modifiedAt]
+      properties:
+        id:                  { type: string, format: uuid }
+        partNumber:          { type: string }
+        revision:            { type: string }
+        description:         { type: string }
+        unitOfMeasure:       { type: string }
+        cageCode:            { type: string, nullable: true }
+        classification:
+          type: string
+          enum: [RAW_MATERIAL, PURCHASED_PART, FABRICATED, ASSEMBLY, COTS, SERVICE]
+        makeBuyCode:
+          type: string
+          enum: [MAKE, BUY, EITHER]
+        traceabilityMethod:
+          type: string
+          enum: [SERIAL, LOT, HEAT_CODE, DATE_CODE, NONE]
+        shelfLifeControlled: { type: boolean }
+        shelfLifeDays:       { type: integer, nullable: true }
+        stepPartRef:         { type: string, nullable: true }
+        counterfeitRiskLevel:
+          type: string
+          nullable: true
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        approvedSuppliers:
+          type: array
+          items: { type: string }
+          nullable: true
+        verificationRequired: { type: boolean, nullable: true }
+        customFields:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: UDF values as key-value map
+        status:
+          type: string
+          enum: [ACTIVE, OBSOLETE]
+        createdBy:   { type: string }
+        createdAt:   { type: string, format: date-time }
+        modifiedBy:  { type: string }
+        modifiedAt:  { type: string, format: date-time }
+
+    CreateItemMasterRequest:
+      type: object
+      required: [partNumber, revision, description, unitOfMeasure, classification,
+                 makeBuyCode, traceabilityMethod, shelfLifeControlled]
+      properties:
+        partNumber:          { type: string, maxLength: 100 }
+        revision:            { type: string, maxLength: 20 }
+        description:         { type: string, maxLength: 500 }
+        unitOfMeasure:       { type: string, maxLength: 20 }
+        cageCode:            { type: string, maxLength: 10, nullable: true }
+        classification:
+          type: string
+          enum: [RAW_MATERIAL, PURCHASED_PART, FABRICATED, ASSEMBLY, COTS, SERVICE]
+        makeBuyCode:
+          type: string
+          enum: [MAKE, BUY, EITHER]
+        traceabilityMethod:
+          type: string
+          enum: [SERIAL, LOT, HEAT_CODE, DATE_CODE, NONE]
+        shelfLifeControlled: { type: boolean }
+        shelfLifeDays:       { type: integer, nullable: true, minimum: 1 }
+        stepPartRef:         { type: string, nullable: true, maxLength: 255 }
+        customFields:
+          type: object
+          additionalProperties: true
+          nullable: true
+
+    PatchItemMasterRequest:
+      type: object
+      description: All fields optional; only supplied fields are updated.
+      properties:
+        description:         { type: string, maxLength: 500 }
+        cageCode:            { type: string, maxLength: 10 }
+        shelfLifeControlled: { type: boolean }
+        shelfLifeDays:       { type: integer, minimum: 1 }
+        stepPartRef:         { type: string, maxLength: 255 }
+        counterfeitRiskLevel:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        approvedSuppliers:
+          type: array
+          items: { type: string }
+        verificationRequired: { type: boolean }
+        customFields:
+          type: object
+          additionalProperties: true
+
+    PagedItemMasterResponse:
+      type: object
+      required: [content, page, size, totalElements, totalPages]
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/ItemMasterDto' }
+        page:          { type: integer }
+        size:          { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages:    { type: integer }
+
+    # ── BOM ──────────────────────────────────────────────────────────────────
+
+    BomDto:
+      type: object
+      required: [id, parentItemId, bomRevision, status, createdBy, createdAt]
+      properties:
+        id:            { type: string, format: uuid }
+        parentItemId:  { type: string, format: uuid }
+        bomRevision:   { type: string }
+        status:
+          type: string
+          enum: [DRAFT, RELEASED, OBSOLETE]
+        description:   { type: string, nullable: true }
+        ecoId:         { type: string, format: uuid, nullable: true }
+        createdBy:     { type: string }
+        createdAt:     { type: string, format: date-time }
+        modifiedBy:    { type: string }
+        modifiedAt:    { type: string, format: date-time }
+
+    CreateBomRequest:
+      type: object
+      required: [parentItemId, bomRevision]
+      properties:
+        parentItemId:  { type: string, format: uuid }
+        bomRevision:   { type: string, maxLength: 20 }
+        description:   { type: string, maxLength: 500, nullable: true }
+        ecoId:         { type: string, format: uuid, nullable: true }
+
+    BomLineDto:
+      type: object
+      required: [id, bomId, componentItemId, quantity, unitOfMeasure, findNumber]
+      properties:
+        id:                  { type: string, format: uuid }
+        bomId:               { type: string, format: uuid }
+        componentItemId:     { type: string, format: uuid }
+        quantity:            { type: number, format: double }
+        unitOfMeasure:       { type: string }
+        findNumber:          { type: string }
+        referenceDesignators: { type: string, nullable: true }
+        effectivityMethod:
+          type: string
+          nullable: true
+          enum: [DATE, UNIT]
+          description: "DATE or UNIT. Null means perpetually effective in all directions."
+        effectiveFromDate:
+          type: string
+          format: date
+          nullable: true
+          description: "Required when effectivityMethod=DATE. Start of effective date range (inclusive)."
+        effectiveToDate:
+          type: string
+          format: date
+          nullable: true
+          description: "Optional. Null means open-ended (effective from effectiveFromDate with no end boundary)."
+        effectiveFromUnit:
+          type: string
+          nullable: true
+          description: "Required when effectivityMethod=UNIT. First unit serial/lot in effective range (inclusive)."
+        effectiveToUnit:
+          type: string
+          nullable: true
+          description: "Optional. Null means open-ended (effective from effectiveFromUnit with no end boundary)."
+        counterfeitRiskAlert: { type: boolean, description: "true when component has HIGH/CRITICAL risk level" }
+        componentObsoleted:  { type: boolean, description: "true when component item master is OBSOLETE" }
+
+    CreateBomLineRequest:
+      type: object
+      required: [componentItemId, quantity, unitOfMeasure, findNumber]
+      properties:
+        componentItemId:     { type: string, format: uuid }
+        quantity:            { type: number, minimum: 0.000001 }
+        unitOfMeasure:       { type: string, maxLength: 20 }
+        findNumber:          { type: string, maxLength: 20 }
+        referenceDesignators: { type: string, maxLength: 500, nullable: true }
+        effectivityMethod:
+          type: string
+          nullable: true
+          enum: [DATE, UNIT]
+          description: "DATE or UNIT. Omit for perpetually effective lines."
+        effectiveFromDate:
+          type: string
+          format: date
+          nullable: true
+          description: "Required when effectivityMethod=DATE."
+        effectiveToDate:
+          type: string
+          format: date
+          nullable: true
+          description: "Optional. Null = open-ended from effectiveFromDate."
+        effectiveFromUnit:
+          type: string
+          nullable: true
+          maxLength: 50
+          description: "Required when effectivityMethod=UNIT."
+        effectiveToUnit:
+          type: string
+          nullable: true
+          maxLength: 50
+          description: "Optional. Null = open-ended from effectiveFromUnit."
+
+    BomExplosionNode:
+      type: object
+      required: [itemId, partNumber, revision, findNumber, quantity, depth]
+      properties:
+        itemId:     { type: string, format: uuid }
+        partNumber: { type: string }
+        revision:   { type: string }
+        findNumber: { type: string }
+        quantity:   { type: number, description: "Rolled-up quantity from root" }
+        depth:      { type: integer, minimum: 1 }
+        counterfeitRiskAlert: { type: boolean }
+        componentObsoleted:   { type: boolean }
+        children:
+          type: array
+          items: { $ref: '#/components/schemas/BomExplosionNode' }
+          description: "Populated only for format=indented"
+
+    # ── ECO ──────────────────────────────────────────────────────────────────
+
+    EcoDto:
+      type: object
+      required: [id, ecoNumber, title, status, initiatedBy, createdAt]
+      properties:
+        id:           { type: string, format: uuid }
+        ecoNumber:    { type: string }
+        title:        { type: string }
+        description:  { type: string, nullable: true }
+        status:
+          type: string
+          enum: [DRAFT, APPROVED, IMPLEMENTED]
+        initiatedBy:  { type: string }
+        approvedBy:   { type: string, nullable: true }
+        approvedAt:   { type: string, format: date-time, nullable: true }
+        implementedAt: { type: string, format: date-time, nullable: true }
+        affectedItemIds:
+          type: array
+          items: { type: string, format: uuid }
+        outputBomIds:
+          type: array
+          items: { type: string, format: uuid }
+        concurrentEcoWarning: { type: boolean }
+        createdAt:    { type: string, format: date-time }
+
+    CreateEcoRequest:
+      type: object
+      required: [title, affectedItemIds]
+      properties:
+        title:           { type: string, maxLength: 255 }
+        description:     { type: string, nullable: true }
+        affectedItemIds:
+          type: array
+          items: { type: string, format: uuid }
+          minItems: 1
+
+    # ── UDF ──────────────────────────────────────────────────────────────────
+
+    UdfFieldDefinitionDto:
+      type: object
+      required: [id, moduleKey, fieldKey, label, fieldType, required, displayOrder, active]
+      properties:
+        id:            { type: string, format: uuid }
+        moduleKey:     { type: string, example: ITEM_MASTER }
+        fieldKey:      { type: string, pattern: "^[a-z][a-z0-9_]{0,99}$" }
+        label:         { type: string }
+        fieldType:
+          type: string
+          enum: [TEXT, NUMBER, DATE, BOOLEAN, LIST]
+        required:      { type: boolean }
+        defaultValue:  { type: string, nullable: true }
+        listOptions:
+          type: array
+          items: { type: string }
+          nullable: true
+        validationRules:
+          type: object
+          nullable: true
+          description: "e.g. {\"min\": 0, \"max\": 10000} or {\"maxLength\": 200}"
+        displayOrder:  { type: integer }
+        active:        { type: boolean }
+        createdAt:     { type: string, format: date-time }
+        modifiedAt:    { type: string, format: date-time }
+
+    CreateUdfFieldRequest:
+      type: object
+      required: [fieldKey, label, fieldType, required, displayOrder]
+      properties:
+        fieldKey:  { type: string, pattern: "^[a-z][a-z0-9_]{0,99}$" }
+        label:     { type: string, maxLength: 255 }
+        fieldType:
+          type: string
+          enum: [TEXT, NUMBER, DATE, BOOLEAN, LIST]
+        required:  { type: boolean }
+        defaultValue: { type: string, nullable: true, maxLength: 500 }
+        listOptions:
+          type: array
+          items: { type: string }
+          nullable: true
+        validationRules:
+          type: object
+          nullable: true
+        displayOrder: { type: integer, default: 0 }
+
+    ErrorResponse:
+      type: object
+      required: [status, error, message, timestamp]
+      properties:
+        status:    { type: integer }
+        error:     { type: string }
+        message:   { type: string }
+        timestamp: { type: string, format: date-time }
+        detail:    { type: string, nullable: true }
+
+paths:
+
+  # ── Item Master ─────────────────────────────────────────────────────────────
+
+  /item-master:
+    get:
+      summary: List item master records for the caller's organisation
+      operationId: listItemMasters
+      tags: [Item Master]
+      x-required-privilege: item-master:records:view
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - name: classification
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [ACTIVE, OBSOLETE] }
+        - name: counterfeitRiskLevel
+          in: query
+          schema: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+      responses:
+        '200':
+          description: Paginated item master records
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PagedItemMasterResponse' }
+        '401': { description: Unauthenticated }
+        '403': { description: Missing privilege }
+
+    post:
+      summary: Create a new item master record
+      operationId: createItemMaster
+      tags: [Item Master]
+      x-required-privilege: item-master:records:manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateItemMasterRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location:
+              description: URL of the created resource
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItemMasterDto' }
+        '409':
+          description: Duplicate partNumber + revision in this organisation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '422':
+          description: Validation failure (missing required UDF, shelf life constraint, etc.)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401': { description: Unauthenticated }
+        '403': { description: Missing privilege }
+
+  /item-master/{itemId}:
+    get:
+      summary: Get an item master record by ID
+      operationId: getItemMaster
+      tags: [Item Master]
+      x-required-privilege: item-master:records:view
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItemMasterDto' }
+        '404': { description: Not found or belongs to another org }
+        '401': { description: Unauthenticated }
+        '403': { description: Missing privilege }
+
+    patch:
+      summary: Partial update of an item master record
+      operationId: patchItemMaster
+      tags: [Item Master]
+      x-required-privilege: item-master:records:manage
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PatchItemMasterRequest' }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItemMasterDto' }
+        '404': { description: Not found }
+        '422': { description: Validation failure }
+        '401': { description: Unauthenticated }
+        '403': { description: Missing privilege }
+
+  /item-master/{itemId}/obsolete:
+    post:
+      summary: Mark an item master record as obsolete
+      operationId: obsoleteItemMaster
+      tags: [Item Master]
+      x-required-privilege: item-master:records:manage
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ItemMasterDto' }
+        '404': { description: Not found }
+        '401': { description: Unauthenticated }
+        '403': { description: Missing privilege }
+
+  # ── BOM ──────────────────────────────────────────────────────────────────────
+
+  /boms:
+    post:
+      summary: Create a new BOM revision
+      operationId: createBom
+      tags: [BOM]
+      x-required-privilege: item-master:bom:manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBomRequest' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BomDto' }
+        '404': { description: parentItemId not found }
+        '409': { description: BOM revision already exists for this assembly }
+        '401': { description: Unauthenticated }
+        '403': { description: Missing privilege }
+
+  /boms/{bomId}:
+    get:
+      summary: Get a BOM header by ID
+      operationId: getBom
+      tags: [BOM]
+      x-required-privilege: item-master:bom:manage
+      parameters:
+        - name: bomId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BomDto' }
+        '404': { description: Not found }
+
+  /boms/{bomId}/release:
+    post:
+      summary: Transition a BOM from Draft to Released
+      operationId: releaseBom
+      tags: [BOM]
+      x-required-privilege: item-master:bom:manage
+      parameters:
+        - name: bomId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BomDto' }
+        '409': { description: BOM not in DRAFT status }
+        '404': { description: Not found }
+
+  /boms/{bomId}/lines:
+    get:
+      summary: List all lines in a BOM revision
+      operationId: listBomLines
+      tags: [BOM]
+      x-required-privilege: item-master:bom:manage
+      parameters:
+        - name: bomId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BomLineDto' }
+        '404': { description: BOM not found }
+
+    post:
+      summary: Add a BOM line to a Draft BOM
+      operationId: addBomLine
+      tags: [BOM]
+      x-required-privilege: item-master:bom:manage
+      parameters:
+        - name: bomId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBomLineRequest' }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BomLineDto' }
+        '409': { description: BOM not in DRAFT status }
+        '422':
+          description: Circular reference detected, date overlap, or component not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { description: BOM or component not found }
+
+  /boms/{bomId}/explosion:
+    get:
+      summary: Explode a BOM to all component levels
+      operationId: explodeBom
+      tags: [BOM]
+      x-required-privilege: item-master:bom:manage
+      parameters:
+        - name: bomId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: format
+          in: query
+          schema: { type: string, enum: [flat, indented], default: flat }
+        - name: asOfDate
+          in: query
+          schema: { type: string, format: date }
+          description: Filter to lines effective on this date (DATE effectivity)
+        - name: asOfUnit
+          in: query
+          schema: { type: string }
+          description: Filter to lines effective for this unit serial/lot (UNIT effectivity)
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BomExplosionNode' }
+        '422':
+          description: Effectivity gap detected or circular reference in data
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { description: BOM not found }
+
+  # ── ECO ──────────────────────────────────────────────────────────────────────
+
+  /ecos:
+    post:
+      summary: Create a new Engineering Change Order
+      operationId: createEco
+      tags: [ECO]
+      x-required-privilege: item-master:eco:manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEcoRequest' }
+      responses:
+        '201':
+          description: ECO created; concurrentEcoWarning=true if any affected item has another open ECO
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EcoDto' }
+        '401': { description: Unauthenticated }
+        '403': { description: Missing privilege }
+
+  /ecos/{ecoId}:
+    get:
+      summary: Get an ECO by ID
+      operationId: getEco
+      tags: [ECO]
+      x-required-privilege: item-master:eco:manage
+      parameters:
+        - name: ecoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EcoDto' }
+        '404': { description: Not found }
+
+  /ecos/{ecoId}/approve:
+    post:
+      summary: Transition ECO from Draft to Approved
+      operationId: approveEco
+      tags: [ECO]
+      x-required-privilege: item-master:eco:manage
+      parameters:
+        - name: ecoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EcoDto' }
+        '409': { description: ECO not in DRAFT status }
+        '404': { description: Not found }
+
+  # ── UDF ──────────────────────────────────────────────────────────────────────
+
+  /udf/fields:
+    get:
+      summary: List UDF field definitions for a module
+      operationId: listUdfFields
+      tags: [UDF]
+      x-required-privilege: item-master:records:view
+      parameters:
+        - name: module
+          in: query
+          required: true
+          schema: { type: string, example: ITEM_MASTER }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/UdfFieldDefinitionDto' }
+
+    post:
+      summary: Define a new UDF field on a module
+      operationId: createUdfField
+      tags: [UDF]
+      x-required-privilege: item-master:udf:manage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/CreateUdfFieldRequest'
+                - type: object
+                  required: [moduleKey]
+                  properties:
+                    moduleKey: { type: string, example: ITEM_MASTER }
+      responses:
+        '201':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UdfFieldDefinitionDto' }
+        '409': { description: fieldKey already exists for this module in this org }
+
+  /udf/fields/{fieldId}:
+    delete:
+      summary: Soft-delete (deactivate) a UDF field definition
+      operationId: deleteUdfField
+      tags: [UDF]
+      x-required-privilege: item-master:udf:manage
+      parameters:
+        - name: fieldId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: force
+          in: query
+          schema: { type: boolean, default: false }
+          description: "If true, nulls out all existing values for this field across all records (audited)"
+      responses:
+        '204': { description: Field deactivated }
+        '409':
+          description: Field has values on existing records and force=false
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404': { description: Not found }
+
+  /actuator/health:
+    get:
+      summary: Health check (no auth required)
+      operationId: health
+      tags: [Actuator]
+      security: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: UP }

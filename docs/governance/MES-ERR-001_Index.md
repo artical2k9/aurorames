@@ -31,3 +31,4 @@
 | ERR-MES-036 | 2026-05-24 | Testing — Testcontainers | docker-java defaults to API v1.32; Docker Desktop 29.x min is 1.40 — add `systemProperty 'api.version', '1.41'` to `test {}` |
 | ERR-MES-037 | 2026-05-24 | Testing — Gradle | Gradle daemon doesn't inherit shell env vars; forward `DOCKER_HOST` via `environment` in `test {}` and run `--stop` after the change |
 | ERR-MES-038 | 2026-05-24 | Backend — Spring Security | Spring Security 6.5 throws `UnreachableFilterChainException` for two "any request" chains; exclude shared auto-config in `application.yml` AND in `DynamicPropertySource` (it replaces yml) |
+| ERR-MES-039 | 2026-05-26 | Backend — Spring Security / Java | `Map.of()` and `Optional.of()` throw NPE when `auth.getName()` returns null (JWT without `sub` claim); always null-safe getName() before passing to these APIs |
