@@ -293,3 +293,29 @@ assertThat(body).containsKey("ADMIN");
 **Fix applied:** (1) Added `spring.autoconfigure.exclude: com.mikemes.common.security.config.MikeMESSecurityAutoConfiguration` to `application.yml`. (2) Added both `OAuth2ResourceServerAutoConfiguration` AND `MikeMESSecurityAutoConfiguration` to the `DynamicPropertySource` exclude list in all IT test classes (since `DynamicPropertySource` completely replaces the `application.yml` exclude list).
 
 **Rule:** Any service that defines its own "any request" `SecurityFilterChain` must exclude `MikeMESSecurityAutoConfiguration` in `application.yml`. In IT tests using `@DynamicPropertySource` to override `spring.autoconfigure.exclude`, the list must be complete — it replaces `application.yml` entirely. Include both `OAuth2ResourceServerAutoConfiguration` and `MikeMESSecurityAutoConfiguration`.
+
+---
+
+## ERR-MES-040 — PrimeNG 21 breaking API: `darkModeSelector` moved to `theme.options`; `overlaypanel` → `popover`
+**Date:** 2026-05-29  **Category:** Frontend — PrimeNG  **Status:** Promoted 2026-05-29
+
+**Symptom:** (1) TypeScript error `TS2353: 'darkModeSelector' does not exist in type 'PrimeNGConfigType'` when passing it at the top level of `providePrimeNG()`. (2) TypeScript error `TS2307: Cannot find module 'primeng/overlaypanel'` — the module path no longer exists.
+
+**Root cause:** PrimeNG 21 restructured its configuration API. `darkModeSelector` moved from the top-level config into `theme.options.darkModeSelector`. The `OverlayPanel` component was renamed to `Popover`; its module path changed from `primeng/overlaypanel` to `primeng/popover` and its component selector from `p-overlayPanel` to `p-popover`.
+
+**Fix applied:** Changed `providePrimeNG({ darkModeSelector: '.aurora-dark' })` to `providePrimeNG({ theme: { preset: Aura, options: { darkModeSelector: '.aurora-dark' } } })`. Changed import source to `primeng/popover`, export name to `{ PopoverModule }`, and template tag to `<p-popover>`.
+
+**Rule:** In PrimeNG 21: (a) `darkModeSelector` goes in `theme.options.darkModeSelector`, not at the `providePrimeNG()` top level; (b) use `primeng/popover` and `PopoverModule`/`Popover` — `primeng/overlaypanel` is removed; (c) template tag is `<p-popover>` not `<p-overlayPanel>`. Before using any PrimeNG component or config option, check `node_modules/primeng/package.json` exports to confirm the path exists.
+
+---
+
+## ERR-MES-041 — `npm install --legacy-peer-deps` produces lockfile with mismatched versions; breaks CI `npm ci`
+**Date:** 2026-05-29  **Category:** Frontend — npm  **Status:** Promoted 2026-05-29
+
+**Symptom:** CI `npm ci` failed: `ERESOLVE could not resolve — @angular/animations@21.2.0 requires peer @angular/core@"21.2.0" but found @angular/core@21.2.13`. Local build and tests passed.
+
+**Root cause:** `@angular/animations` was installed locally using `--legacy-peer-deps` because the patch versions didn't resolve cleanly. This pinned `21.2.0` in `package-lock.json` while all other Angular packages resolved to `21.2.13`. `npm ci` enforces strict peer dep satisfaction and rejected the mismatch.
+
+**Fix applied:** Pinned all `@angular/*` packages in `package.json` to the exact same version (`21.2.13`). Removed `--legacy-peer-deps`. Re-ran `npm install` which regenerated a consistent `package-lock.json`.
+
+**Rule:** Never use `npm install --legacy-peer-deps` for Angular workspace packages. Angular packages have exact cross-peer deps (`@angular/animations@X.Y.Z` requires `@angular/core@"X.Y.Z"` exactly). All `@angular/*` runtime packages must be pinned to the same exact version in `package.json`. When adding a new Angular package, verify the new package's peer dep version matches before committing the lockfile.
