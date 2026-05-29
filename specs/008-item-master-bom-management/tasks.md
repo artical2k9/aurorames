@@ -264,15 +264,15 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 **Purpose**: Cross-cutting quality gates and constitution compliance verification.
 
-- [ ] T095 [P] Verify all Constitution Check gates in `specs/008-item-master-bom-management/plan.md` are ✅ PASS; obtain owner sign-off before raising any PR
-- [ ] T096 [P] Confirm `OrganisationContextHolder` used in every service-layer method that queries the DB: grep all service classes in `services/work-order-service/src/main/java/com/mes/workorder/` for missing org_id scope; fix any gap
-- [ ] T097 Write `AuditTrailIT`: after item master create+patch, query `work_order.item_master_aud` and assert 2 rows; after BOM release, assert `bill_of_materials_aud` row; after ECO approve, assert `engineering_change_order_aud` row — `services/work-order-service/src/test/java/com/mes/workorder/integration/AuditTrailIT.java`
-- [ ] T098 [P] Confirm all Kafka event publishers include `eventId` UUID field (idempotency dedup key): search `ItemMasterEventPublisher`, `BomEventPublisher`, `EcoEventPublisher` for `eventId` in payload map
-- [ ] T099 [P] Validate `privilege_registration` smoke test: start work-order-service against local stack (quickstart.md), query `GET /roles/privilege-map` via iam-service, confirm 5 item-master privilege keys present for SYSTEM_ADMIN and ENGINEER
-- [ ] T100 [P] Run Checkstyle + SpotBugs across both new modules: `./gradlew :services:work-order-service:spotbugsMain :libs:mes-udf-lib:spotbugsMain` — resolve all violations before raising PR
-- [ ] T101 Run `.\scripts\feature-cost.ps1` and paste output into each PR description as `## Usage Cost` section
-- [ ] T102 [P] Compliance spot-check — verify demonstrable coverage of: AS9100D §7.5 (audit rows in AuditTrailIT), AS9102 (partNumber+revision uniqueness test), AS5553 (AS5553IT), ISA-95 Material Class mapping (comment in ItemMaster entity JavaDoc), BOM depth limit (BomExplosionIT covers depth guard)
-- [ ] T103 Retrospective gate: review session work for new errors or near-misses; log any to `docs/governance/MES-ERR-001_Agent_Error_Log.md` before transitioning MES-8 to Done
+- [X] T095 [P] Verify all Constitution Check gates in `specs/008-item-master-bom-management/plan.md` are ✅ PASS; obtain owner sign-off before raising any PR
+- [X] T096 [P] Confirm `OrganisationContextHolder` used in every service-layer method that queries the DB: grep all service classes in `services/work-order-service/src/main/java/com/mes/workorder/` for missing org_id scope; fix any gap
+- [X] T097 Write `AuditTrailIT`: after item master create+patch, query `work_order.item_master_aud` and assert 2 rows; after BOM release, assert `bill_of_materials_aud` row; after ECO approve, assert `engineering_change_order_aud` row — `services/work-order-service/src/test/java/com/mes/workorder/integration/AuditTrailIT.java`
+- [X] T098 [P] Confirm all Kafka event publishers include `eventId` UUID field (idempotency dedup key): search `ItemMasterEventPublisher`, `BomEventPublisher`, `EcoEventPublisher` for `eventId` in payload map
+- [X] T099 [P] Validate `privilege_registration` smoke test: start work-order-service against local stack (quickstart.md), query `GET /roles/privilege-map` via iam-service, confirm 5 item-master privilege keys present for SYSTEM_ADMIN and ENGINEER
+- [X] T100 [P] Run Checkstyle + SpotBugs across both new modules: `./gradlew :services:work-order-service:spotbugsMain :libs:mes-udf-lib:spotbugsMain` — resolve all violations before raising PR
+- [X] T101 Run `.\scripts\feature-cost.ps1` and paste output into each PR description as `## Usage Cost` section
+- [X] T102 [P] Compliance spot-check — verify demonstrable coverage of: AS9100D §7.5 (audit rows in AuditTrailIT), AS9102 (partNumber+revision uniqueness test), AS5553 (AS5553IT), ISA-95 Material Class mapping (comment in ItemMaster entity JavaDoc), BOM depth limit (BomExplosionIT covers depth guard)
+- [X] T103 Retrospective gate: review session work for new errors or near-misses; log any to `docs/governance/MES-ERR-001_Agent_Error_Log.md` before transitioning MES-8 to Done
 
 ---
 

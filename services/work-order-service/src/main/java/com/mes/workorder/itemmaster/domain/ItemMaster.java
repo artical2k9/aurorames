@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+// ISA-95 Part 2 Material Class — a physical asset definition scoped to an organisation.
 @Entity
 @Audited
 @EntityListeners(AuditingEntityListener.class)
