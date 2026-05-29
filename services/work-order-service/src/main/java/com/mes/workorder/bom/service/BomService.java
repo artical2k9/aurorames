@@ -10,7 +10,9 @@ import com.mes.workorder.bom.repository.BomRepository;
 import com.mes.workorder.itemmaster.repository.ItemMasterRepository;
 import com.mes.workorder.bom.domain.EffectivityMethod;
 import com.mes.workorder.eco.service.EcoService;
+import com.mes.workorder.itemmaster.domain.CounterfeitRiskLevel;
 import com.mes.workorder.kafka.BomEventPublisher;
+import com.mes.workorder.kafka.ItemMasterEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,7 @@ public class BomService {
     private final BomLineRepository bomLineRepository;
     private final ItemMasterRepository itemMasterRepository;
     private final BomEventPublisher bomEventPublisher;
+    private final ItemMasterEventPublisher itemMasterEventPublisher;
     private final EffectivityValidator effectivityValidator;
     private final EcoService ecoService;
 
@@ -32,12 +35,14 @@ public class BomService {
                       BomLineRepository bomLineRepository,
                       ItemMasterRepository itemMasterRepository,
                       BomEventPublisher bomEventPublisher,
+                      ItemMasterEventPublisher itemMasterEventPublisher,
                       EffectivityValidator effectivityValidator,
                       EcoService ecoService) {
         this.bomRepository = bomRepository;
         this.bomLineRepository = bomLineRepository;
         this.itemMasterRepository = itemMasterRepository;
         this.bomEventPublisher = bomEventPublisher;
+        this.itemMasterEventPublisher = itemMasterEventPublisher;
         this.effectivityValidator = effectivityValidator;
         this.ecoService = ecoService;
     }
@@ -113,7 +118,16 @@ public class BomService {
         line.setEffectiveToDate(req.getEffectiveToDate());
         line.setEffectiveFromUnit(req.getEffectiveFromUnit());
         line.setEffectiveToUnit(req.getEffectiveToUnit());
-        return bomLineRepository.save(line);
+        BomLine saved = bomLineRepository.save(line);
+
+        itemMasterRepository.findByOrgIdAndId(orgId, req.getComponentItemId()).ifPresent(component -> {
+            CounterfeitRiskLevel risk = component.getCounterfeitRiskLevel();
+            if (risk == CounterfeitRiskLevel.HIGH || risk == CounterfeitRiskLevel.CRITICAL) {
+                itemMasterEventPublisher.publishAs5553RiskAdded(component);
+            }
+        });
+
+        return saved;
     }
 
     @Transactional(readOnly = true)
