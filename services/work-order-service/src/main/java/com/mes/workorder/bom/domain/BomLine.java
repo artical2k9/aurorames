@@ -9,11 +9,13 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import org.hibernate.envers.Audited;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.domain.Persistable;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
@@ -25,7 +27,7 @@ import java.util.UUID;
 @Audited
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "bom_line", schema = "work_order")
-public class BomLine {
+public class BomLine implements Persistable<UUID> {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -83,8 +85,15 @@ public class BomLine {
 
     // ── Getters and setters ───────────────────────────────────────────────────
 
+    @Override
     public UUID getId() {
         return id;
+    }
+
+    @Override
+    @Transient
+    public boolean isNew() {
+        return createdAt == null;
     }
 
     public UUID getBomId() {

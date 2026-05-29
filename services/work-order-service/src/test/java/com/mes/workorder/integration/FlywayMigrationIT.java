@@ -26,6 +26,7 @@ class FlywayMigrationIT extends BaseIntegrationTest {
                 "bom_line",
                 "engineering_change_order",
                 "eco_affected_item",
+                "eco_output_bom",
                 "udf_field_definition",
                 "user_grid_preferences",
                 "revinfo",
