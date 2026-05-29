@@ -8,6 +8,8 @@ import com.mes.workorder.bom.domain.BomStatus;
 import com.mes.workorder.bom.repository.BomLineRepository;
 import com.mes.workorder.bom.repository.BomRepository;
 import com.mes.workorder.itemmaster.repository.ItemMasterRepository;
+import com.mes.workorder.bom.domain.EffectivityMethod;
+import com.mes.workorder.eco.service.EcoService;
 import com.mes.workorder.kafka.BomEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,15 +25,21 @@ public class BomService {
     private final BomLineRepository bomLineRepository;
     private final ItemMasterRepository itemMasterRepository;
     private final BomEventPublisher bomEventPublisher;
+    private final EffectivityValidator effectivityValidator;
+    private final EcoService ecoService;
 
     public BomService(BomRepository bomRepository,
                       BomLineRepository bomLineRepository,
                       ItemMasterRepository itemMasterRepository,
-                      BomEventPublisher bomEventPublisher) {
+                      BomEventPublisher bomEventPublisher,
+                      EffectivityValidator effectivityValidator,
+                      EcoService ecoService) {
         this.bomRepository = bomRepository;
         this.bomLineRepository = bomLineRepository;
         this.itemMasterRepository = itemMasterRepository;
         this.bomEventPublisher = bomEventPublisher;
+        this.effectivityValidator = effectivityValidator;
+        this.ecoService = ecoService;
     }
 
     public BillOfMaterials createBom(UUID orgId, CreateBomRequest req) {
@@ -49,6 +57,7 @@ public class BomService {
         bom.setParentItemId(req.getParentItemId());
         bom.setBomRevision(req.getBomRevision());
         bom.setDescription(req.getDescription());
+        bom.setEcoId(req.getEcoId());
         return bomRepository.save(bom);
     }
 
@@ -68,9 +77,26 @@ public class BomService {
         if (!itemMasterRepository.existsByOrgIdAndId(orgId, req.getComponentItemId())) {
             throw new BomValidationException("Component item not found: " + req.getComponentItemId());
         }
-        if (bomLineRepository.existsByBomIdAndFindNumber(bomId, req.getFindNumber())) {
-            throw new BomConflictException("Find number already exists: " + req.getFindNumber());
+
+        EffectivityMethod method = req.getEffectivityMethod();
+        if (method == EffectivityMethod.DATE) {
+            if (req.getEffectiveFromDate() == null) {
+                throw new BomValidationException("effectiveFromDate is required for DATE effectivity");
+            }
+            effectivityValidator.validateNewLine(bomId, req);
+        } else if (method == EffectivityMethod.UNIT) {
+            if (req.getEffectiveFromUnit() == null) {
+                throw new BomValidationException("effectiveFromUnit is required for UNIT effectivity");
+            }
+            if (bomLineRepository.existsByBomIdAndFindNumber(bomId, req.getFindNumber())) {
+                throw new BomConflictException("Find number already exists: " + req.getFindNumber());
+            }
+        } else {
+            if (bomLineRepository.existsByBomIdAndFindNumber(bomId, req.getFindNumber())) {
+                throw new BomConflictException("Find number already exists: " + req.getFindNumber());
+            }
         }
+
         if (bomRepository.hasAncestorCycle(bomId, req.getComponentItemId())) {
             throw new BomValidationException("Adding this component would create a circular reference");
         }
@@ -106,6 +132,9 @@ public class BomService {
         bom.setStatus(BomStatus.RELEASED);
         BillOfMaterials saved = bomRepository.save(bom);
         bomEventPublisher.publishReleased(saved);
+        if (saved.getEcoId() != null) {
+            ecoService.addOutputBom(saved.getEcoId(), saved.getId());
+        }
         return saved;
     }
 }

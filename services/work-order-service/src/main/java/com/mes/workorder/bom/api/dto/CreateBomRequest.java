@@ -15,6 +15,8 @@ public class CreateBomRequest {
 
     private String description;
 
+    private UUID ecoId;
+
     public UUID getParentItemId() {
         return parentItemId;
     }
@@ -37,5 +39,13 @@ public class CreateBomRequest {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public UUID getEcoId() {
+        return ecoId;
+    }
+
+    public void setEcoId(UUID ecoId) {
+        this.ecoId = ecoId;
     }
 }

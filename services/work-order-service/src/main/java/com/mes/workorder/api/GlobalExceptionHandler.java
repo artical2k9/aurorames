@@ -6,6 +6,9 @@ import com.mes.udf.service.UdfValidationException;
 import com.mes.workorder.bom.service.BomConflictException;
 import com.mes.workorder.bom.service.BomNotFoundException;
 import com.mes.workorder.bom.service.BomValidationException;
+import com.mes.workorder.bom.service.EffectivityOverlapException;
+import com.mes.workorder.eco.service.EcoConflictException;
+import com.mes.workorder.eco.service.EcoNotFoundException;
 import com.mes.workorder.itemmaster.service.ItemMasterConflictException;
 import com.mes.workorder.itemmaster.service.ItemMasterNotFoundException;
 import com.mes.workorder.itemmaster.service.ItemMasterValidationException;
@@ -101,6 +104,27 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleBomValidation(BomValidationException ex) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(new ErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY.value(), ERROR_VALIDATION,
+                        ex.getMessage(), Instant.now()));
+    }
+
+    @ExceptionHandler(EffectivityOverlapException.class)
+    public ResponseEntity<ErrorResponse> handleEffectivityOverlap(EffectivityOverlapException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY.value(), ERROR_VALIDATION,
+                        ex.getMessage(), Instant.now()));
+    }
+
+    @ExceptionHandler(EcoNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEcoNotFound(EcoNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), "not_found",
+                        ex.getMessage(), Instant.now()));
+    }
+
+    @ExceptionHandler(EcoConflictException.class)
+    public ResponseEntity<ErrorResponse> handleEcoConflict(EcoConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ERROR_CONFLICT,
                         ex.getMessage(), Instant.now()));
     }
 

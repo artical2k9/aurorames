@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,7 +31,8 @@ public class BomExplosionService {
         this.maxDepth = maxDepth;
     }
 
-    public List<BomExplosionNode> explode(UUID orgId, UUID bomId, String format) {
+    public List<BomExplosionNode> explode(UUID orgId, UUID bomId, String format,
+                                           LocalDate asOfDate, String asOfUnit) {
         BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException("BOM not found: " + bomId));
 
@@ -44,12 +46,72 @@ public class BomExplosionService {
             }
         }
 
-        List<BomExplosionNode> nodes = rows.stream().map(this::toNode).toList();
+        List<Object[]> effectiveRows = filterByEffectivity(rows, asOfDate, asOfUnit);
+        List<BomExplosionNode> nodes = effectiveRows.stream().map(this::toNode).toList();
 
         if ("indented".equals(format)) {
             return buildTree(nodes, bom.getParentItemId().toString());
         }
         return nodes;
+    }
+
+    private List<Object[]> filterByEffectivity(List<Object[]> rows, LocalDate asOfDate, String asOfUnit) {
+        if (asOfDate == null && asOfUnit == null) {
+            return rows;
+        }
+        Map<String, List<Object[]>> byFindNumber = new LinkedHashMap<>();
+        for (Object[] row : rows) {
+            byFindNumber.computeIfAbsent((String) row[14], k -> new ArrayList<>()).add(row);
+        }
+        List<Object[]> result = new ArrayList<>();
+        for (var entry : byFindNumber.entrySet()) {
+            String findNumber = entry.getKey();
+            List<Object[]> included = new ArrayList<>();
+            boolean hadControlledRows = false;
+            for (Object[] row : entry.getValue()) {
+                String method = (String) row[9];
+                if ("DATE".equals(method) && asOfDate != null) {
+                    hadControlledRows = true;
+                    if (isDateEffective(row, asOfDate)) {
+                        included.add(row);
+                    }
+                } else if ("UNIT".equals(method) && asOfUnit != null) {
+                    hadControlledRows = true;
+                    if (isUnitEffective(row, asOfUnit)) {
+                        included.add(row);
+                    }
+                } else {
+                    included.add(row);
+                }
+            }
+            if (hadControlledRows && included.isEmpty()) {
+                throw new BomValidationException(
+                        "No effective BOM line for find number '" + findNumber
+                        + "' at " + (asOfDate != null ? "date " + asOfDate : "unit " + asOfUnit));
+            }
+            result.addAll(included);
+        }
+        return result;
+    }
+
+    private boolean isDateEffective(Object[] row, LocalDate asOfDate) {
+        String fromStr = (String) row[10];
+        if (fromStr == null) {
+            return true;
+        }
+        LocalDate from = LocalDate.parse(fromStr);
+        String toStr = (String) row[11];
+        LocalDate to = toStr != null ? LocalDate.parse(toStr) : null;
+        return !asOfDate.isBefore(from) && (to == null || !asOfDate.isAfter(to));
+    }
+
+    private boolean isUnitEffective(Object[] row, String asOfUnit) {
+        String fromUnit = (String) row[12];
+        if (fromUnit == null) {
+            return true;
+        }
+        String toUnit = (String) row[13];
+        return asOfUnit.compareTo(fromUnit) >= 0 && (toUnit == null || asOfUnit.compareTo(toUnit) <= 0);
     }
 
     private BomExplosionNode toNode(Object[] row) {

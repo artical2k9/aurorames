@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -101,8 +102,10 @@ public class BomController {
     public List<BomExplosionNode> explode(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID bomId,
-            @RequestParam(defaultValue = "flat") String format) {
+            @RequestParam(defaultValue = "flat") String format,
+            @RequestParam(required = false) LocalDate asOfDate,
+            @RequestParam(required = false) String asOfUnit) {
 
-        return explosionService.explode(JwtClaimsExtractor.orgId(jwt), bomId, format);
+        return explosionService.explode(JwtClaimsExtractor.orgId(jwt), bomId, format, asOfDate, asOfUnit);
     }
 }
