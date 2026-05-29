@@ -3,6 +3,9 @@ package com.mes.workorder.api;
 import com.mes.udf.service.UdfDefinitionConflictException;
 import com.mes.udf.service.UdfFieldNotFoundException;
 import com.mes.udf.service.UdfValidationException;
+import com.mes.workorder.bom.service.BomConflictException;
+import com.mes.workorder.bom.service.BomNotFoundException;
+import com.mes.workorder.bom.service.BomValidationException;
 import com.mes.workorder.itemmaster.service.ItemMasterConflictException;
 import com.mes.workorder.itemmaster.service.ItemMasterNotFoundException;
 import com.mes.workorder.itemmaster.service.ItemMasterValidationException;
@@ -75,6 +78,27 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ItemMasterValidationException.class)
     public ResponseEntity<ErrorResponse> handleValidation(ItemMasterValidationException ex) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY.value(), ERROR_VALIDATION,
+                        ex.getMessage(), Instant.now()));
+    }
+
+    @ExceptionHandler(BomNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleBomNotFound(BomNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), "not_found",
+                        ex.getMessage(), Instant.now()));
+    }
+
+    @ExceptionHandler(BomConflictException.class)
+    public ResponseEntity<ErrorResponse> handleBomConflict(BomConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ERROR_CONFLICT,
+                        ex.getMessage(), Instant.now()));
+    }
+
+    @ExceptionHandler(BomValidationException.class)
+    public ResponseEntity<ErrorResponse> handleBomValidation(BomValidationException ex) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
                 .body(new ErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY.value(), ERROR_VALIDATION,
                         ex.getMessage(), Instant.now()));

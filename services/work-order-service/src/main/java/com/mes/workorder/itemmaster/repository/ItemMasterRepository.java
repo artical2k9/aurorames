@@ -15,6 +15,8 @@ import java.util.UUID;
 
 public interface ItemMasterRepository extends JpaRepository<ItemMaster, UUID> {
 
+    boolean existsByOrgIdAndId(UUID orgId, UUID id);
+
     boolean existsByOrgIdAndPartNumberAndRevision(UUID orgId, String partNumber, String revision);
 
     Optional<ItemMaster> findByOrgIdAndId(UUID orgId, UUID id);
