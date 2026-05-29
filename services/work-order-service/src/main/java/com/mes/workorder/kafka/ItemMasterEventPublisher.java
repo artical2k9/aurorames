@@ -30,6 +30,10 @@ public class ItemMasterEventPublisher {
         publish("ITEM_MASTER_UPDATED", entity);
     }
 
+    public void publishAs5553RiskAdded(ItemMaster component) {
+        publish("compliance.as5553-risk-added", component);
+    }
+
     private void publish(String eventType, ItemMaster entity) {
         ItemMasterDto dto = ItemMasterMapper.toDto(entity);
         Map<String, Object> event = Map.of(

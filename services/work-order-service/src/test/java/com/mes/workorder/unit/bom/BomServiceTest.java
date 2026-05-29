@@ -9,6 +9,7 @@ import com.mes.workorder.bom.service.BomConflictException;
 import com.mes.workorder.bom.service.BomService;
 import com.mes.workorder.itemmaster.repository.ItemMasterRepository;
 import com.mes.workorder.kafka.BomEventPublisher;
+import com.mes.workorder.kafka.ItemMasterEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -31,6 +32,7 @@ class BomServiceTest {
     @Mock BomLineRepository bomLineRepository;
     @Mock ItemMasterRepository itemMasterRepository;
     @Mock BomEventPublisher bomEventPublisher;
+    @Mock ItemMasterEventPublisher itemMasterEventPublisher;
 
     @InjectMocks
     BomService bomService;

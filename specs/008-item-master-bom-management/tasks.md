@@ -243,16 +243,16 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 ### Tests (write FIRST — must FAIL before implementation)
 
-- [ ] T088 [P] [US6] Write `AS5553IT`: PATCH item master with AS5553 fields → 200 and GET returns fields; BOM explosion node for HIGH-risk component has counterfeitRiskAlert=true; search by counterfeitRiskLevel=HIGH returns matching item — `services/work-order-service/src/test/java/com/mes/workorder/integration/itemmaster/AS5553IT.java`
-- [ ] T089 [US6] Confirm test FAILS (RED) — verify counterfeitRiskAlert logic not yet implemented in explosion
+- [X] T088 [P] [US6] Write `AS5553IT`: PATCH item master with AS5553 fields → 200 and GET returns fields; BOM explosion node for HIGH-risk component has counterfeitRiskAlert=true; search by counterfeitRiskLevel=HIGH returns matching item — `services/work-order-service/src/test/java/com/mes/workorder/integration/itemmaster/AS5553IT.java`
+- [X] T089 [US6] Confirm test FAILS (RED) — verify counterfeitRiskAlert logic not yet implemented in explosion
 
 ### Implementation
 
-- [ ] T090 [US6] Confirm AS5553 columns (`counterfeit_risk_level`, `approved_suppliers` JSONB, `verification_required`) are present in V002 migration and in `ItemMaster.java` entity — no schema change needed (columns included from PR 1)
-- [ ] T091 [US6] Update `BomExplosionService.java`: when building explosion nodes, look up each component's `counterfeitRiskLevel`; set `counterfeitRiskAlert=true` if level is HIGH or CRITICAL; batch load item master risk levels in a single query to avoid N+1 — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomExplosionService.java`
-- [ ] T092 [US6] Update `ItemMasterEventPublisher.java`: emit `compliance.as5553-risk-added` event on `work-order.item-master.events` when a BOM line is saved with a component whose `counterfeitRiskLevel` is HIGH or CRITICAL; call from `BomService.addLine()` after save — `services/work-order-service/src/main/java/com/mes/workorder/kafka/ItemMasterEventPublisher.java`
-- [ ] T093 [US6] Add `counterfeitRiskLevel` filter parameter to `ItemMasterController.listItemMasters()` and `ItemMasterRepository.findAllByOrgId…` query — `services/work-order-service/src/main/java/com/mes/workorder/itemmaster/api/ItemMasterController.java`
-- [ ] T094 [US6] Run `./gradlew :services:work-order-service:check` — confirm all US6 tests GREEN
+- [X] T090 [US6] Confirm AS5553 columns (`counterfeit_risk_level`, `approved_suppliers` JSONB, `verification_required`) are present in V002 migration and in `ItemMaster.java` entity — no schema change needed (columns included from PR 1)
+- [X] T091 [US6] Update `BomExplosionService.java`: when building explosion nodes, look up each component's `counterfeitRiskLevel`; set `counterfeitRiskAlert=true` if level is HIGH or CRITICAL; batch load item master risk levels in a single query to avoid N+1 — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomExplosionService.java`
+- [X] T092 [US6] Update `ItemMasterEventPublisher.java`: emit `compliance.as5553-risk-added` event on `work-order.item-master.events` when a BOM line is saved with a component whose `counterfeitRiskLevel` is HIGH or CRITICAL; call from `BomService.addLine()` after save — `services/work-order-service/src/main/java/com/mes/workorder/kafka/ItemMasterEventPublisher.java`
+- [X] T093 [US6] Add `counterfeitRiskLevel` filter parameter to `ItemMasterController.listItemMasters()` and `ItemMasterRepository.findAllByOrgId…` query — `services/work-order-service/src/main/java/com/mes/workorder/itemmaster/api/ItemMasterController.java`
+- [X] T094 [US6] Run `./gradlew :services:work-order-service:check` — confirm all US6 tests GREEN
 
 **Checkpoint**: AS5553 fields surfaced. Explosion alert flags working. Risk-level search working.
 
