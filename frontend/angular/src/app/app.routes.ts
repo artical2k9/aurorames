@@ -8,4 +8,11 @@ export const routes: Routes = [
     loadComponent: () => import('./dashboard/dashboard').then(m => m.Dashboard),
     canActivate: [authGuard],
   },
+  {
+    path: 'item-master',
+    loadComponent: () =>
+      import('./features/item-master/pages/item-master-list/item-master-list.component')
+        .then(m => m.ItemMasterListComponent),
+    canActivate: [authGuard],
+  },
 ];

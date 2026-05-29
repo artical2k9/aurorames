@@ -13,13 +13,17 @@
   "type": "module",
   "packageManager": "npm@11.11.0",
   "dependencies": {
+    "@angular/animations": "^21.2.0",
+    "@angular/cdk": "^21.2.13",
     "@angular/common": "^21.2.0",
     "@angular/compiler": "^21.2.0",
     "@angular/core": "^21.2.0",
     "@angular/forms": "^21.2.0",
     "@angular/platform-browser": "^21.2.0",
     "@angular/router": "^21.2.0",
+    "@primeng/themes": "^21.0.4",
     "angular-oauth2-oidc": "^17.0.0",
+    "primeng": "^21.1.8",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

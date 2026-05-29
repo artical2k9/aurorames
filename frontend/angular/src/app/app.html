@@ -1,5 +1,6 @@
 <nav>
   <span>{{ title() }}</span>
+  <app-theme-toggle />
   @if (isLoggedIn) {
     <button (click)="logout()">Logout</button>
   } @else {

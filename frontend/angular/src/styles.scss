@@ -1,1 +1,67 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* ── Aurora MES dark mode tokens ───────────────────────────────────────────── */
+.aurora-dark {
+  --aurora-bg-base:        #0A1628;
+  --aurora-bg-subtle:      #0D1F3C;
+  --aurora-brand-primary:  #2563EB;
+  --aurora-text-primary:   #F1F5F9;
+  --aurora-text-secondary: #94A3B8;
+  --aurora-border-subtle:  #1E3A5F;
+
+  /* Map to PrimeNG Aura surface variables */
+  --p-surface-0:    #0A1628;
+  --p-surface-50:   #0D1F3C;
+  --p-surface-100:  #112347;
+  --p-surface-200:  #1E3A5F;
+  --p-surface-300:  #2A4A73;
+  --p-surface-700:  #94A3B8;
+  --p-surface-900:  #F1F5F9;
+  --p-text-color:   #F1F5F9;
+  --p-text-muted-color: #94A3B8;
+  --p-surface-border: #1E3A5F;
+  --p-primary-color: #2563EB;
+}
+
+/* ── Aurora MES light mode tokens ──────────────────────────────────────────── */
+:root:not(.aurora-dark) {
+  --aurora-bg-base:        #F8FAFC;
+  --aurora-bg-subtle:      #EFF6FF;
+  --aurora-brand-primary:  #2563EB;
+  --aurora-text-primary:   #0F172A;
+  --aurora-text-secondary: #64748B;
+  --aurora-border-subtle:  #CBD5E1;
+
+  --p-surface-0:    #FFFFFF;
+  --p-surface-50:   #F8FAFC;
+  --p-surface-100:  #EFF6FF;
+  --p-surface-200:  #CBD5E1;
+  --p-text-color:   #0F172A;
+  --p-text-muted-color: #64748B;
+  --p-surface-border: #CBD5E1;
+  --p-primary-color: #2563EB;
+}
+
+/* ── Global base ────────────────────────────────────────────────────────────── */
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--p-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+  background-color: var(--aurora-bg-base, #F8FAFC);
+  color: var(--aurora-text-primary, #0F172A);
+}
+
+nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: var(--aurora-bg-subtle, #EFF6FF);
+  border-bottom: 1px solid var(--aurora-border-subtle, #CBD5E1);
+
+  span {
+    font-weight: 700;
+    font-size: 1.1rem;
+    flex: 1;
+  }
+}
