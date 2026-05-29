@@ -37,7 +37,7 @@ import java.util.UUID;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
 @EmbeddedKafka(partitions = 1,
-        topics = {"iam.privilege-changes", "work-order.item-master.events"},
+        topics = {"iam.privilege-changes", "work-order.item-master.events", "work-order.bom.events"},
         bootstrapServersProperty = "spring.kafka.bootstrap-servers")
 @Import(BaseIntegrationTest.TestSecurityConfig.class)
 public abstract class BaseIntegrationTest {
@@ -107,6 +107,7 @@ public abstract class BaseIntegrationTest {
         // Without this step the test container starts empty and V007 fails with 42P01.
         bootstrapIamSchema();
 
+        registry.add("mes.bom.max-depth", () -> "3");
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
