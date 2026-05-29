@@ -155,26 +155,38 @@ These values are used in `frontend/angular/src/styles.scss` for PrimeNG override
 
 ### Dark Mode (`.aurora-dark` class on `<html>`)
 
+Authoritative values from Penpot token set `aurora/dark` (verified against dark frame fills 2026-05-29).
+
 | Token | Hex | Usage |
 |---|---|---|
-| `bg.base` | `#0A1628` | App background, content area |
-| `bg.subtle` | `#0D1F3C` | Rail, top bar, panel backgrounds |
-| `brand.primary` | `#2563EB` | Buttons, links, selected nav, active badges |
-| `text.primary` | `#F1F5F9` | Body text, headings |
-| `text.secondary` | `#94A3B8` | Labels, metadata, placeholders |
-| `border.subtle` | `#1E3A5F` | Dividers, input borders, table borders |
-| `icon.default` | `#94A3B8` | Unselected nav icons, action icons |
-| `rail.selected.bg` | `#1E3A5F` | Selected nav item background |
-| `badge.required.bg` | `#7F1D1D` | Required badge background |
-| `badge.required.text` | `#FCA5A5` | Required badge text |
-| `badge.udf.bg` | `#1E3A5F` | UDF badge background |
-| `badge.udf.text` | `#93C5FD` | UDF badge text (ice blue) |
-| `status.active.bg` | `#14532D` | Active status badge bg |
-| `status.active.text` | `#86EFAC` | Active status badge text |
-| `status.eco.bg` | `#1E3A5F` | Under ECO status badge bg |
-| `status.eco.text` | `#93C5FD` | Under ECO status badge text |
-| `status.draft.bg` | `#451A03` | Draft status badge bg |
-| `status.draft.text` | `#FCD34D` | Draft status badge text |
+| `color.bg.base` | `#0F1923` | App background, content area |
+| `color.bg.surface` | `#172030` | Cards, table rows |
+| `color.bg.elevated` | `#1E2D42` | Drawers, overlays, elevated panels |
+| `color.bg.overlay` | `#243350` | Modal backdrops |
+| `color.bg.subtle` | `#0D1520` | Rail, top bar, sidebar |
+| `brand.primary` | `#1A5FD4` | Buttons, selected nav, primary actions |
+| `brand.primary-bright` | `#2E8BF5` | Hover state, focus border |
+| `brand.ice` | `#6BB8FF` | Text accent, focus ring, UDF badge text |
+| `brand.navy` | `#0D1B2E` | Deepest backgrounds |
+| `brand.slate` | `#8A9BB0` | Secondary text, muted icons |
+| `color.border.default` | `#243350` | Dividers, input borders, table borders |
+| `color.border.strong` | `#2E4A6E` | Strong borders, separators |
+| `color.border.focus` | `#2E8BF5` | Focus rings on inputs |
+| `color.text.primary` | `#E8EDF5` | Body text, headings |
+| `color.text.secondary` | `#8A9BB0` | Labels, metadata, placeholders |
+| `color.text.disabled` | `#3D5270` | Disabled text |
+| `color.text.accent` | `#6BB8FF` | Links, accent labels |
+| `color.interactive.default` | `#1A5FD4` | Button fill, active nav |
+| `color.interactive.hover` | `#2E8BF5` | Button hover |
+| `color.interactive.active` | `#0D4AAF` | Button press |
+| `color.status.success` | `#22C55E` | Success text/icon |
+| `color.status.success-subtle` | `#14291E` | Success badge background |
+| `color.status.warning` | `#F59E0B` | Warning text/icon |
+| `color.status.warning-subtle` | `#2A2010` | Warning badge background |
+| `color.status.error` | `#EF4444` | Error text/icon |
+| `color.status.error-subtle` | `#2A1212` | Error badge background |
+| `color.status.info` | `#2E8BF5` | Info text/icon |
+| `color.status.info-subtle` | `#0F1F35` | Info badge background |
 
 ### Light Mode (`:root:not(.aurora-dark)`)
 
@@ -217,10 +229,10 @@ These values are used in `frontend/angular/src/styles.scss` for PrimeNG override
 
 | Frame | Mode | Penpot ID | Notes |
 |---|---|---|---|
-| Shell (collapsed rail) | Dark | — | |
-| Item Master / List & Search | Dark | — | |
-| Item Master / Column Picker | Dark | — | |
-| Item Master / Create | Dark | — | |
+| Shell (collapsed rail) | Dark | `d1e9cefe-fcab-80d7-8008-1377eccc2a11` | |
+| Item Master / List & Search | Dark | `d1e9cefe-fcab-80d7-8008-137a1557caff` | |
+| Item Master / Column Picker | Dark | `d1e9cefe-fcab-80d7-8008-137d0178c6b2` | |
+| Item Master / Create | Dark | `d1e9cefe-fcab-80d7-8008-138b99f8d400` | |
 | BOM / Explosion Tree | Dark | `d1e9cefe-fcab-80d7-8008-1394bcf67efc` | |
 | BOM / Authoring v1 | Dark | `d1e9cefe-fcab-80d7-8008-1398d303c5ec` | Superseded — Find# column, no Seq |
 | BOM / Authoring v2 | Dark | `d1e9cefe-fcab-80d7-8008-139d269ff559` | Superseded — no Find #, UDF as chip |
