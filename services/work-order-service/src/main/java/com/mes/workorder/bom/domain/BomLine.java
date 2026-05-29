@@ -29,7 +29,7 @@ public class BomLine {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    private UUID id = UUID.randomUUID();
 
     @Column(name = "bom_id", nullable = false)
     private UUID bomId;

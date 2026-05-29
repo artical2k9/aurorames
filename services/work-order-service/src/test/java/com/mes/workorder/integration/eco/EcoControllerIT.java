@@ -85,7 +85,7 @@ class EcoControllerIT extends BaseIntegrationTest {
                 bearerRequest(token), Map.class);
 
         assertThat(ecoResp.getStatusCode()).isEqualTo(HttpStatus.OK);
-        List<?> outputBomIds = (List<?>) ecoResp.getBody().get("outputBomIds");
+        List<Object> outputBomIds = (List<Object>) ecoResp.getBody().get("outputBomIds");
         assertThat(outputBomIds).contains(bomId);
     }
 
