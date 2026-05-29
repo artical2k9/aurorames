@@ -32,3 +32,5 @@
 | ERR-MES-037 | 2026-05-24 | Testing — Gradle | Gradle daemon doesn't inherit shell env vars; forward `DOCKER_HOST` via `environment` in `test {}` and run `--stop` after the change |
 | ERR-MES-038 | 2026-05-24 | Backend — Spring Security | Spring Security 6.5 throws `UnreachableFilterChainException` for two "any request" chains; exclude shared auto-config in `application.yml` AND in `DynamicPropertySource` (it replaces yml) |
 | ERR-MES-039 | 2026-05-26 | Backend — Spring Security / Java | `Map.of()` and `Optional.of()` throw NPE when `auth.getName()` returns null (JWT without `sub` claim); always null-safe getName() before passing to these APIs |
+| ERR-MES-040 | 2026-05-29 | Frontend — PrimeNG | PrimeNG 21: `darkModeSelector` in `theme.options`, not top-level; `primeng/overlaypanel` → `primeng/popover`; check package.json exports before importing |
+| ERR-MES-041 | 2026-05-29 | Frontend — npm | Never `npm install --legacy-peer-deps` for Angular packages; all `@angular/*` must pin to same exact version or `npm ci` fails on CI |
