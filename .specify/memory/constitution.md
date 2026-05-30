@@ -1,6 +1,16 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.1.0 → 1.2.0 (MINOR — Angular version corrected 19→21)
+
+Amendment 2026-05-30:
+  - Angular runtime updated from 19 to 21 (reflects actual project dependency)
+  - Rationale: speckit-analyze C3 finding identified stale version; Angular 21.2.13
+    confirmed in frontend/angular/package.json; amendment approved by project owner
+    (MES-8 Jira comment 2026-05-30)
+  - No principles changed; Technology Stack section updated only
+
+---
 Version change: 1.0.0 → 1.1.0 (MINOR — Technology Stack section added)
 
 Principles added (all new):
@@ -303,7 +313,7 @@ The spec "Compliance References" section MUST cite each applicable standard.
 
 - **Java 21 LTS** (Eclipse Temurin) — all backend services
 - **Gradle 8.x** (multi-module build) — single root project, one subproject per service and shared library
-- **Angular 19** (standalone components, Signals API) — frontend SPA
+- **Angular 21** (standalone components, Signals API) — frontend SPA
 - **TypeScript 5.x** — frontend language
 
 ### Architecture Pattern
@@ -365,7 +375,7 @@ asynchronously via Apache Kafka domain events.
 
 | Concern | Technology |
 |---|---|
-| Framework | Angular 19 (standalone components, no NgModules) |
+| Framework | Angular 21 (standalone components, no NgModules) |
 | State management | Angular Signals (native — no NgRx) |
 | UI components | PrimeNG |
 | Data grids | AG Grid Community (shop floor / work order views) |
@@ -466,4 +476,4 @@ Aurora MES/                          ← root Gradle project
   justification in the Complexity Tracking section of the plan.
 - This constitution supersedes all other informal conventions and practices.
 
-**Version**: 1.1.0 | **Ratified**: 2026-05-19 | **Last Amended**: 2026-05-20
+**Version**: 1.2.0 | **Ratified**: 2026-05-19 | **Last Amended**: 2026-05-30

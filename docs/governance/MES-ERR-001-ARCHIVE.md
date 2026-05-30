@@ -4,6 +4,32 @@
 
 ---
 
+## ERR-MES-049 — Agent claimed "next PR" from plan.md without verifying Develop merge state
+**Date:** 2026-05-30  **Category:** Agent Process — Plan vs. Reality  **Status:** Promoted 2026-05-30
+
+**Symptom:** After reading `specs/008-item-master-bom-management/plan.md`, agent stated "PR 2 — BOM Authoring is next." User corrected: PR 11 (BOM Authoring) had already been merged to Develop.
+
+**Root cause:** `plan.md` PR strategy table was read and the first unscoped PR was assumed to be "next." No verification was done against actual git history or GitHub PR state. The plan describes intent and ordering, not current reality.
+
+**Fix applied:** Ran `git log --oneline origin/Develop`; all 5 planned PRs (GitHub #10–#15) confirmed merged. Pivoted to final cleanup PR (2 trailing docs commits).
+
+**Rule:** Before answering "what is next?" or "what remains?" on a feature branch, always run `git log --oneline origin/Develop` and `gh pr list --state merged --base Develop`. Never rely solely on plan.md — the plan describes intent, not current reality. A plan read without a git check is a guess.
+
+---
+
+## ERR-MES-050 — SVG logo reconstruction from raster PNG: fidelity impossible without vector source
+**Date:** 2026-05-30  **Category:** Design — Asset Creation  **Status:** Promoted 2026-05-30
+
+**Symptom:** Multiple rounds of SVG geometry corrections (A-shape, star proportions, arc positions, font) still failed to produce output the user accepted. All brand asset files were discarded.
+
+**Root cause:** A complex raster logo cannot be accurately reconstructed in SVG without the original vector source files (AI/EPS/SVG with outlined paths). Every geometry value must be estimated from visual inspection, and small errors compound into a result that "looks nothing like the source."
+
+**Fix applied:** User discarded all assets. The correct resolution is to obtain vector source files before attempting SVG recreation.
+
+**Rule:** When asked to create SVG logos from a raster PNG, immediately surface the limitation: SVG recreation from raster is manual approximation that cannot achieve visual fidelity. Recommend obtaining the original vector source (AI/EPS/SVG with outlined paths) before proceeding. Multiple correction rounds cannot resolve the fundamental absence of path data.
+
+---
+
 ## ERR-MES-001 — `cd` in Bash tool triggers safety gate
 **Date:** 2026-05-20  **Category:** Shell — Bash tool  **Status:** Promoted 2026-05-20
 

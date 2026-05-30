@@ -4,7 +4,7 @@
 
 **Created**: 2026-05-25
 
-**Status**: Draft
+**Status**: In Implementation
 
 **Input**: Jira Epic MES-8 — P2 · Item Master & BOM Management
 
@@ -168,6 +168,21 @@ A supplier quality engineer records counterfeit-part risk attributes on item mas
 - **FR-027**: UDF values MUST be included in item master Kafka domain events (`item-master.created`, `item-master.updated`) within the `customFields` property so downstream consumers receive the complete record.
 - **FR-028**: Deleting a UDF field definition that has non-null values on existing records MUST be rejected with HTTP 409 unless `force=true` is supplied (requires `udf:manage` permission). With `force=true`, the system nulls out all values for that field across all records and records an audit entry per affected record.
 - **FR-029**: All UDF field definition create/update/delete operations and all custom field value changes MUST be captured in the audit trail, recording actor identity, timestamp, old value, and new value.
+
+### Frontend Requirements
+
+These requirements cover the Angular SPA screens for this Epic. They supplement the REST API functional requirements above and carry the same constitutional weight (§I Spec-First). All frontend screens MUST be secured via Keycloak OIDC (FR-020); privilege-gated actions MUST be hidden/disabled when the authenticated user lacks the required privilege.
+
+- **FR-030**: System MUST persist per-user, per-module column preferences via a `UserGridPreference` entity (`org_id + user_id (JWT sub) + moduleKey`). `GET /api/v1/users/preferences/grid/{moduleKey}` returns saved preferences or the module's built-in defaults. `PUT` saves-or-replaces atomically. Any future screen gains persistent column customisation by providing a `moduleKey` and `DEFAULT_COLUMNS` constant — no additional backend work.
+- **FR-031**: The Angular SPA MUST render an application shell (nav rail) wrapping all feature screens: left nav rail collapsible between 64 px (icon-only) and 240 px (expanded with labels); nav items for Dashboard, Item Master, BOM, and ECO; top bar with Aurora MES wordmark, theme toggle, and user avatar (first letter of `preferred_username`); active route highlighted; collapse state persisted in `localStorage`.
+- **FR-032**: The Item Master list screen MUST display: page heading "Item Master" with live item count; `+New Item` primary button (disabled without `item-master:records:manage` privilege); coloured classification badge chips (PURCHASED=blue, FABRICATED=orange, PHANTOM=grey, RAW_MATERIAL=teal); status dot indicators (●ACTIVE green, ◎OBSOLETE grey); Actions column per row (View, Edit, overflow menu with Obsolete); row-selection checkboxes with bulk-Obsolete action bar; search field; Classification, Status, and Make/Buy filters; persistent column picker backed by FR-030.
+- **FR-033**: The Angular SPA MUST provide an Item Master create/edit form (modal dialog) with all mandatory fields from FR-001, shelf-life toggle (FR-003), collapsible AS5553 section (FR-016), and UDF fields loaded dynamically from `GET /udf/fields?module=ITEM_MASTER` (FR-021). Client-side validation MUST mirror server rules; server-side 422 violation messages MUST be displayed inline next to the relevant field.
+- **FR-034**: The Angular SPA MUST provide an Item Master detail read-only view showing all fields including UDF `customFields` in a card layout. An Edit button opens the FR-033 form pre-populated.
+- **FR-035**: The Angular SPA MUST provide a BOM list screen (per item master) showing all BOM revisions with status chips (DRAFT/RELEASED/OBSOLETE) and Actions (Author → BOM authoring screen; Explode → BOM explosion view); a `+ New BOM Revision` button opens a create dialog (bomRevision label, description).
+- **FR-036**: The Angular SPA MUST provide a BOM authoring screen showing BOM header info, a lines table with Add/Remove controls (DRAFT status only), effectivity method selector (NONE/DATE/UNIT) that reveals date-range or unit-range inputs, and a `Release BOM` action requiring confirmation (requires `item-master:bom:manage`); structural controls MUST be hidden when BOM status ≠ DRAFT.
+- **FR-037**: The Angular SPA MUST provide a BOM explosion view (PrimeNG TreeTable for indented format; flat list otherwise) with columns: find number, component part/rev (linked to item detail), quantity, UoM, and risk alert badge (`counterfeitRiskAlert=true` → red "HIGH RISK" tag). Toolbar: flat/indented format toggle, as-of date datepicker (optional), as-of unit input (optional), Refresh. Effectivity gap errors from the API MUST be displayed as inline error messages.
+- **FR-038**: The Angular SPA MUST provide an ECO list screen with status filter (All/Draft/Approved/Implemented) and a `+ New ECO` button opening a create dialog (title, description, affected item masters multi-select autocomplete). `concurrentEcoWarning` returned on create MUST surface as a warning toast.
+- **FR-039**: The Angular SPA MUST provide an ECO detail view showing all ECO fields, affected items (chips linked to item detail), and output BOMs (chips linked to BOM authoring). An Approve button (DRAFT only, requires `item-master:eco:manage`) with confirmation dialog transitions the ECO to Approved. `concurrentEcoWarning` MUST be displayed as an inline warning banner on the detail view when applicable.
 
 ### Key Entities
 

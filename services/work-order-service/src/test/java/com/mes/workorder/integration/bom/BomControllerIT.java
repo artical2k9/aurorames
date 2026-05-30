@@ -110,6 +110,40 @@ class BomControllerIT extends BaseIntegrationTest {
     }
 
     @Test
+    void patchBomLineQuantityReturns200WithUpdatedQuantity() {
+        String token = engineerToken();
+        String parentId = createItem(token, "BOM-PATCH-PARENT-001", "A");
+        String compId = createItem(token, "BOM-PATCH-COMP-001", "A");
+        String bomId = createBom(token, parentId, "REV-A");
+        String lineId = addLineAndGetId(token, bomId, compId, "010");
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/lines/" + lineId, HttpMethod.PATCH,
+                jsonRequest(token, Map.of("quantity", 5.0)),
+                Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().get("quantity").toString()).isEqualTo("5.0");
+    }
+
+    @Test
+    void patchLineOnReleasedBomReturns409() {
+        String token = engineerToken();
+        String parentId = createItem(token, "BOM-PATCH-REL-PARENT-001", "A");
+        String compId = createItem(token, "BOM-PATCH-REL-COMP-001", "A");
+        String bomId = createBom(token, parentId, "REV-A");
+        String lineId = addLineAndGetId(token, bomId, compId, "010");
+        releaseBom(token, bomId);
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/lines/" + lineId, HttpMethod.PATCH,
+                jsonRequest(token, Map.of("quantity", 3.0)),
+                Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
     void addLineWithNonExistentComponentReturns422() {
         String token = engineerToken();
         String parentId = createItem(token, "BOM-NF-PARENT-001", "A");
@@ -152,6 +186,19 @@ class BomControllerIT extends BaseIntegrationTest {
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE, HttpMethod.POST,
                 jsonRequest(token, Map.of("parentItemId", parentItemId, "bomRevision", bomRevision)),
+                Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        return response.getBody().get("id").toString();
+    }
+
+    private String addLineAndGetId(String token, String bomId, String componentItemId, String findNumber) {
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/lines", HttpMethod.POST,
+                jsonRequest(token, Map.of(
+                        "componentItemId", componentItemId,
+                        "quantity", 1.0,
+                        "unitOfMeasure", "EA",
+                        "findNumber", findNumber)),
                 Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         return response.getBody().get("id").toString();

@@ -5,7 +5,7 @@ export const authConfig: AuthConfig = {
   redirectUri: window.location.origin,
   clientId: 'mes-frontend',
   responseType: 'code',
-  scope: 'openid profile email',
+  scope: 'openid',
   showDebugInformation: false,
   requireHttps: false,
 };

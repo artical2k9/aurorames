@@ -2,26 +2,30 @@ package com.mes.workorder.bom.service;
 
 import com.mes.workorder.bom.api.dto.CreateBomLineRequest;
 import com.mes.workorder.bom.api.dto.CreateBomRequest;
+import com.mes.workorder.bom.api.dto.UpdateBomLineRequest;
 import com.mes.workorder.bom.domain.BillOfMaterials;
 import com.mes.workorder.bom.domain.BomLine;
 import com.mes.workorder.bom.domain.BomStatus;
+import com.mes.workorder.bom.domain.EffectivityMethod;
 import com.mes.workorder.bom.repository.BomLineRepository;
 import com.mes.workorder.bom.repository.BomRepository;
-import com.mes.workorder.itemmaster.repository.ItemMasterRepository;
-import com.mes.workorder.bom.domain.EffectivityMethod;
 import com.mes.workorder.eco.service.EcoService;
 import com.mes.workorder.itemmaster.domain.CounterfeitRiskLevel;
+import com.mes.workorder.itemmaster.repository.ItemMasterRepository;
 import com.mes.workorder.kafka.BomEventPublisher;
 import com.mes.workorder.kafka.ItemMasterEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @Transactional
 public class BomService {
+
+    private static final String BOM_NOT_FOUND = "BOM not found: ";
 
     private final BomRepository bomRepository;
     private final BomLineRepository bomLineRepository;
@@ -69,12 +73,12 @@ public class BomService {
     @Transactional(readOnly = true)
     public BillOfMaterials getBom(UUID orgId, UUID bomId) {
         return bomRepository.findByOrgIdAndId(orgId, bomId)
-                .orElseThrow(() -> new BomNotFoundException("BOM not found: " + bomId));
+                .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
     }
 
     public BomLine addLine(UUID orgId, UUID bomId, CreateBomLineRequest req) {
         BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
-                .orElseThrow(() -> new BomNotFoundException("BOM not found: " + bomId));
+                .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
 
         if (bom.getStatus() != BomStatus.DRAFT) {
             throw new BomConflictException("Cannot modify a BOM that is not in DRAFT status");
@@ -136,10 +140,23 @@ public class BomService {
         return bomLineRepository.findAllByBomId(bomId);
     }
 
+    public BomLine updateLine(UUID orgId, UUID bomId, UUID lineId, UpdateBomLineRequest req) {
+        BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
+                .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
+        if (bom.getStatus() != BomStatus.DRAFT) {
+            throw new BomConflictException("Cannot modify a BOM that is not in DRAFT status");
+        }
+        BomLine line = bomLineRepository.findById(lineId)
+                .filter(l -> l.getBomId().equals(bomId))
+                .orElseThrow(() -> new BomNotFoundException("BOM line not found: " + lineId));
+        applyScalarUpdates(line, bomId, req);
+        applyEffectivityUpdates(line, bomId, lineId, req);
+        return bomLineRepository.save(line);
+    }
+
     public BillOfMaterials releaseBom(UUID orgId, UUID bomId) {
         BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
-                .orElseThrow(() -> new BomNotFoundException("BOM not found: " + bomId));
-
+                .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
         if (bom.getStatus() != BomStatus.DRAFT) {
             throw new BomConflictException("BOM is not in DRAFT status");
         }
@@ -150,5 +167,55 @@ public class BomService {
             ecoService.addOutputBom(saved.getEcoId(), saved.getId());
         }
         return saved;
+    }
+
+    private void applyScalarUpdates(BomLine line, UUID bomId, UpdateBomLineRequest req) {
+        if (req.getFindNumber() != null && !req.getFindNumber().equals(line.getFindNumber())) {
+            if (bomLineRepository.existsByBomIdAndFindNumber(bomId, req.getFindNumber())) {
+                throw new BomConflictException("Find number already exists: " + req.getFindNumber());
+            }
+            line.setFindNumber(req.getFindNumber());
+        }
+        if (req.getQuantity() != null) {
+            line.setQuantity(req.getQuantity());
+        }
+        if (req.getUnitOfMeasure() != null) {
+            line.setUnitOfMeasure(req.getUnitOfMeasure());
+        }
+        if (req.getReferenceDesignators() != null) {
+            line.setReferenceDesignators(req.getReferenceDesignators());
+        }
+    }
+
+    private void applyEffectivityUpdates(BomLine line, UUID bomId, UUID lineId, UpdateBomLineRequest req) {
+        boolean effectivityChanged = req.getEffectivityMethod() != null
+                || req.getEffectiveFromDate() != null
+                || req.getEffectiveToDate() != null;
+        if (!effectivityChanged) {
+            return;
+        }
+        LocalDate effectiveFrom = req.getEffectiveFromDate() != null
+                ? req.getEffectiveFromDate() : line.getEffectiveFromDate();
+        LocalDate effectiveTo = req.getEffectiveToDate() != null
+                ? req.getEffectiveToDate() : line.getEffectiveToDate();
+        EffectivityMethod method = req.getEffectivityMethod() != null
+                ? req.getEffectivityMethod() : line.getEffectivityMethod();
+        effectivityValidator.validateUpdateLine(bomId, line.getFindNumber(), method,
+                effectiveFrom, effectiveTo, lineId);
+        if (req.getEffectivityMethod() != null) {
+            line.setEffectivityMethod(req.getEffectivityMethod());
+        }
+        if (req.getEffectiveFromDate() != null) {
+            line.setEffectiveFromDate(req.getEffectiveFromDate());
+        }
+        if (req.getEffectiveToDate() != null) {
+            line.setEffectiveToDate(req.getEffectiveToDate());
+        }
+        if (req.getEffectiveFromUnit() != null) {
+            line.setEffectiveFromUnit(req.getEffectiveFromUnit());
+        }
+        if (req.getEffectiveToUnit() != null) {
+            line.setEffectiveToUnit(req.getEffectiveToUnit());
+        }
     }
 }

@@ -92,6 +92,31 @@ class EffectivityValidatorTest {
         assertThatNoException().isThrownBy(() -> effectivityValidator.validateNewLine(bomId, req));
     }
 
+    @Test
+    void validateUpdateLineSkipsExcludedLine() {
+        BomLine existing = dateLine("010", LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31));
+        UUID excludeId = (UUID) ReflectionTestUtils.getField(existing, "id");
+        when(bomLineRepository.findAllByBomIdAndFindNumber(bomId, "010")).thenReturn(List.of(existing));
+
+        // Should not throw — the only existing line is excluded (self-update)
+        assertThatNoException().isThrownBy(() ->
+                effectivityValidator.validateUpdateLine(bomId, "010", EffectivityMethod.DATE,
+                        LocalDate.of(2025, 6, 1), LocalDate.of(2025, 12, 31), excludeId));
+    }
+
+    @Test
+    void validateNewLineSkipsExistingLineWithNullEffectiveFromDate() {
+        BomLine lineWithNullFrom = new BomLine();
+        ReflectionTestUtils.setField(lineWithNullFrom, "id", UUID.randomUUID());
+        lineWithNullFrom.setEffectivityMethod(EffectivityMethod.DATE);
+        lineWithNullFrom.setEffectiveFromDate(null); // triggers the skip-continue
+        when(bomLineRepository.findAllByBomIdAndFindNumber(bomId, "010")).thenReturn(List.of(lineWithNullFrom));
+
+        CreateBomLineRequest req = dateLineRequest("010", LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31));
+
+        assertThatNoException().isThrownBy(() -> effectivityValidator.validateNewLine(bomId, req));
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private BomLine dateLine(String findNumber, LocalDate from, LocalDate to) {

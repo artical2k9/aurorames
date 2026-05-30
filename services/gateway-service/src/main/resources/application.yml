@@ -39,6 +39,12 @@ spring:
             - Path=/api/audit/**
           filters:
             - StripPrefix=2
+        - id: work-order-service
+          uri: ${WORK_ORDER_SERVICE_URL:http://work-order-service:8095}
+          predicates:
+            - Path=/api/v1/**
+          filters:
+            - StripPrefix=0
 
 management:
   endpoints:

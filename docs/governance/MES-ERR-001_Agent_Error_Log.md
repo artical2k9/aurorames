@@ -233,6 +233,20 @@
 **Fix applied:** Downloaded the test report artifact in round 6; `HikariPool-1 - Connection is not available, request timed out after 30000ms` and `Connection to localhost:<port> refused` were immediately visible. Root cause (port churn from `@Container`) identified and fixed in 30 minutes. See ERR-MES-040 for the technical fix.
 **Rule:** When an authenticated operation returns 500 after auth changes appeared to fix 401s, do NOT keep adjusting auth code. A 500 is a server-side exception, not an auth error. Immediately download the test report artifact: `gh run download <run-id> --name test-reports` and read the `Standard output` section of the HTML file. A 30-second-per-test failure pattern with `HikariPool - Connection is not available` is a DB connectivity class of failure, not an auth class of failure. Change diagnostic approach after two failed rounds of the same type — never spend three or more CI rounds on the same hypothesis.
 
+## ERR-MES-049 — Agent claimed "next PR" from plan.md without verifying Develop merge state
+**Date:** 2026-05-30  **Category:** Agent Process — Plan vs. Reality  **Status:** Promoted 2026-05-30
+**Symptom:** After reading `specs/008-item-master-bom-management/plan.md`, agent stated "PR 2 — BOM Authoring is next" as the recommended next implementation step. User corrected immediately: PR 11 (BOM Authoring) had already been merged to Develop.
+**Root cause:** `plan.md` PR strategy table was read and the first unscoped PR was assumed to be "next." No verification was done against actual git history (`git log --oneline origin/Develop`) or GitHub PR state (`gh pr list --state merged --base Develop`) to determine what had already been merged. The plan describes intent and ordering, not current reality.
+**Fix applied:** Ran `git log --oneline origin/Develop`; all 5 planned PRs (GitHub #10–#15) confirmed merged. Pivoted to final cleanup PR scope (2 trailing docs commits on the feature branch).
+**Rule:** Before answering "what is next?" or "what remains?" on a feature branch, always run `git log --oneline origin/Develop` and `gh pr list --state merged --base Develop` to verify actual merge state. Never rely solely on plan.md — the plan describes intent, not current reality. A plan read without a git check is a guess.
+
+## ERR-MES-050 — SVG logo reconstruction from raster PNG: fidelity impossible without vector source
+**Date:** 2026-05-30  **Category:** Design — Asset Creation  **Status:** Promoted 2026-05-30
+**Symptom:** Multiple rounds of SVG geometry corrections (A-shape polygon → two-bar structure, star H/V proportions, arc control points, font selection from Orbitron → Michroma) still failed to produce output the user accepted as accurate. All brand asset files were discarded by the user.
+**Root cause:** A complex raster logo cannot be accurately reconstructed in SVG without the original vector source files (AI/EPS/SVG with outlined paths). Every SVG geometry value must be estimated from visual inspection of the raster, and small errors in any path segment compound into a logo that "looks nothing like the source." The attempt was made rather than the limitation being surfaced upfront.
+**Fix applied:** User discarded all assets. The correct fix is to obtain vector source files before attempting any SVG recreation.
+**Rule:** When asked to create SVG logos from a raster PNG, immediately surface the limitation: SVG recreation from raster is manual approximation that cannot achieve visual fidelity to complex logos. Recommend obtaining the original vector source (AI/EPS/SVG with outlined paths) before proceeding. Do not attempt multiple rounds of geometric correction — the fundamental constraint is the absence of path data, and no amount of iteration resolves it.
+
 ## ERR-MES-019 — ESLint flat config rejects `processor: angular.processInlineTemplates`
 **Date:** 2026-05-20  **Category:** Frontend — ESLint  **Status:** Promoted 2026-05-20
 **Symptom:** `ng lint` failed: `Config (unnamed): Key "processor": Expected an object or a string.` when `processor: angular.processInlineTemplates` was set in `eslint.config.js`.

@@ -25,13 +25,15 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 | PR | Phases | Task Range | CI Anchor | Notes |
 |---|---|---|---|---|
-| PR 1 | Phase 1 + 2 + 3 + 4 | T001–T050, T104–T112 | `./gradlew :services:work-order-service:check :libs:mes-udf-lib:check` | Scaffold + US1 + US3 bundled: UDF validation is part of item master create/patch; separating would require a mid-feature schema migration. Grid preferences API included here as it shares the item-master service boundary |
-| PR 2 | Phase 5 | T051–T066 | `./gradlew :services:work-order-service:check` | Depends on PR 1 merged (item master FK required for BOM parent) |
-| PR 3 | Phase 6 + 7 | T067–T087 | `./gradlew :services:work-order-service:check` | Depends on PR 2 merged; US4 and US5 share BOM domain — bundled to avoid split state |
+| PR 1 | Phase 1 + 2 + 3 + 4 | T001–T050, T104–T112 | `./gradlew :services:work-order-service:check :libs:mes-udf-lib:check` | Scaffold + US1 + US3 bundled. **MERGED** |
+| PR 2 | Phase 5 | T051–T066, T174 | `./gradlew :services:work-order-service:check` | Depends on PR 1 merged (item master FK required for BOM parent); T174 adds PATCH BOM line (FR-007) |
+| PR 3 | Phase 6 + 7 | T067–T087 | `./gradlew :services:work-order-service:check` | Depends on PR 2 merged; US4 and US5 share BOM domain |
 | PR 4 | Phase 8 | T088–T094 | `./gradlew :services:work-order-service:check` | Depends on PR 2 merged; P3 priority — raise after PR 3 |
-| PR 5 | Phase 10 | T113–T130 | `ng build --configuration=production` in `frontend/angular/` | Depends on PR 1 merged (item-master + grid preferences API live); Angular-only — no Spring Boot changes; shared grid + shared theme infrastructure enables all future screens |
+| PR 5 | Phase 10 | T113–T130, T167 | `ng build --configuration=production` + `ng lint --max-warnings 0` in `frontend/angular/` | Angular shared grid + theme + item master list (basic). **MERGED** — T167 (ng lint retrospective) must pass before PR 6 |
+| PR 6 | Phase 11 | T131–T148, T168 | `ng build --configuration=production` + `ng lint --max-warnings 0` in `frontend/angular/` | App shell + item master list fidelity + item master create/edit form. Depends on PR 5 merged. |
+| PR 7 | Phase 12 + 13 | T149–T166, T169, T170 | `ng build --configuration=production` + `ng lint --max-warnings 0` in `frontend/angular/` | BOM frontend + ECO frontend. Depends on PR 6 merged AND PRs 2–3 merged. |
 
-**Sequencing note**: US3 (UDF, P2) is inside PR 1 with the P1 stories. US4+US5 (both P2) are PR 3. US6 (P3) is PR 4. PR 5 (Angular UI) can begin after PR 1 merges; it is independent of PRs 2–4.
+**Sequencing note**: US3 (UDF, P2) is inside PR 1 with the P1 stories. US4+US5 (both P2) are PR 3. US6 (P3) is PR 4. PR 5 merged with item master list only — PR 6 closes the visual/functional gap; PR 7 delivers BOM/ECO frontend screens needed for spec compliance.
 
 ---
 
@@ -86,9 +88,9 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 ### Tests (write FIRST — must FAIL before implementation)
 
 - [X] T024 [P] [US1] Write `FlywayMigrationIT`: assert all V001–V007 tables exist in `work_order` schema; assert 5 privilege rows exist in `iam.privilege` for module item-master; assert SYSTEM_ADMIN has all 5 grants — `services/work-order-service/src/test/java/com/mes/workorder/integration/FlywayMigrationIT.java`
-- [X] T025 [P] [US1] Write `ItemMasterControllerIT`: POST creates record → 201 + Location header; POST duplicate partNumber+revision → 409; PATCH description → 200 + modified fields; GET unauthenticated → 401; GET with ENGINEER token → 200; shelfLifeControlled=true without shelfLifeDays → 422 — `services/work-order-service/src/test/java/com/mes/workorder/integration/itemmaster/ItemMasterControllerIT.java`
+- [X] T025 [P] [US1] Write `ItemMasterControllerIT`: POST creates record → 201 + Location header; POST duplicate partNumber+revision → 409; PATCH description → 200 + modified fields; GET unauthenticated → 401; GET with ENGINEER token → 200; shelfLifeControlled=true without shelfLifeDays → 422; POST with `stepPartRef` set → GET response includes `stepPartRef` value (FR-004) — `services/work-order-service/src/test/java/com/mes/workorder/integration/itemmaster/ItemMasterControllerIT.java`
 - [X] T026 [P] [US1] Write `ItemMasterServiceTest` (unit): uniqueness constraint throws conflict exception; shelf-life constraint throws validation exception; audit fields (createdBy, modifiedBy) populated from security context — `services/work-order-service/src/test/java/com/mes/workorder/unit/itemmaster/ItemMasterServiceTest.java`
-- [X] T027 [P] [US1] Write `ItemMasterKafkaIT`: create item master → assert `work-order.item-master.events` receives message with eventType=ITEM_MASTER_CREATED and entityId; PATCH → assert ITEM_MASTER_UPDATED message — `services/work-order-service/src/test/java/com/mes/workorder/integration/itemmaster/ItemMasterKafkaIT.java`
+- [X] T027 [P] [US1] Write `ItemMasterKafkaIT`: create item master with UDF value → assert `work-order.item-master.events` receives message with eventType=ITEM_MASTER_CREATED, entityId, and `customFields` property matching submitted UDF values (FR-027); PATCH → assert ITEM_MASTER_UPDATED message also contains updated `customFields` — `services/work-order-service/src/test/java/com/mes/workorder/integration/itemmaster/ItemMasterKafkaIT.java`
 - [X] T028 [US1] Confirm all 4 tests above FAIL (RED) with compile or assertion errors before writing any production code
 - [X] T105 [P] [US1] Write `UserGridPreferenceControllerIT`: GET with no saved config → 200 + default column list for module; PUT saves config → 200; second GET → returns saved config; different `moduleKey` → independent config; different JWT sub (different user) → independent config — `services/work-order-service/src/test/java/com/mes/workorder/integration/itemmaster/UserGridPreferenceControllerIT.java`
 - [X] T106 [US1] Confirm T105 FAILS (RED) before writing any preference implementation
@@ -154,25 +156,26 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 ### Tests (write FIRST — must FAIL before implementation)
 
-- [ ] T051 [P] [US2] Write `BomControllerIT`: create BOM header → 201; add lines → 201; GET /boms/{id}/lines returns all lines; release → 200; add line to released BOM → 409; create line with non-existent componentItemId → 422 — `services/work-order-service/src/test/java/com/mes/workorder/integration/bom/BomControllerIT.java`
-- [ ] T052 [P] [US2] Write `BomExplosionIT`: 3-level BOM flat explosion returns all nodes; indented explosion returns nested tree; explosion with depth > `mes.bom.max-depth` returns 422; circular line add → 422; `counterfeitRiskAlert` true for HIGH-risk component — `services/work-order-service/src/test/java/com/mes/workorder/integration/bom/BomExplosionIT.java`
-- [ ] T053 [P] [US2] Write `BomServiceTest` (unit): draft-only guard throws conflict for RELEASED BOM; circular detection mock verifies CTE query called before insert; duplicate (bomId, findNumber, componentItemId) → no-op or error depending on spec — `services/work-order-service/src/test/java/com/mes/workorder/unit/bom/BomServiceTest.java`
-- [ ] T054 [P] [US2] Write `BomKafkaIT`: release BOM → `work-order.bom.events` receives BOM_RELEASED message — `services/work-order-service/src/test/java/com/mes/workorder/integration/bom/BomKafkaIT.java`
-- [ ] T055 [US2] Confirm all 4 tests FAIL (RED)
+- [X] T051 [P] [US2] Write `BomControllerIT`: create BOM header → 201; add lines → 201; GET /boms/{id}/lines returns all lines; release → 200; add line to released BOM → 409; create line with non-existent componentItemId → 422 — `services/work-order-service/src/test/java/com/mes/workorder/integration/bom/BomControllerIT.java`
+- [X] T052 [P] [US2] Write `BomExplosionIT`: 3-level BOM flat explosion returns all nodes; indented explosion returns nested tree; explosion with depth > `mes.bom.max-depth` returns 422; circular line add → 422 with response body containing the cycle path (the UUIDs forming the loop, per spec Edge Case §5 — "identifying the loop path"); `counterfeitRiskAlert` true for HIGH-risk component — `services/work-order-service/src/test/java/com/mes/workorder/integration/bom/BomExplosionIT.java`
+- [X] T053 [P] [US2] Write `BomServiceTest` (unit): draft-only guard throws conflict for RELEASED BOM; circular detection mock verifies CTE query called before insert; duplicate (bomId, findNumber, componentItemId) → no-op or error depending on spec — `services/work-order-service/src/test/java/com/mes/workorder/unit/bom/BomServiceTest.java`
+- [X] T054 [P] [US2] Write `BomKafkaIT`: release BOM → `work-order.bom.events` receives BOM_RELEASED message — `services/work-order-service/src/test/java/com/mes/workorder/integration/bom/BomKafkaIT.java`
+- [X] T055 [US2] Confirm all 4 tests FAIL (RED)
 
 ### Implementation
 
-- [ ] T056 [P] [US2] Create `BillOfMaterials.java` entity: all columns from V003 migration, `@Audited`, FK to `ItemMaster` via UUID column (no JPA FK to avoid cross-aggregate coupling — use UUID field and look up separately), `@Table(name="bill_of_materials", schema="work_order")` — `services/work-order-service/src/main/java/com/mes/workorder/bom/domain/BillOfMaterials.java`
-- [ ] T057 [P] [US2] Create `BomLine.java` entity: all columns from V003 (effectivity columns nullable), `@Audited`, `@Table(name="bom_line", schema="work_order")` — `services/work-order-service/src/main/java/com/mes/workorder/bom/domain/BomLine.java`
-- [ ] T058 [P] [US2] Create `BomStatus.java` and `EffectivityMethod.java` enums — `services/work-order-service/src/main/java/com/mes/workorder/bom/domain/`
-- [ ] T059 [US2] Create `BomRepository.java`: `findByOrgIdAndId`, `findByOrgIdAndParentItemIdAndBomRevision`, `existsByOrgIdAndParentItemIdAndBomRevision`; custom native query `hasAncestorCycle(bomId UUID, candidateComponentId UUID) : boolean` (pre-insert circular check CTE) — `services/work-order-service/src/main/java/com/mes/workorder/bom/repository/BomRepository.java`
-- [ ] T060 [US2] Create `BomLineRepository.java`: `findAllByBomId`, `findByBomIdAndFindNumber` (for effectivity checks) — `services/work-order-service/src/main/java/com/mes/workorder/bom/repository/BomLineRepository.java`
-- [ ] T061 [US2] Create DTOs: `BomDto`, `CreateBomRequest`, `BomLineDto` (includes `counterfeitRiskAlert`, `componentObsoleted`), `CreateBomLineRequest`, `BomExplosionNode` (recursive children list for indented) — `services/work-order-service/src/main/java/com/mes/workorder/bom/api/dto/`
-- [ ] T062 [US2] Create `BomExplosionService.java`: `explode(bomId, format, asOfDate, asOfUnit)` — executes native recursive CTE (WITH RECURSIVE bom_tree … CYCLE component_item_id SET is_cycle USING cycle_path) via `@Query(nativeQuery=true)` on `BomLineRepository`; respects `mes.bom.max-depth`; builds flat list or indented tree; decorates each node with `counterfeitRiskAlert` (component risk level HIGH/CRITICAL) and `componentObsoleted` (item status OBSOLETE); detects effectivity gaps and throws 422 — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomExplosionService.java`
-- [ ] T063 [US2] Create `BomService.java`: `createBom()` (validate parentItemId exists in org, check revision uniqueness), `addLine()` (guard DRAFT status, validate componentItemId exists, run circular-ancestor CTE check, save), `releaseBom()` (DRAFT→RELEASED state machine, emit BOM_RELEASED event), `getBom()`, `listLines()` — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomService.java`
-- [ ] T064 [US2] Create `BomEventPublisher.java`: publishes to `work-order.bom.events` for BOM_RELEASED and BOM_OBSOLETED event types — `services/work-order-service/src/main/java/com/mes/workorder/kafka/BomEventPublisher.java`
-- [ ] T065 [US2] Create `BomController.java`: `POST /boms`, `GET /boms/{bomId}`, `POST /boms/{bomId}/release`, `GET /boms/{bomId}/lines`, `POST /boms/{bomId}/lines`, `GET /boms/{bomId}/explosion` — all require `item-master:bom:manage` privilege — `services/work-order-service/src/main/java/com/mes/workorder/bom/api/BomController.java`
-- [ ] T066 [US2] Run `./gradlew :services:work-order-service:check` — confirm all US1+US3+US2 tests GREEN
+- [X] T056 [P] [US2] Create `BillOfMaterials.java` entity: all columns from V003 migration, `@Audited`, FK to `ItemMaster` via UUID column (no JPA FK to avoid cross-aggregate coupling — use UUID field and look up separately), `@Table(name="bill_of_materials", schema="work_order")` — `services/work-order-service/src/main/java/com/mes/workorder/bom/domain/BillOfMaterials.java`
+- [X] T057 [P] [US2] Create `BomLine.java` entity: all columns from V003 (effectivity columns nullable), `@Audited`, `@Table(name="bom_line", schema="work_order")` — `services/work-order-service/src/main/java/com/mes/workorder/bom/domain/BomLine.java`
+- [X] T058 [P] [US2] Create `BomStatus.java` and `EffectivityMethod.java` enums — `services/work-order-service/src/main/java/com/mes/workorder/bom/domain/`
+- [X] T059 [US2] Create `BomRepository.java`: `findByOrgIdAndId`, `findByOrgIdAndParentItemIdAndBomRevision`, `existsByOrgIdAndParentItemIdAndBomRevision`; custom native query `hasAncestorCycle(bomId UUID, candidateComponentId UUID) : boolean` (pre-insert circular check CTE) — `services/work-order-service/src/main/java/com/mes/workorder/bom/repository/BomRepository.java`
+- [X] T060 [US2] Create `BomLineRepository.java`: `findAllByBomId`, `findByBomIdAndFindNumber` (for effectivity checks) — `services/work-order-service/src/main/java/com/mes/workorder/bom/repository/BomLineRepository.java`
+- [X] T061 [US2] Create DTOs: `BomDto`, `CreateBomRequest`, `BomLineDto` (includes `counterfeitRiskAlert`, `componentObsoleted`), `CreateBomLineRequest`, `BomExplosionNode` (recursive children list for indented) — `services/work-order-service/src/main/java/com/mes/workorder/bom/api/dto/`
+- [X] T062 [US2] Create `BomExplosionService.java`: `explode(bomId, format, asOfDate, asOfUnit)` — executes native recursive CTE (WITH RECURSIVE bom_tree … CYCLE component_item_id SET is_cycle USING cycle_path) via `@Query(nativeQuery=true)` on `BomLineRepository`; respects `mes.bom.max-depth`; builds flat list or indented tree; decorates each node with `counterfeitRiskAlert` (component risk level HIGH/CRITICAL) and `componentObsoleted` (item status OBSOLETE); detects effectivity gaps and throws 422 — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomExplosionService.java`
+- [X] T063 [US2] Create `BomService.java`: `createBom()` (validate parentItemId exists in org, check revision uniqueness), `addLine()` (guard DRAFT status, validate componentItemId exists, run circular-ancestor CTE check, save), `releaseBom()` (DRAFT→RELEASED state machine, emit BOM_RELEASED event), `getBom()`, `listLines()` — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomService.java`
+- [X] T064 [US2] Create `BomEventPublisher.java`: publishes to `work-order.bom.events` for BOM_RELEASED and BOM_OBSOLETED event types — `services/work-order-service/src/main/java/com/mes/workorder/kafka/BomEventPublisher.java`
+- [X] T065 [US2] Create `BomController.java`: `POST /boms`, `GET /boms/{bomId}`, `POST /boms/{bomId}/release`, `GET /boms/{bomId}/lines`, `POST /boms/{bomId}/lines`, `GET /boms/{bomId}/explosion` — all require `item-master:bom:manage` privilege — `services/work-order-service/src/main/java/com/mes/workorder/bom/api/BomController.java`
+- [X] T174 [US2] Add `PATCH /boms/{bomId}/lines/{lineId}` to `BomController.java` — allows modifying an existing BOM line (quantity, unitOfMeasure, findNumber, referenceDesignators, effectivity fields); `BomService.updateLine()` guards DRAFT status (HTTP 409 if RELEASED); calls `EffectivityValidator.validateNewLine()` for effectivity changes; add test scenarios to `BomControllerIT`: modify quantity → 200 + updated field; modify line on RELEASED BOM → 409 (covers FR-007 "modify lines" requirement)
+- [X] T066 [US2] Run `./gradlew :services:work-order-service:check` — confirm all US1+US3+US2 tests GREEN
 
 **Checkpoint**: BOM authoring + explosion end-to-end functional. Circular detection works. Kafka events emitting.
 
@@ -249,10 +252,10 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 ### Implementation
 
 - [X] T090 [US6] Confirm AS5553 columns (`counterfeit_risk_level`, `approved_suppliers` JSONB, `verification_required`) are present in V002 migration and in `ItemMaster.java` entity — no schema change needed (columns included from PR 1)
-- [X] T091 [US6] Update `BomExplosionService.java`: when building explosion nodes, look up each component's `counterfeitRiskLevel`; set `counterfeitRiskAlert=true` if level is HIGH or CRITICAL; batch load item master risk levels in a single query to avoid N+1 — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomExplosionService.java`
-- [X] T092 [US6] Update `ItemMasterEventPublisher.java`: emit `compliance.as5553-risk-added` event on `work-order.item-master.events` when a BOM line is saved with a component whose `counterfeitRiskLevel` is HIGH or CRITICAL; call from `BomService.addLine()` after save — `services/work-order-service/src/main/java/com/mes/workorder/kafka/ItemMasterEventPublisher.java`
+- [ ] T091 [US6] Update `BomExplosionService.java`: when building explosion nodes, look up each component's `counterfeitRiskLevel`; set `counterfeitRiskAlert=true` if level is HIGH or CRITICAL; batch load item master risk levels in a single query to avoid N+1 — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomExplosionService.java` **⚠ Depends on Phase 5 (PR 2) merged — BomExplosionService must exist first**
+- [ ] T092 [US6] Update `ItemMasterEventPublisher.java`: emit `compliance.as5553-risk-added` event on `work-order.item-master.events` when a BOM line is saved with a component whose `counterfeitRiskLevel` is HIGH or CRITICAL; call from `BomService.addLine()` after save — `services/work-order-service/src/main/java/com/mes/workorder/kafka/ItemMasterEventPublisher.java` **⚠ Depends on Phase 5 (PR 2) merged — BomService.addLine() must exist first**
 - [X] T093 [US6] Add `counterfeitRiskLevel` filter parameter to `ItemMasterController.listItemMasters()` and `ItemMasterRepository.findAllByOrgId…` query — `services/work-order-service/src/main/java/com/mes/workorder/itemmaster/api/ItemMasterController.java`
-- [X] T094 [US6] Run `./gradlew :services:work-order-service:check` — confirm all US6 tests GREEN
+- [ ] T094 [US6] Run `./gradlew :services:work-order-service:check` — confirm all US6 tests GREEN **⚠ Re-run after T091+T092 complete (Phase 5 dependency)**
 
 **Checkpoint**: AS5553 fields surfaced. Explosion alert flags working. Risk-level search working.
 
@@ -266,13 +269,16 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 - [X] T095 [P] Verify all Constitution Check gates in `specs/008-item-master-bom-management/plan.md` are ✅ PASS; obtain owner sign-off before raising any PR
 - [X] T096 [P] Confirm `OrganisationContextHolder` used in every service-layer method that queries the DB: grep all service classes in `services/work-order-service/src/main/java/com/mes/workorder/` for missing org_id scope; fix any gap
-- [X] T097 Write `AuditTrailIT`: after item master create+patch, query `work_order.item_master_aud` and assert 2 rows; after BOM release, assert `bill_of_materials_aud` row; after ECO approve, assert `engineering_change_order_aud` row — `services/work-order-service/src/test/java/com/mes/workorder/integration/AuditTrailIT.java`
+- [ ] T097 Write `AuditTrailIT`: after item master create+patch, query `work_order.item_master_aud` and assert 2 rows; after BOM release, assert `bill_of_materials_aud` row; after ECO approve, assert `engineering_change_order_aud` row — `services/work-order-service/src/test/java/com/mes/workorder/integration/AuditTrailIT.java` **⚠ Item master section may pass now; BOM+ECO sections require Phase 5+7 merged — re-verify the full test after PR 3**
 - [X] T098 [P] Confirm all Kafka event publishers include `eventId` UUID field (idempotency dedup key): search `ItemMasterEventPublisher`, `BomEventPublisher`, `EcoEventPublisher` for `eventId` in payload map
 - [X] T099 [P] Validate `privilege_registration` smoke test: start work-order-service against local stack (quickstart.md), query `GET /roles/privilege-map` via iam-service, confirm 5 item-master privilege keys present for SYSTEM_ADMIN and ENGINEER
 - [X] T100 [P] Run Checkstyle + SpotBugs across both new modules: `./gradlew :services:work-order-service:spotbugsMain :libs:mes-udf-lib:spotbugsMain` — resolve all violations before raising PR
 - [X] T101 Run `.\scripts\feature-cost.ps1` and paste output into each PR description as `## Usage Cost` section
-- [X] T102 [P] Compliance spot-check — verify demonstrable coverage of: AS9100D §7.5 (audit rows in AuditTrailIT), AS9102 (partNumber+revision uniqueness test), AS5553 (AS5553IT), ISA-95 Material Class mapping (comment in ItemMaster entity JavaDoc), BOM depth limit (BomExplosionIT covers depth guard)
+- [ ] T102 [P] Compliance spot-check — verify demonstrable coverage of: AS9100D §7.5 (audit rows in AuditTrailIT), AS9102 (partNumber+revision uniqueness test), AS5553 (AS5553IT), ISA-95 Material Class mapping (comment in ItemMaster entity JavaDoc), BOM depth limit (BomExplosionIT covers depth guard) **⚠ BomExplosionIT (T052) and full AuditTrailIT (T097) require Phase 5 merged — re-run after PR 2**
 - [X] T103 Retrospective gate: review session work for new errors or near-misses; log any to `docs/governance/MES-ERR-001_Agent_Error_Log.md` before transitioning MES-8 to Done
+- [ ] T171 [SC-001] Create k6 load test script `specs/008-item-master-bom-management/performance/item-master-load-test.js` — scenarios: ramp to 100 VUs over 30 s, sustain for 60 s; `POST /api/v1/item-master` (create with unique partNumber per VU) then `GET /api/v1/item-master/{id}` (retrieve by ID); thresholds: `http_req_duration{p(95)}<500`, `http_req_failed<0.01`; target URL configurable via `BASE_URL` env var; run against local stack (`docker compose -f docker/compose-infra.yml up`) with a seeded ENGINEER JWT; record baseline output in `specs/008-item-master-bom-management/performance/baselines/sc-001-baseline.txt`
+- [ ] T172 [SC-002] Create k6 load test script `specs/008-item-master-bom-management/performance/bom-explosion-load-test.js` — precondition: fixture script seeds a 10-level BOM with 50 total components via API before the test run; scenario: 20 concurrent VUs each requesting `GET /api/v1/boms/{bomId}/explosion?format=indented` for the seeded BOM; thresholds: `http_req_duration{p(95)}<2000`, `http_req_failed<0.01`; record baseline in `specs/008-item-master-bom-management/performance/baselines/sc-002-baseline.txt` **⚠ Depends on PR 2 merged**
+- [ ] T173 [SC-009] Create `libs/mes-udf-lib/src/test/java/com/mes/udf/UdfLibReusabilityIT.java` — integration test that registers UDF field definitions under module key `ROUTING` (a second module, distinct from `ITEM_MASTER`) using the same `UdfValidator` and `UdfFieldDefinitionRepository` beans with zero code changes to `mes-udf-lib`; asserts: define TEXT field on ROUTING → 201; validate with value present → no violations; validate without required field → violation returned; confirms library is module-agnostic (SC-009)
 
 ---
 
@@ -298,12 +304,130 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 - [X] T128 Place `ThemeToggleComponent` in the app top navigation bar immediately left of the user avatar icon — `frontend/angular/src/app/app.component.html` (or the shell layout template); confirm 8px gap between toggle and avatar matches Penpot shell frame spec
 - [X] T129 Call `ThemeService.init()` in `AppComponent.ngOnInit()` before any route resolves — `frontend/angular/src/app/app.component.ts`; prevents flash-of-wrong-theme on hard reload by applying the saved class synchronously before Angular renders any component
 - [X] T130 [P] For each Penpot frame built this sprint, create a corresponding light mode variant frame on the "Aurora MES / Shell" page — "Shell (light)", "Item Master List (light)", "Column Picker (light)" — applying Aurora MES light mode tokens; document the final light + dark hex values in `specs/008-item-master-bom-management/research.md` under a `## Theme Tokens` section for future reference
+- [X] T167 Run `ng lint --max-warnings 0` in `frontend/angular/` — zero lint errors (constitution §II retrospective for PR 5; MUST pass before PR 6 is raised; fix any violations as part of PR 6 baseline)
 - [X] T122 Run `ng build --configuration=production` in `frontend/angular/` — zero compilation errors
 - [X] T123 Start dev server (`ng serve`), open browser at `http://localhost:4200/item-master`; verify: theme toggle renders next to user avatar; click toggles sun↔moon icon and switches all component colours; preference survives page refresh; column picker and table both respond to theme; OS dark preference applied on first visit when no saved preference exists
 
 **Checkpoint**: Shared grid infrastructure working. Any future screen can add column customisation by importing `GridPreferenceService` + `ColumnPickerComponent` from `shared/grid` and providing its own `moduleKey` + defaults. Item Master list fully functional end-to-end.
 
 > **Raise PR 5 after this checkpoint** (T113–T130) | CI: `ng build --configuration=production` in `frontend/angular/` | Target: `Develop`
+
+---
+
+## Phase 11: App Shell + Item Master List Fidelity + Item Master Create/Edit [PR 6]
+
+**Purpose**: Build the application shell that every screen lives inside, close the visual and functional gaps between the current item master list and the Penpot wireframe, and deliver the item master create/edit form that is required for CRUD compliance (§I Spec-First, Constitution).
+
+**Independent Test**: User logs in → sees nav rail with Dashboard and Item Master links → clicks Item Master → sees list with page heading "Item Master", item count, "+ New Item" button, coloured classification chips, status dot indicators, and an Actions column. Clicks "+ New Item" → form dialog opens → fills mandatory fields → saves → new row appears in list with success toast.
+
+### App Shell
+
+- [ ] T131 Create `AppShellComponent` (standalone) in `frontend/angular/src/app/layout/shell/app-shell.component.ts` — wraps `<router-outlet>`; left nav rail 240 px expanded / 64 px collapsed with toggle button; nav items: Dashboard (`/dashboard`, `pi-th-large`), Item Master (`/item-master`, `pi-database`), BOM (`/bom`, `pi-sitemap`), ECO (`/ecos`, `pi-file-edit`); active route highlighted; collapse state persisted in localStorage key `aurora-mes-nav-collapsed`; export from `frontend/angular/src/app/layout/index.ts` barrel
+- [ ] T132 Style nav rail per Penpot Shell frame in `frontend/angular/src/app/layout/shell/app-shell.component.scss` — dark: bg.subtle (`#0D1F3C`), active item bg `rgba(37,99,235,0.15)`, active text `#2563EB`, icon size 20 px, label 13 px; light: bg.subtle (`#EFF6FF`), active bg `rgba(37,99,235,0.08)`; transition `width 200ms ease`; z-index 100; full viewport height
+- [ ] T133 Add top bar to `AppShellComponent` — 56 px height; Aurora MES wordmark left-aligned (collapsed: icon only); `ThemeToggleComponent` right side; user avatar circle (first letter of `preferred_username` from OIDC token, 32×32 px, brand.primary bg); clicking avatar shows PrimeNG Popover with username, email, and "Logout" button that calls `OidcSecurityService.logoff()`
+- [ ] T134 Re-nest all feature routes under `AppShellComponent` in `frontend/angular/src/app/app.routes.ts` — replace current flat routes with a parent route `path: ''` + `component: AppShellComponent` containing children; keep `/login` outside the shell; update `app.component.html` to a bare `<router-outlet>` (shell now owns layout)
+- [ ] T135 Delete layout markup from current `app.component.html` (plain `<nav>` + title span + login/logout button) — shell component owns all of this now; `app.component.html` becomes `<router-outlet />`
+
+### Item Master List — Visual Fidelity
+
+- [ ] T136 Add page heading row to `ItemMasterListComponent` template — `<h2>Item Master</h2>` left-aligned; item count badge `({{ totalRecords }} items)` in text.secondary colour; both in a flex row with `align-items: baseline`; count updates on every `onLazyLoad` response
+- [ ] T137 Add "+ New Item" primary button to the heading row (right-aligned) in `ItemMasterListComponent` — PrimeNG `p-button` with `severity="primary"` and `icon="pi pi-plus"`; disabled when user lacks `item-master:records:manage` privilege (check via `AuthorizationService` or privilege claim from JWT); emits `openCreateDialog()` on click
+- [ ] T138 Replace plain Classification text cells with coloured PrimeNG `p-tag` chips in `ItemMasterListComponent` template — PURCHASED: severity `info` (blue); FABRICATED: severity `warning` (orange); PHANTOM: severity `secondary` (grey); RAW_MATERIAL: custom `teal` class (`background: #0D9488; color: #fff`); add the custom class to `item-master-list.component.scss`
+- [ ] T139 Replace plain Status text cells with dot-indicator badges — ACTIVE: green filled circle `●` (`color: #22C55E`); OBSOLETE: grey ring `◎` (`color: #94A3B8`); PENDING: amber dot; rendered via a `StatusBadgeComponent` (standalone, one `@Input() status: string`) at `frontend/angular/src/app/shared/ui/status-badge/status-badge.component.ts`; export from `frontend/angular/src/app/shared/ui/index.ts`
+- [ ] T140 Add Actions column as the last column of the p-table in `ItemMasterListComponent` — not in column picker (always visible, locked); each row has three controls: "View" text button (`routerLink` to `/item-master/:id`), "Edit" text button (opens edit dialog with row data), PrimeNG `p-menu` overflow button (`pi-ellipsis-v`) with "Obsolete" option that calls `ItemMasterApiService.obsolete(id)` and refreshes table
+- [ ] T141 Add row selection checkbox column (first column, not in picker, locked) to `ItemMasterListComponent` — PrimeNG `[(selection)]` bound to `selectedItems`; when `selectedItems.length > 0` show selection action bar above table: "N items selected" + "Obsolete Selected" button + "Clear" link; "Obsolete Selected" calls `ItemMasterApiService.obsolete()` for each selected ID sequentially and refreshes
+- [ ] T142 Add Make/Buy filter to filter bar in `ItemMasterListComponent` — PrimeNG `p-selectbutton` with options `[{label:'All'},{label:'Make'},{label:'Buy'},{label:'Phantom'}]`; bound to `makeBuyFilter` property; passed as `makeBuyCode` query param to `ItemMasterApiService.list()`
+
+### Item Master Create/Edit Form
+
+- [ ] T143 Create `ItemMasterFormComponent` (standalone dialog) at `frontend/angular/src/app/features/item-master/components/item-master-form/item-master-form.component.ts` — PrimeNG `p-dialog` with `[modal]="true"`, `[style]="{width: '720px'}"`; reactive form using `FormBuilder`; sections: Identity (partNumber, revision, description required), Classification (classification dropdown, makeBuyCode dropdown, traceabilityMethod dropdown, unitOfMeasure, cageCode), Shelf Life (shelfLifeControlled toggle; `shelfLifeDays` number input revealed when true with `Validators.required` added dynamically), AS5553 (collapsible panel: counterfeitRiskLevel dropdown, approvedSuppliers textarea, verificationRequired toggle), UDF Fields (loaded on open from `GET /udf/fields?module=ITEM_MASTER`, rendered as typed inputs matching field type); `@Input() itemId?: string` — when set the form loads existing item via `ItemMasterApiService.getById()` and switches to edit mode; Save button calls `create()` or `patch()` accordingly; emits `@Output() saved = new EventEmitter<ItemMasterDto>()` on success; shows inline PrimeNG `p-message` errors on 422 responses (maps `violations` array from response body)
+- [ ] T144 Wire `ItemMasterFormComponent` into `ItemMasterListComponent` — `openCreateDialog()` sets `editItemId = undefined` and `showFormDialog = true`; Edit row action sets `editItemId = row.id` and `showFormDialog = true`; on `(saved)` event: show PrimeNG `p-toast` success message "Item saved" and call `loadItemMasters()` to refresh the table
+- [ ] T145 Create `ItemMasterDetailComponent` (standalone page) at `frontend/angular/src/app/features/item-master/pages/item-master-detail/item-master-detail.component.ts` — route `/item-master/:id`; calls `ItemMasterApiService.getById(id)`; displays all fields in a two-column read-only card layout using PrimeNG `p-card`; back button returns to list; Edit button opens `ItemMasterFormComponent` in edit mode via `p-dialog`; shows UDF fields in a separate "Custom Fields" card
+
+### Verification
+
+- [ ] T168 Run `ng lint --max-warnings 0` in `frontend/angular/` — zero lint errors before raising PR 6 (constitution §II mandatory gate)
+- [ ] T146 Run `ng build --configuration=production` in `frontend/angular/` — zero compilation errors
+- [ ] T147 Smoke test in browser: nav rail renders and collapses; active route highlighted; theme toggle in top bar works; item master list shows page heading, item count, coloured chips, status dots, actions column; "+ New Item" opens form; fill all mandatory fields and save; row appears in table with toast; row "Edit" pre-populates form; "View" navigates to detail page
+- [ ] T148 Add `frontend/angular/src/app/layout/` and `frontend/angular/src/app/shared/ui/` to `sonar.sources` in `sonar-project.properties` if not already present
+
+**Checkpoint**: App shell wraps all screens. Item master list is visually faithful to Penpot wireframe. Create/edit/view CRUD fully functional.
+
+> **Raise PR 6 after this checkpoint** (T131–T148) | CI: `ng build --configuration=production` in `frontend/angular/` | Target: `Develop`
+
+---
+
+## Phase 12: BOM Frontend Screens [PR 7]
+
+**Purpose**: Deliver the BOM authoring, explosion, and list screens so engineers can author and release Bills of Materials from the browser. Required for spec compliance — BOM is P1 scope (US2) and is entirely missing from the frontend. Depends on PR 2 merged (BOM backend APIs live) and PR 6 merged (app shell).
+
+**Independent Test**: Engineer navigates Item Master → selects a part → clicks "BOMs" → sees BOM list (empty). Creates BOM revision "A" → BOM authoring screen opens → adds three component lines → sets effectivity on one line → releases BOM → status chip changes to RELEASED. Navigates to explosion view → selects indented format → tree shows all three components at correct depth.
+
+### API Service
+
+- [ ] T149 Create `BomApiService` at `frontend/angular/src/app/features/bom/services/bom-api.service.ts` — typed methods: `listForItem(itemId: string, params?: PageParams): Observable<Page<BomDto>>`; `create(req: CreateBomRequest): Observable<BomDto>`; `getById(id: string): Observable<BomDto>`; `addLine(bomId: string, req: CreateBomLineRequest): Observable<BomLineDto>`; `removeLine(bomId: string, lineId: string): Observable<void>`; `release(bomId: string): Observable<BomDto>`; `explode(bomId: string, format: 'flat'|'indented', asOfDate?: string, asOfUnit?: string): Observable<BomExplosionResponse>`; define `BomDto`, `BomLineDto`, `BomExplosionNode`, `CreateBomRequest`, `CreateBomLineRequest` interfaces in `frontend/angular/src/app/features/bom/models/`
+
+### BOM List Screen
+
+- [ ] T150 Create `BomListComponent` (standalone) at `frontend/angular/src/app/features/bom/pages/bom-list/bom-list.component.ts` — route: `/item-master/:itemId/boms`; calls `BomApiService.listForItem(itemId)` on init; page heading shows parent item part number + revision fetched via `ItemMasterApiService.getById()`; p-table with columns: BOM Revision, Status chip (DRAFT=warning, RELEASED=success, OBSOLETE=secondary), Description, Created By, Actions; Actions column: "Author" button (navigates to `/boms/:bomId`), "Explode" button (navigates to `/boms/:bomId/explosion`); "+ New BOM Revision" button opens `BomCreateDialog`
+- [ ] T151 Create `BomCreateDialogComponent` (standalone dialog) at `frontend/angular/src/app/features/bom/components/bom-create-dialog/bom-create-dialog.component.ts` — fields: BOM Revision (text, required), Description (text); Save calls `BomApiService.create({parentItemId, bomRevision, description})`; on success navigates to `/boms/:newBomId`
+- [ ] T152 Add "BOMs" action to the `ItemMasterListComponent` row overflow menu (pi-ellipsis-v) — navigates to `/item-master/:id/boms`; also add "BOMs" button to `ItemMasterDetailComponent` actions bar
+
+### BOM Authoring Screen
+
+- [ ] T153 Create `BomAuthoringComponent` (standalone) at `frontend/angular/src/app/features/bom/pages/bom-authoring/bom-authoring.component.ts` — route: `/boms/:bomId`; header card shows: parent item part number/rev (linked back to item detail), BOM revision, status chip, description, ECO ID if set; p-table of BOM lines with columns: Find #, Component Part # / Rev (linked), Description, Quantity, UoM, Effectivity (displays method + date or unit range), Actions (Remove line — only when DRAFT); "Add Line" button opens inline `AddBomLineFormComponent`; "Release BOM" button shown when status=DRAFT and user has `item-master:bom:manage` privilege — opens confirm dialog then calls `BomApiService.release()`; on release, status chip updates and Add/Remove controls hide; navigation breadcrumb: Item Master > {partNumber} > BOMs > {bomRevision}
+- [ ] T154 Create `AddBomLineFormComponent` (standalone, inline in table footer row) at `frontend/angular/src/app/features/bom/components/add-bom-line-form/add-bom-line-form.component.ts` — inline row with: component part number autocomplete (calls `ItemMasterApiService.list()` debounced, displays part number + revision options), Find # input (number), Quantity input (number), UoM input (text), Effectivity Method select (NONE / DATE / UNIT); when DATE selected: from-date and to-date datepickers appear; when UNIT selected: from-unit and to-unit text inputs appear; Save calls `BomApiService.addLine()`; on 422 response display inline error message from `violations` array; Cancel hides row
+
+### BOM Explosion View
+
+- [ ] T155 Create `BomExplosionComponent` (standalone) at `frontend/angular/src/app/features/bom/pages/bom-explosion/bom-explosion.component.ts` — route: `/boms/:bomId/explosion`; PrimeNG `p-treeTable` bound to explosion response mapped to `TreeNode[]`; columns: Find #, Part # / Rev (linked to item detail), Description, Qty, UoM, Risk (PrimeNG `p-tag severity="danger"` if `counterfeitRiskAlert`, else empty); toolbar: Format toggle (Flat / Indented) using `p-selectbutton`, As-Of Date datepicker (optional), As-Of Unit input (optional), Refresh button; on 422 effectivity-gap error display `p-message severity="error"` with gap details; breadcrumb: Item Master > {partNumber} > BOMs > {bomRevision} > Explosion
+- [ ] T156 Add BOM routes to `app.routes.ts` nested under `AppShellComponent`: `/item-master/:itemId/boms` → `BomListComponent`; `/boms/:bomId` → `BomAuthoringComponent`; `/boms/:bomId/explosion` → `BomExplosionComponent`; add "BOM" nav item to `AppShellComponent` nav rail pointing to `/item-master` (BOM is accessed via item master, not a top-level list)
+
+### Verification
+
+- [ ] T169 Run `ng lint --max-warnings 0` in `frontend/angular/` — zero lint errors before raising PR 7 (constitution §II mandatory gate)
+- [ ] T157 Run `ng build --configuration=production` — zero errors
+- [ ] T158 Smoke test in browser: item master row overflow → "BOMs" → empty list → "+ New BOM Revision" → creates BOM → authoring screen opens → add 2 lines → release → status chip = RELEASED → explosion view shows both components in indented tree
+
+**Checkpoint**: BOM authoring and explosion fully navigable from item master list. Release workflow functional. Risk alert flags visible.
+
+> **Raise PR 7 after this checkpoint** (T149–T158, combined with Phase 13) | CI: `ng build --configuration=production` in `frontend/angular/` | Target: `Develop`
+
+---
+
+## Phase 13: ECO Frontend Screens [PR 7 continued]
+
+**Purpose**: Deliver ECO list, create, and approve screens so engineering managers can initiate and approve Engineering Change Orders from the browser, satisfying AS9100D §8.1 change-control compliance (Constitution §IV). Depends on PR 3 merged (ECO backend APIs live).
+
+**Independent Test**: Engineering manager navigates to ECO from nav rail → sees ECO list (empty). Creates new ECO with title, description, and two affected item masters → ECO created in DRAFT. Second ECO created referencing same item master → `concurrentEcoWarning` banner shown. Manager approves first ECO → status chip changes to APPROVED.
+
+### API Service
+
+- [ ] T159 Create `EcoApiService` at `frontend/angular/src/app/features/eco/services/eco-api.service.ts` — typed methods: `list(params?: PageParams): Observable<Page<EcoDto>>`; `getById(id: string): Observable<EcoDto>`; `create(req: CreateEcoRequest): Observable<EcoDto>`; `approve(ecoId: string): Observable<EcoDto>`; define `EcoDto`, `CreateEcoRequest` interfaces in `frontend/angular/src/app/features/eco/models/`; `EcoDto` includes `concurrentEcoWarning: boolean`, `affectedItemIds: string[]`, `outputBomIds: string[]`
+
+### ECO List Screen
+
+- [ ] T160 Create `EcoListComponent` (standalone) at `frontend/angular/src/app/features/eco/pages/eco-list/eco-list.component.ts` — route: `/ecos`; page heading "Engineering Change Orders"; p-table with server-side pagination; columns: ECO #, Title, Status chip (DRAFT=warning, APPROVED=success, IMPLEMENTED=info), Affected Items count badge, Created By, Actions ("View" navigates to `/ecos/:ecoId`, "Approve" button shown only for DRAFT ECOs and only when user has `item-master:eco:manage` privilege); "+ New ECO" button opens `EcoFormComponent` dialog; status filter dropdown (All / Draft / Approved / Implemented)
+- [ ] T161 Create `EcoFormComponent` (standalone dialog) at `frontend/angular/src/app/features/eco/components/eco-form/eco-form.component.ts` — fields: Title (text, required), Description (textarea), Affected Item Masters (PrimeNG `p-multiSelect` with autocomplete calling `ItemMasterApiService.list()` debounced; displays part number + revision; selected items shown as chips); Save calls `EcoApiService.create()`; on success emits `(saved)` and closes dialog; if response body contains `concurrentEcoWarning: true` show `p-toast` warning "Concurrent ECO exists for one or more affected items — review before approving"
+
+### ECO Detail + Approve
+
+- [ ] T162 Create `EcoDetailComponent` (standalone) at `frontend/angular/src/app/features/eco/pages/eco-detail/eco-detail.component.ts` — route: `/ecos/:ecoId`; two-column card layout: left card "Change Order Details" (all ECO fields read-only), right card "Affected Items" (chips linking to item master detail) + "Output BOMs" (chips linking to BOM authoring); "Approve ECO" button shown when status=DRAFT and user has `item-master:eco:manage` privilege — calls `EcoApiService.approve()`, shows confirm dialog first; on approval: status chip updates to APPROVED, Approve button hides, success toast
+- [ ] T163 Wire "Approve" action in `EcoListComponent` — calls `EcoApiService.approve(ecoId)`, shows confirm dialog, refreshes list row on success; if `concurrentEcoWarning` true on any other open ECO for the same item, show inline `p-message` warning on that row
+
+### Navigation
+
+- [ ] T164 Add ECO routes to `app.routes.ts` nested under `AppShellComponent`: `/ecos` → `EcoListComponent`; `/ecos/:ecoId` → `EcoDetailComponent`; update `AppShellComponent` nav rail "ECO" item to navigate to `/ecos`
+
+### Verification
+
+- [ ] T170 Run `ng lint --max-warnings 0` in `frontend/angular/` — zero lint errors; if running as part of the same PR 7 as Phase 12, this shares a single lint run with T169
+- [ ] T165 Run `ng build --configuration=production` — zero errors
+- [ ] T166 Smoke test in browser: ECO nav item works; ECO list shows empty state; "+ New ECO" opens form; select 2 affected items; save; ECO appears in list as DRAFT; "Approve" button visible; click Approve → confirm → status chip = APPROVED
+
+**Checkpoint**: ECO lifecycle navigable from browser. Create → Approve flow functional. Concurrent warning displayed. AS9100D §8.1 change-control audit trail visible via ECO detail.
+
+> **Raise PR 7 after this checkpoint** (T149–T166) | CI: `ng build --configuration=production` in `frontend/angular/` | Target: `Develop`
 
 ---
 
@@ -318,7 +442,10 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 - **Phase 6 (US4) + Phase 7 (US5)**: Depends on PR 2 merged (BOM entities required)
 - **Phase 8 (US6)**: Depends on PR 2 merged; independent of PR 3 (AS5553 fields in schema from PR 1)
 - **Phase 9 (Polish)**: All PRs complete
-- **Phase 10 (Angular Frontend)**: Depends on PR 1 merged (item-master API + grid preferences API live); independent of PRs 2–4 (reads item master list only; BOM/ECO screens added in future sprints)
+- **Phase 10 (Angular Frontend)**: Depends on PR 1 merged (item-master API + grid preferences API live). **MERGED** — basic item master list only
+- **Phase 11 (App Shell + Item Master Fidelity + Create)**: Depends on PR 5 merged; Angular-only; no backend dependency beyond PR 1
+- **Phase 12 (BOM Frontend)**: Depends on PR 6 merged (app shell required) AND PR 2 merged (BOM backend APIs live)
+- **Phase 13 (ECO Frontend)**: Depends on PR 6 merged AND PR 3 merged (ECO backend APIs live); can develop in parallel with Phase 12 after PR 6 merges
 
 ### User Story Dependencies
 
@@ -330,7 +457,10 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 | US4 (Effectivity) | US2 merged | US5 (same PR) |
 | US5 (ECO) | US2 merged | US4 (same PR) |
 | US6 (AS5553) | US2 merged (BOM line alert) | US4, US5 |
-| Angular UI | PR 1 merged (API live) | PRs 2–4 (frontend is read-only against item-master in this sprint) |
+| Angular Item Master List (PR 5) | PR 1 merged | PRs 2–4 |
+| App Shell + Item Master Fidelity + Create (PR 6) | PR 5 merged | PRs 2–4 (no backend dep beyond PR 1) |
+| BOM Frontend (PR 7, Phase 12) | PR 6 merged + PR 2 merged | ECO Frontend |
+| ECO Frontend (PR 7, Phase 13) | PR 6 merged + PR 3 merged | BOM Frontend |
 
 ### Within Each Phase
 
@@ -392,8 +522,10 @@ T130 Penpot light mode frame variants
 
 ### Incremental Delivery
 
-- PR 1: Item master foundation (MVP for BOM-dependent services to start consuming)
+- PR 1: Item master foundation (MVP for BOM-dependent services to start consuming) — **MERGED**
 - PR 2: BOM authoring + explosion (enables work order materialisation design)
 - PR 3: Effectivity + ECO (enables AS9100D §8.1 change control)
 - PR 4: AS5553 enrichment (enables supply-chain compliance queries)
-- PR 5: Angular Item Master UI with shared grid + shared theme infrastructure (column picker and dark/light toggle reusable by all future screens — BOM, Work Orders, Receiving, Inventory)
+- PR 5: Angular Item Master UI with shared grid + shared theme infrastructure — **MERGED** (basic list only; fidelity gaps remain)
+- PR 6: App shell + item master list fidelity + create/edit form (closes all frontend gaps from PR 5; completes US1 frontend)
+- PR 7: BOM frontend + ECO frontend (delivers full spec-compliant UI for US2, US4, US5)
