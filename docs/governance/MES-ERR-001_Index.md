@@ -36,3 +36,5 @@
 | ERR-MES-041 | 2026-05-29 | Frontend — npm | Never `npm install --legacy-peer-deps` for Angular packages; all `@angular/*` must pin to same exact version or `npm ci` fails on CI |
 | ERR-MES-049 | 2026-05-30 | Agent Process | Always run `git log --oneline origin/Develop` + `gh pr list --merged` before claiming what PR is next; plan.md describes intent, not current state |
 | ERR-MES-050 | 2026-05-30 | Design — Assets | SVG recreation from raster PNG cannot achieve fidelity; request vector source (AI/EPS) before attempting; do not iterate corrections |
+| ERR-MES-051 | 2026-05-30 | Testing — JaCoCo | `--tests` filtered Gradle run replaces jacoco.exec; always run `check` before reading coverage reports |
+| ERR-MES-052 | 2026-05-30 | CI — SonarCloud | SonarCloud "new code" = PR diff lines only; use `git diff origin/Develop -- <file>` to identify actual new-code scope |
