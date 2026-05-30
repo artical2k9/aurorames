@@ -39,18 +39,13 @@ public class EffectivityValidator {
         LocalDate newTo = toDate != null ? toDate : LocalDate.MAX;
 
         for (BomLine line : existing) {
-            if (excludeLineId != null && line.getId().equals(excludeLineId)) {
-                continue;
-            }
-            if (line.getEffectivityMethod() != EffectivityMethod.DATE) {
-                continue;
-            }
             LocalDate existingFrom = line.getEffectiveFromDate();
-            LocalDate existingTo = line.getEffectiveToDate() != null ? line.getEffectiveToDate() : LocalDate.MAX;
-
-            if (existingFrom == null) {
+            if ((excludeLineId != null && line.getId().equals(excludeLineId))
+                    || line.getEffectivityMethod() != EffectivityMethod.DATE
+                    || existingFrom == null) {
                 continue;
             }
+            LocalDate existingTo = line.getEffectiveToDate() != null ? line.getEffectiveToDate() : LocalDate.MAX;
             // Overlap: newFrom <= existingTo AND existingFrom <= newTo
             if (!newFrom.isAfter(existingTo) && !existingFrom.isAfter(newTo)) {
                 throw new EffectivityOverlapException(findNumber, line.getId());
