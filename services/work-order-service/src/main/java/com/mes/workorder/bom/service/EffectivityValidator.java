@@ -20,14 +20,28 @@ public class EffectivityValidator {
     }
 
     public void validateNewLine(UUID bomId, CreateBomLineRequest req) {
-        if (req.getEffectivityMethod() != EffectivityMethod.DATE) {
+        validateDateOverlap(bomId, req.getFindNumber(), req.getEffectivityMethod(),
+                req.getEffectiveFromDate(), req.getEffectiveToDate(), null);
+    }
+
+    public void validateUpdateLine(UUID bomId, String findNumber, EffectivityMethod method,
+                                   LocalDate fromDate, LocalDate toDate, UUID excludeLineId) {
+        validateDateOverlap(bomId, findNumber, method, fromDate, toDate, excludeLineId);
+    }
+
+    private void validateDateOverlap(UUID bomId, String findNumber, EffectivityMethod method,
+                                     LocalDate fromDate, LocalDate toDate, UUID excludeLineId) {
+        if (method != EffectivityMethod.DATE) {
             return;
         }
-        List<BomLine> existing = bomLineRepository.findAllByBomIdAndFindNumber(bomId, req.getFindNumber());
-        LocalDate newFrom = req.getEffectiveFromDate();
-        LocalDate newTo = req.getEffectiveToDate() != null ? req.getEffectiveToDate() : LocalDate.MAX;
+        List<BomLine> existing = bomLineRepository.findAllByBomIdAndFindNumber(bomId, findNumber);
+        LocalDate newFrom = fromDate;
+        LocalDate newTo = toDate != null ? toDate : LocalDate.MAX;
 
         for (BomLine line : existing) {
+            if (excludeLineId != null && line.getId().equals(excludeLineId)) {
+                continue;
+            }
             if (line.getEffectivityMethod() != EffectivityMethod.DATE) {
                 continue;
             }
@@ -39,7 +53,7 @@ public class EffectivityValidator {
             }
             // Overlap: newFrom <= existingTo AND existingFrom <= newTo
             if (!newFrom.isAfter(existingTo) && !existingFrom.isAfter(newTo)) {
-                throw new EffectivityOverlapException(req.getFindNumber(), line.getId());
+                throw new EffectivityOverlapException(findNumber, line.getId());
             }
         }
     }

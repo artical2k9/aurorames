@@ -8,6 +8,7 @@ import com.mes.workorder.bom.api.dto.BomLineDto;
 import com.mes.workorder.bom.api.dto.BomMapper;
 import com.mes.workorder.bom.api.dto.CreateBomLineRequest;
 import com.mes.workorder.bom.api.dto.CreateBomRequest;
+import com.mes.workorder.bom.api.dto.UpdateBomLineRequest;
 import com.mes.workorder.bom.service.BomExplosionService;
 import com.mes.workorder.bom.service.BomService;
 import jakarta.validation.Valid;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -95,6 +97,18 @@ public class BomController {
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}").buildAndExpand(line.getId()).toUri();
         return ResponseEntity.created(location).body(BomMapper.toLineDto(line));
+    }
+
+    @PatchMapping("/{bomId}/lines/{lineId}")
+    @RequiresPrivilege("item-master:bom:manage")
+    public BomLineDto updateLine(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID bomId,
+            @PathVariable UUID lineId,
+            @Valid @RequestBody UpdateBomLineRequest request) {
+
+        var orgId = JwtClaimsExtractor.orgId(jwt);
+        return BomMapper.toLineDto(bomService.updateLine(orgId, bomId, lineId, request));
     }
 
     @GetMapping("/{bomId}/explosion")

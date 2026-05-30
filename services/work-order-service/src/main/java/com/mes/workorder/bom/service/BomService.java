@@ -2,6 +2,7 @@ package com.mes.workorder.bom.service;
 
 import com.mes.workorder.bom.api.dto.CreateBomLineRequest;
 import com.mes.workorder.bom.api.dto.CreateBomRequest;
+import com.mes.workorder.bom.api.dto.UpdateBomLineRequest;
 import com.mes.workorder.bom.domain.BillOfMaterials;
 import com.mes.workorder.bom.domain.BomLine;
 import com.mes.workorder.bom.domain.BomStatus;
@@ -134,6 +135,66 @@ public class BomService {
     public List<BomLine> listLines(UUID orgId, UUID bomId) {
         getBom(orgId, bomId);
         return bomLineRepository.findAllByBomId(bomId);
+    }
+
+    public BomLine updateLine(UUID orgId, UUID bomId, UUID lineId, UpdateBomLineRequest req) {
+        BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
+                .orElseThrow(() -> new BomNotFoundException("BOM not found: " + bomId));
+
+        if (bom.getStatus() != BomStatus.DRAFT) {
+            throw new BomConflictException("Cannot modify a BOM that is not in DRAFT status");
+        }
+
+        BomLine line = bomLineRepository.findById(lineId)
+                .filter(l -> l.getBomId().equals(bomId))
+                .orElseThrow(() -> new BomNotFoundException("BOM line not found: " + lineId));
+
+        if (req.getFindNumber() != null && !req.getFindNumber().equals(line.getFindNumber())) {
+            if (bomLineRepository.existsByBomIdAndFindNumber(bomId, req.getFindNumber())) {
+                throw new BomConflictException("Find number already exists: " + req.getFindNumber());
+            }
+            line.setFindNumber(req.getFindNumber());
+        }
+        if (req.getQuantity() != null) {
+            line.setQuantity(req.getQuantity());
+        }
+        if (req.getUnitOfMeasure() != null) {
+            line.setUnitOfMeasure(req.getUnitOfMeasure());
+        }
+        if (req.getReferenceDesignators() != null) {
+            line.setReferenceDesignators(req.getReferenceDesignators());
+        }
+
+        boolean effectivityChanged = req.getEffectivityMethod() != null
+                || req.getEffectiveFromDate() != null
+                || req.getEffectiveToDate() != null;
+        if (effectivityChanged) {
+            EffectivityMethod method = req.getEffectivityMethod() != null
+                    ? req.getEffectivityMethod() : line.getEffectivityMethod();
+            java.time.LocalDate fromDate = req.getEffectiveFromDate() != null
+                    ? req.getEffectiveFromDate() : line.getEffectiveFromDate();
+            java.time.LocalDate toDate = req.getEffectiveToDate() != null
+                    ? req.getEffectiveToDate() : line.getEffectiveToDate();
+            effectivityValidator.validateUpdateLine(
+                    bomId, line.getFindNumber(), method, fromDate, toDate, lineId);
+            if (req.getEffectivityMethod() != null) {
+                line.setEffectivityMethod(req.getEffectivityMethod());
+            }
+            if (req.getEffectiveFromDate() != null) {
+                line.setEffectiveFromDate(req.getEffectiveFromDate());
+            }
+            if (req.getEffectiveToDate() != null) {
+                line.setEffectiveToDate(req.getEffectiveToDate());
+            }
+        }
+        if (req.getEffectiveFromUnit() != null) {
+            line.setEffectiveFromUnit(req.getEffectiveFromUnit());
+        }
+        if (req.getEffectiveToUnit() != null) {
+            line.setEffectiveToUnit(req.getEffectiveToUnit());
+        }
+
+        return bomLineRepository.save(line);
     }
 
     public BillOfMaterials releaseBom(UUID orgId, UUID bomId) {
