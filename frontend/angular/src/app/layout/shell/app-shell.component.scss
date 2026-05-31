@@ -1,0 +1,208 @@
+// ── Layout constants ──────────────────────────────────────────────────────────
+$topbar-height: 56px;
+$rail-width-expanded: 240px;
+$rail-width-collapsed: 64px;
+$transition: width 200ms ease;
+
+// ── Shell wrapper ─────────────────────────────────────────────────────────────
+.shell {
+  display: grid;
+  grid-template-columns: $rail-width-expanded 1fr;
+  grid-template-rows: $topbar-height 1fr;
+  grid-template-areas:
+    "topbar topbar"
+    "rail   content";
+  min-height: 100vh;
+  transition: $transition;
+
+  &--collapsed {
+    grid-template-columns: $rail-width-collapsed 1fr;
+  }
+}
+
+// ── Top bar ───────────────────────────────────────────────────────────────────
+.shell__topbar {
+  grid-area: topbar;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem 0 1.25rem;
+  height: $topbar-height;
+  background: var(--aurora-bg-subtle, #EFF6FF);
+  border-bottom: 1px solid var(--aurora-border-subtle, #CBD5E1);
+  z-index: 200;
+}
+
+.shell__topbar-brand {
+  display: flex;
+  align-items: center;
+}
+
+.shell__wordmark {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--aurora-brand-primary, #2563EB);
+  letter-spacing: -0.02em;
+}
+
+.shell__wordmark-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--aurora-brand-primary, #2563EB);
+  background: color-mix(in srgb, var(--aurora-brand-primary, #2563EB) 12%, transparent);
+  border-radius: 8px;
+}
+
+.shell__topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+// ── Avatar ────────────────────────────────────────────────────────────────────
+.shell__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--aurora-brand-primary, #2563EB);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &:hover { opacity: 0.85; }
+}
+
+// ── User popover menu ─────────────────────────────────────────────────────────
+.shell__user-menu {
+  min-width: 200px;
+  padding: 0.25rem 0;
+}
+
+.shell__user-name {
+  padding: 0.5rem 1rem 0.125rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--p-text-color);
+}
+
+.shell__user-email {
+  padding: 0 1rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--p-text-muted-color);
+}
+
+.shell__user-divider {
+  margin: 0;
+  border: none;
+  border-top: 1px solid var(--p-surface-border);
+}
+
+.shell__user-logout {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--p-text-color);
+
+  &:hover { background: var(--p-surface-100); }
+}
+
+// ── Nav rail ──────────────────────────────────────────────────────────────────
+.shell__rail {
+  grid-area: rail;
+  display: flex;
+  flex-direction: column;
+  background: var(--aurora-bg-subtle, #EFF6FF);
+  border-right: 1px solid var(--aurora-border-subtle, #CBD5E1);
+  z-index: 100;
+  overflow: hidden;
+  transition: $transition;
+  padding-top: 0.5rem;
+}
+
+.shell__collapse-btn {
+  align-self: flex-end;
+  margin: 0 0.5rem 0.25rem;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--p-text-muted-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &:hover { background: var(--p-surface-200); }
+}
+
+.shell__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 0.5rem;
+  flex: 1;
+}
+
+.shell__nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--p-text-muted-color);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  transition: background 120ms ease, color 120ms ease;
+
+  &:hover {
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--p-text-color);
+  }
+
+  &--active {
+    background: rgba(37, 99, 235, 0.08);
+    color: #2563EB;
+
+    .shell__nav-icon { color: #2563EB; }
+  }
+}
+
+.aurora-dark .shell__nav-item--active {
+  background: rgba(37, 99, 235, 0.15);
+  color: #2563EB;
+}
+
+.shell__nav-icon {
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}
+
+.shell__nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// ── Content area ──────────────────────────────────────────────────────────────
+.shell__content {
+  grid-area: content;
+  overflow-y: auto;
+  background: var(--aurora-bg-base, #F8FAFC);
+}
