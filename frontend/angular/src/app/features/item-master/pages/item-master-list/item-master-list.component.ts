@@ -3,7 +3,7 @@ import {
 } from '@angular/core';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { TableModule, TableLazyLoadEvent } from 'primeng/table';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
@@ -16,9 +16,9 @@ import { ToastModule } from 'primeng/toast';
 import { Menu } from 'primeng/menu';
 import { MenuItem, MessageService } from 'primeng/api';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
-import { StatusBadgeComponent } from '../../../../shared/ui';
+import { StatusBadgeComponent, BreadcrumbComponent } from '../../../../shared/ui';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
-import { ItemMasterFormComponent } from '../../components/item-master-form/item-master-form.component';
+import { ClassificationLabelPipe } from '../../pipes/classification-label.pipe';
 import { DEFAULT_ITEM_MASTER_COLUMNS } from '../../constants/default-columns';
 import {
   ItemMasterDto, Classification, ItemStatus, MakeBuyCode,
@@ -28,10 +28,11 @@ import {
   selector: 'app-item-master-list',
   standalone: true,
   imports: [
-    CommonModule, AsyncPipe, FormsModule, RouterLink,
+    CommonModule, AsyncPipe, FormsModule,
     TableModule, InputTextModule, SelectModule, SelectButtonModule,
     ButtonModule, PopoverModule, TagModule, MenuModule, ToastModule,
-    ColumnPickerComponent, StatusBadgeComponent, ItemMasterFormComponent,
+    ColumnPickerComponent, StatusBadgeComponent, BreadcrumbComponent,
+    ClassificationLabelPipe,
   ],
   providers: [
     MessageService,
@@ -45,6 +46,8 @@ import {
 
     <div class="iml">
 
+      <app-breadcrumb [crumbs]="breadcrumbs" />
+
       <!-- Heading row -->
       <div class="iml__heading">
         <div class="iml__heading-left">
@@ -52,7 +55,7 @@ import {
           <span class="iml__count">({{ totalRecords }} items)</span>
         </div>
         <p-button label="New Item" icon="pi pi-plus" severity="primary"
-                  size="small" (onClick)="openCreateDialog()" />
+                  size="small" (onClick)="navigateToCreate()" />
       </div>
 
       <!-- Toolbar -->
@@ -133,7 +136,7 @@ import {
               <td>
                 @switch (col.key) {
                   @case ('classification') {
-                    <p-tag [value]="item.classification"
+                    <p-tag [value]="item.classification | classificationLabel"
                            [severity]="classificationSeverity(item.classification)"
                            [class]="classificationClass(item.classification)" />
                   }
@@ -149,9 +152,9 @@ import {
             <td>
               <div class="iml__actions">
                 <p-button label="View" [text]="true" size="small"
-                          [routerLink]="['/item-master', item.id]" />
+                          (onClick)="navigateToDetail(item.id)" />
                 <p-button label="Edit" [text]="true" size="small"
-                          (onClick)="openEditDialog(item.id)" />
+                          (onClick)="navigateToEdit(item.id)" />
                 <p-button icon="pi pi-ellipsis-v" [text]="true" size="small"
                           (onClick)="showRowMenu($event, item)" />
               </div>
@@ -164,21 +167,17 @@ import {
             <td [attr.colspan]="visibleColumnCount(columns) + 2">No items found.</td>
           </tr>
         </ng-template>
+
+        <ng-template pTemplate="paginatorleft">
+          @if (totalRecords > 0) {
+            <span class="iml__pagination-text">
+              Showing {{ paginationStart }}–{{ paginationEnd }} of {{ totalRecords }} items
+            </span>
+          }
+        </ng-template>
       </p-table>
 
     </div>
-
-    <!-- Form dialog (lazy loaded when opened) -->
-    @if (showFormDialog) {
-      @defer (on immediate) {
-        <app-item-master-form
-          [visible]="showFormDialog"
-          [itemId]="editItemId"
-          (visibleChange)="showFormDialog = $event"
-          (saved)="onItemSaved($event)"
-        />
-      }
-    }
   `,
   styles: [`
     .iml { padding: 1.25rem; }
@@ -207,6 +206,8 @@ import {
     }
 
     .iml__actions { display: flex; align-items: center; gap: 0.125rem; }
+
+    .iml__pagination-text { font-size: 0.8125rem; color: var(--p-text-muted-color); }
 
     /* Teal chip for RAW_MATERIAL */
     :host ::ng-deep .p-tag.tag-raw-material {
@@ -238,13 +239,16 @@ export class ItemMasterListComponent implements OnInit {
   selectedItems: ItemMasterDto[] = [];
   rowMenuItems: MenuItem[] = [];
 
-  showFormDialog = false;
-  editItemId: string | undefined;
-
   searchTerm = '';
   selectedClassification: Classification | null = null;
   selectedStatus: ItemStatus | null = null;
   selectedMakeBuy: MakeBuyCode | null = null;
+
+  readonly breadcrumbs = [
+    { label: 'Home' },
+    { label: 'Materials' },
+    { label: 'Item Master' },
+  ];
 
   readonly classificationOptions = [
     { label: 'Assembly',       value: 'ASSEMBLY' },
@@ -267,6 +271,14 @@ export class ItemMasterListComponent implements OnInit {
     { label: 'Buy',    value: 'BUY' },
     { label: 'Either', value: 'EITHER' },
   ];
+
+  get paginationStart(): number {
+    return this.currentPage * this.pageSize + 1;
+  }
+
+  get paginationEnd(): number {
+    return Math.min((this.currentPage + 1) * this.pageSize, this.totalRecords);
+  }
 
   ngOnInit(): void {
     this.gridPreference.load();
@@ -324,8 +336,35 @@ export class ItemMasterListComponent implements OnInit {
     return '';
   }
 
+  navigateToCreate(): void {
+    this.router.navigate(['/item-master/new']);
+  }
+
+  navigateToDetail(id: string): void {
+    this.router.navigate(['/item-master', id]);
+  }
+
+  navigateToEdit(id: string): void {
+    this.router.navigate(['/item-master', id, 'edit']);
+  }
+
   showRowMenu(event: Event, item: ItemMasterDto): void {
     this.rowMenuItems = [
+      {
+        label: 'View Detail',
+        icon: 'pi pi-eye',
+        command: () => this.navigateToDetail(item.id),
+      },
+      {
+        label: 'Edit',
+        icon: 'pi pi-pencil',
+        command: () => this.navigateToEdit(item.id),
+      },
+      {
+        label: 'Clone Item',
+        icon: 'pi pi-copy',
+        command: () => this.router.navigate(['/item-master/new'], { queryParams: { cloneFrom: item.id } }),
+      },
       {
         label: 'Obsolete',
         icon: 'pi pi-ban',
@@ -333,21 +372,6 @@ export class ItemMasterListComponent implements OnInit {
       },
     ];
     this.rowMenu.toggle(event);
-  }
-
-  openCreateDialog(): void {
-    this.editItemId = undefined;
-    this.showFormDialog = true;
-  }
-
-  openEditDialog(id: string): void {
-    this.editItemId = id;
-    this.showFormDialog = true;
-  }
-
-  onItemSaved(item: ItemMasterDto): void {
-    this.messageService.add({ severity: 'success', summary: 'Item saved', detail: item.partNumber });
-    this.reload();
   }
 
   obsoleteItem(id: string): void {
