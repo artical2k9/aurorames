@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,6 +17,8 @@ public interface BomRepository extends JpaRepository<BillOfMaterials, UUID> {
             UUID orgId, UUID parentItemId, String bomRevision);
 
     boolean existsByOrgIdAndParentItemIdAndBomRevision(UUID orgId, UUID parentItemId, String bomRevision);
+
+    List<BillOfMaterials> findAllByOrgIdAndParentItemId(UUID orgId, UUID parentItemId);
 
     /**
      * Returns true if adding candidateId as a component of bomId would create a circular reference.

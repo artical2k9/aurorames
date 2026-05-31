@@ -8,13 +8,18 @@ import com.mes.workorder.bom.api.dto.BomLineDto;
 import com.mes.workorder.bom.api.dto.BomMapper;
 import com.mes.workorder.bom.api.dto.CreateBomLineRequest;
 import com.mes.workorder.bom.api.dto.CreateBomRequest;
+import com.mes.workorder.bom.api.dto.PatchBomHeaderRequest;
 import com.mes.workorder.bom.api.dto.UpdateBomLineRequest;
 import com.mes.workorder.bom.service.BomExplosionService;
+import com.mes.workorder.bom.service.BomExportService;
 import com.mes.workorder.bom.service.BomService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,10 +41,13 @@ public class BomController {
 
     private final BomService bomService;
     private final BomExplosionService explosionService;
+    private final BomExportService exportService;
 
-    public BomController(BomService bomService, BomExplosionService explosionService) {
+    public BomController(BomService bomService, BomExplosionService explosionService,
+                         BomExportService exportService) {
         this.bomService = bomService;
         this.explosionService = explosionService;
+        this.exportService = exportService;
     }
 
     @PostMapping
@@ -111,6 +119,37 @@ public class BomController {
         return BomMapper.toLineDto(bomService.updateLine(orgId, bomId, lineId, request));
     }
 
+    @GetMapping
+    @RequiresPrivilege("item-master:bom:manage")
+    public List<BomDto> listForItem(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam UUID parentItemId) {
+
+        return bomService.listByItem(JwtClaimsExtractor.orgId(jwt), parentItemId).stream()
+                .map(BomMapper::toDto).toList();
+    }
+
+    @DeleteMapping("/{bomId}/lines/{lineId}")
+    @RequiresPrivilege("item-master:bom:manage")
+    public ResponseEntity<Void> deleteLine(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID bomId,
+            @PathVariable UUID lineId) {
+
+        bomService.deleteLine(JwtClaimsExtractor.orgId(jwt), bomId, lineId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{bomId}")
+    @RequiresPrivilege("item-master:bom:manage")
+    public BomDto patchHeader(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID bomId,
+            @Valid @RequestBody PatchBomHeaderRequest request) {
+
+        return BomMapper.toDto(bomService.patchHeader(JwtClaimsExtractor.orgId(jwt), bomId, request));
+    }
+
     @GetMapping("/{bomId}/explosion")
     @RequiresPrivilege("item-master:bom:manage")
     public List<BomExplosionNode> explode(
@@ -121,5 +160,36 @@ public class BomController {
             @RequestParam(required = false) String asOfUnit) {
 
         return explosionService.explode(JwtClaimsExtractor.orgId(jwt), bomId, format, asOfDate, asOfUnit);
+    }
+
+    @GetMapping("/{bomId}/explosion/download")
+    @RequiresPrivilege("item-master:records:view")
+    public ResponseEntity<byte[]> downloadExplosion(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID bomId,
+            @RequestParam(defaultValue = "flat") String format,
+            @RequestParam String download,
+            @RequestParam(required = false) LocalDate asOfDate,
+            @RequestParam(required = false) String asOfUnit,
+            @RequestParam(required = false, defaultValue = "0") int maxDepth) {
+
+        var orgId = JwtClaimsExtractor.orgId(jwt);
+        var nodes = explosionService.explode(orgId, bomId, format, asOfDate, asOfUnit);
+        var bom = bomService.getBom(orgId, bomId);
+
+        if ("pdf".equalsIgnoreCase(download)) {
+            byte[] pdf = exportService.toPdf(bom, nodes);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"bom-" + bomId + ".pdf\"")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        }
+        byte[] csv = exportService.toCsv(nodes);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"bom-" + bomId + ".csv\"")
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(csv);
     }
 }
