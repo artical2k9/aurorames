@@ -247,6 +247,20 @@
 **Fix applied:** User discarded all assets. The correct fix is to obtain vector source files before attempting any SVG recreation.
 **Rule:** When asked to create SVG logos from a raster PNG, immediately surface the limitation: SVG recreation from raster is manual approximation that cannot achieve visual fidelity to complex logos. Recommend obtaining the original vector source (AI/EPS/SVG with outlined paths) before proceeding. Do not attempt multiple rounds of geometric correction — the fundamental constraint is the absence of path data, and no amount of iteration resolves it.
 
+## ERR-MES-051 — Filtered `--tests` Gradle run overwrites JaCoCo exec file; subsequent coverage analysis shows distorted results
+**Date:** 2026-05-30  **Category:** Testing — JaCoCo / Gradle  **Status:** Promoted 2026-05-30
+**Symptom:** After running `./gradlew :services:work-order-service:test --tests "...BomServiceTest"` to verify a specific test class, the JaCoCo coverage report showed `EffectivityValidator: 0/23 (0%)` even though `EffectivityValidatorTest` tests had been passing. This led to incorrect diagnosis that EffectivityValidator had zero coverage.
+**Root cause:** The `test` task writes coverage data to a single `build/jacoco/test.exec` file and **replaces** it on every run. Running with `--tests "..."` runs only the matched tests and writes only their coverage to `test.exec`. Subsequent `jacocoTestReport` generates an HTML report from that partial `test.exec` — it correctly shows 0% for classes that weren't exercised by the filtered run.
+**Fix applied:** Ran `./gradlew :services:work-order-service:check` to execute the full test suite and regenerate a complete `test.exec` before re-running the coverage analysis.
+**Rule:** Never analyze a JaCoCo coverage report immediately after a filtered `--tests` Gradle run. The `test.exec` reflects only the filtered subset. Always run `./gradlew :<module>:check` (the full suite) before reading JaCoCo HTML reports for coverage diagnostics. If you need to verify a specific test quickly, do so — but re-run `check` before drawing any coverage conclusions.
+
+## ERR-MES-052 — SonarCloud "coverage on new code" uses PR diff lines, not whole-file coverage
+**Date:** 2026-05-30  **Category:** CI — SonarCloud  **Status:** Promoted 2026-05-30
+**Symptom:** Local JaCoCo showed `BomController: 6/23 (26%)` for coverage. This looked alarming — but SonarCloud passed for the BomController new-code requirement because only the 2 executable lines added in the PR diff (the PATCH endpoint) were counted, not the other 21 lines from endpoints already in Develop.
+**Root cause:** SonarCloud's "coverage on new code" metric is calculated against the PR diff — specifically the lines marked as `+` additions. Pre-existing lines in modified files that were already in the target branch do not count. A whole-file JaCoCo number can be misleadingly low if the file has many old uncovered lines alongside a small well-covered addition.
+**Fix applied:** Used `git diff origin/Develop -- <file>` to identify the specific new executable lines, then confirmed they were covered.
+**Rule:** When estimating SonarCloud "coverage on new code" compliance, run `git diff origin/Develop -- <file> | grep "^+"` to list the actual added lines per file. Count only new executable lines when doing the coverage calculation. A JaCoCo whole-file percentage is NOT the same as SonarCloud's "new code" percentage for a partially-modified file.
+
 ## ERR-MES-019 — ESLint flat config rejects `processor: angular.processInlineTemplates`
 **Date:** 2026-05-20  **Category:** Frontend — ESLint  **Status:** Promoted 2026-05-20
 **Symptom:** `ng lint` failed: `Config (unnamed): Key "processor": Expected an object or a string.` when `processor: angular.processInlineTemplates` was set in `eslint.config.js`.

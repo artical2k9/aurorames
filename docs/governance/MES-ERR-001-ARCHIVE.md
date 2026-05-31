@@ -4,6 +4,32 @@
 
 ---
 
+## ERR-MES-051 — Filtered `--tests` Gradle run overwrites JaCoCo exec file
+**Date:** 2026-05-30  **Category:** Testing — JaCoCo / Gradle  **Status:** Promoted 2026-05-30
+
+**Symptom:** After running `./gradlew :services:work-order-service:test --tests "...BomServiceTest"` to verify a specific test class passed, the JaCoCo HTML report showed `EffectivityValidator: 0/23 (0%)` — even though `EffectivityValidatorTest` passes. Coverage analysis concluded EffectivityValidator was uncovered; this was incorrect.
+
+**Root cause:** The `test` task writes to a single `build/jacoco/test.exec` file and **replaces** it on every run. A filtered `--tests` invocation runs only the matching tests and writes only their coverage. The subsequent `jacocoTestReport` HTML accurately reflects only that partial run.
+
+**Fix applied:** Re-ran `./gradlew :services:work-order-service:check` to run the complete test suite and regenerate a full `test.exec` before drawing conclusions.
+
+**Rule:** Never read JaCoCo reports after a `--tests`-filtered Gradle run. Always run `./gradlew :<module>:check` before any coverage analysis. The `test.exec` file is replaced, not merged, on each `test` invocation.
+
+---
+
+## ERR-MES-052 — SonarCloud "coverage on new code" counts PR diff lines, not whole-file JaCoCo
+**Date:** 2026-05-30  **Category:** CI — SonarCloud  **Status:** Promoted 2026-05-30
+
+**Symptom:** Local JaCoCo showed `BomController: 6/23 (26%)` — looked like a failing coverage gate. SonarCloud passed for BomController because only the 2 lines added in the PR diff (PATCH endpoint) were counted as "new code."
+
+**Root cause:** SonarCloud's "coverage on new code" metric is based on lines that appear as `+` additions in the PR diff vs. the target branch. Pre-existing lines in modified files that were in Develop before the PR do not count. The 21 other BomController lines (createBom, getBom, etc.) were old code.
+
+**Fix applied:** Used `git diff origin/Develop -- <file> | grep "^+"` to count actual new executable lines and recalculate expected SonarCloud coverage accurately.
+
+**Rule:** When diagnosing SonarCloud "new code" coverage failures, run `git diff origin/Develop -- <file>` to identify which specific lines are counted as new. A whole-file JaCoCo percentage is not equivalent to SonarCloud's new-code percentage for partially-modified files.
+
+---
+
 ## ERR-MES-049 — Agent claimed "next PR" from plan.md without verifying Develop merge state
 **Date:** 2026-05-30  **Category:** Agent Process — Plan vs. Reality  **Status:** Promoted 2026-05-30
 

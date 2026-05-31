@@ -1,5 +1,13 @@
-export type Classification = 'ELECTRONIC' | 'MECHANICAL' | 'RAW_MATERIAL' | 'CONSUMABLE' | 'TOOLING' | 'SOFTWARE' | 'DOCUMENT';
+export type Classification =
+  | 'RAW_MATERIAL'
+  | 'PURCHASED_PART'
+  | 'FABRICATED'
+  | 'ASSEMBLY'
+  | 'COTS'
+  | 'SERVICE';
+
 export type MakeBuyCode = 'MAKE' | 'BUY' | 'EITHER';
+export type TraceabilityMethod = 'SERIAL' | 'LOT' | 'HEAT_CODE' | 'DATE_CODE' | 'NONE';
 export type ItemStatus = 'ACTIVE' | 'INACTIVE' | 'OBSOLETE';
 export type CounterfeitRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
@@ -13,12 +21,14 @@ export interface ItemMasterDto {
   cageCode?: string;
   classification: Classification;
   makeBuyCode: MakeBuyCode;
+  traceabilityMethod: TraceabilityMethod;
   status: ItemStatus;
   shelfLifeControlled: boolean;
   shelfLifeDays?: number;
   counterfeitRiskLevel?: CounterfeitRiskLevel;
   verificationRequired: boolean;
   approvedSuppliers?: string[];
+  customFields?: Record<string, unknown>;
   createdBy: string;
   createdAt: string;
   modifiedBy: string;
@@ -31,6 +41,7 @@ export interface ItemMasterListParams {
   search?: string;
   classification?: Classification;
   status?: ItemStatus;
+  makeBuyCode?: MakeBuyCode;
   counterfeitRiskLevel?: CounterfeitRiskLevel;
 }
 
@@ -49,7 +60,7 @@ export interface CreateItemMasterRequest {
   unitOfMeasure: string;
   classification: Classification;
   makeBuyCode: MakeBuyCode;
-  traceabilityMethod: string;
+  traceabilityMethod: TraceabilityMethod;
 }
 
 export interface PatchItemMasterRequest {
@@ -60,8 +71,9 @@ export interface PatchItemMasterRequest {
   makeBuyCode?: MakeBuyCode;
   status?: ItemStatus;
   shelfLifeControlled?: boolean;
-  shelfLifeDays?: number;
-  counterfeitRiskLevel?: CounterfeitRiskLevel;
+  shelfLifeDays?: number | null;
+  counterfeitRiskLevel?: CounterfeitRiskLevel | null;
   verificationRequired?: boolean;
   approvedSuppliers?: string[];
+  customFields?: Record<string, unknown>;
 }

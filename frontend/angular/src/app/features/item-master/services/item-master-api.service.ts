@@ -21,6 +21,7 @@ export class ItemMasterApiService {
     if (params.search)               httpParams = httpParams.set('search', params.search);
     if (params.classification)       httpParams = httpParams.set('classification', params.classification);
     if (params.status)               httpParams = httpParams.set('status', params.status);
+    if (params.makeBuyCode)          httpParams = httpParams.set('makeBuyCode', params.makeBuyCode);
     if (params.counterfeitRiskLevel) httpParams = httpParams.set('counterfeitRiskLevel', params.counterfeitRiskLevel);
     return this.http.get<Page<ItemMasterDto>>(this.base, { params: httpParams });
   }
@@ -35,5 +36,9 @@ export class ItemMasterApiService {
 
   patch(id: string, req: PatchItemMasterRequest): Observable<ItemMasterDto> {
     return this.http.patch<ItemMasterDto>(`${this.base}/${id}`, req);
+  }
+
+  obsolete(id: string): Observable<ItemMasterDto> {
+    return this.http.post<ItemMasterDto>(`${this.base}/${id}/obsolete`, {});
   }
 }

@@ -8,4 +8,6 @@ export const authConfig: AuthConfig = {
   scope: 'openid',
   showDebugInformation: false,
   requireHttps: false,
+  skipIssuerCheck: true,
+  strictDiscoveryDocumentValidation: false,
 };
