@@ -69,6 +69,7 @@
           },
           "defaultConfiguration": "development",
           "options": {
+            "proxyConfig": "proxy.conf.json",
             "allowedHosts": [
               "host.docker.internal"
             ]
