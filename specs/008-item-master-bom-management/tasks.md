@@ -148,11 +148,27 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 ---
 
+## Phase 4b: UDF Library — BOM Module Keys [PR 2, prerequisite for Phase 5]
+
+**Purpose**: Extend `ModuleKey` enum with `BOM_LINE` and `BOM_HEADER` values required by FR-036 and FR-036a before any BOM UDF work begins. Must be included in PR 2 (not deferred) because `BomAuthoringComponent` (T153) and `BomHeaderEditDialogComponent` (T175) both call `UdfApiService` with these module keys.
+
+- [ ] T193 [P] Update `ModuleKey.java` enum in `mes-udf-lib` to add `BOM_LINE` and `BOM_HEADER` values: `libs/mes-udf-lib/src/main/java/com/mes/udf/domain/ModuleKey.java` — add two enum constants: `BOM_LINE` (used for UDF columns on BOM authoring lines, FR-036) and `BOM_HEADER` (used for UDF fields on BOM header edit dialog, FR-036a); rebuild `mes-udf-lib` to confirm zero compilation errors; run `./gradlew :libs:mes-udf-lib:compileJava`
+- [ ] T194 [P] Extend `UdfLibReusabilityIT` to cover `BOM_LINE` and `BOM_HEADER` module keys — add test scenarios to `libs/mes-udf-lib/src/test/java/com/mes/udf/UdfLibReusabilityIT.java`: (a) define TEXT field on `BOM_LINE` → service returns saved entity with correct moduleKey; (b) validate required BOM_LINE field absent → violation returned; (c) define TEXT field on `BOM_HEADER` → service returns saved entity; (d) confirm `BOM_LINE` and `BOM_HEADER` definitions are independent of `ITEM_MASTER` definitions (same validator, different scope); run `./gradlew :libs:mes-udf-lib:test` to confirm all new scenarios pass
+
+**Checkpoint**: `ModuleKey` enum contains all 7 values; `UdfLibReusabilityIT` covers ITEM_MASTER, ROUTING, BOM_LINE, BOM_HEADER.
+
+---
+
 ## Phase 5: User Story 2 — Multi-Level BOM Authoring (Priority: P1) [PR 2]
 
 **Goal**: Create BOM revisions, author BOM lines, release BOM (freezes structure), explode flat and indented via PostgreSQL recursive CTE; circular reference detection at line-add time; `counterfeitRiskAlert` and `componentObsoleted` flags on explosion nodes.
 
 **Independent Test**: Engineer creates a two-level BOM (Assembly→Sub-Assembly→Component, 3 lines total). Requests GET `/boms/{bomId}/explosion?format=indented`. Response contains 3 nodes at correct depths with rolled-up quantities. Attempting to add a line creating a cycle returns 422. Releasing the BOM and then adding another line returns 409.
+
+### Migration — BOM Header Edit Fields (FR-036a)
+
+- [ ] T195 [P] Create Flyway migration `V013__bom_header_edit_fields.sql` at `services/work-order-service/src/main/resources/db/migration/` — `ALTER TABLE work_order.bill_of_materials ADD COLUMN IF NOT EXISTS reason_for_revision VARCHAR(500)`, `ADD COLUMN IF NOT EXISTS production_line VARCHAR(200)`, `ADD COLUMN IF NOT EXISTS bom_type VARCHAR(50)`, `ADD COLUMN IF NOT EXISTS effectivity_type VARCHAR(10)`, `ADD COLUMN IF NOT EXISTS custom_fields JSONB`; add corresponding Envers audit columns to `bill_of_materials_aud`: `reason_for_revision`, `production_line`, `bom_type`, `effectivity_type`, `custom_fields`; also update `FlywayMigrationIT` to assert all five new columns exist on `bill_of_materials` and `bill_of_materials_aud` — `services/work-order-service/src/main/resources/db/migration/V013__bom_header_edit_fields.sql`
+- [ ] T196 [P] Update `BillOfMaterials.java` entity to map the four new columns added by V013: add `@Column(name="reason_for_revision")` String, `@Column(name="bom_type") BomType` (new enum: MANUFACTURING, ENGINEERING, SERVICE), `@Column(name="effectivity_type") EffectivityType` (new enum: DATE, UNIT, NONE), `@Column(name="custom_fields", columnDefinition="jsonb") Map<String, Object>` with hypersistence JSON type converter; create `BomType.java` enum at `services/work-order-service/src/main/java/com/mes/workorder/bom/domain/`; update `BomDto` and `PatchBomHeaderRequest` to include these fields; update `BomMapper` to map them; update `BomService.patchHeader()` to apply updates from the request
 
 ### Tests (write FIRST — must FAIL before implementation)
 
@@ -179,7 +195,7 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 **Checkpoint**: BOM authoring + explosion end-to-end functional. Circular detection works. Kafka events emitting.
 
-> **Raise PR 2 after this checkpoint** (T051–T066) | CI: `./gradlew :services:work-order-service:check` | Target: `Develop`
+> **Raise PR 2 after this checkpoint** (T051–T066, T174, T193–T196) | CI: `./gradlew :services:work-order-service:check :libs:mes-udf-lib:check` | Target: `Develop`
 
 ---
 
@@ -244,6 +260,12 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 **Independent Test**: Create item master with `counterfeitRiskLevel=HIGH`. PATCH adds AS5553 fields. GET returns all AS5553 fields. Create BOM with that item as a component — BOM line has `counterfeitRiskAlert=true`. Query GET /item-master?counterfeitRiskLevel=HIGH returns the item.
 
+### Prerequisites — QUALITY_ENGINEER Role (FR-016a)
+
+- [ ] T190 [P] [US6] Create Flyway migration `V014__seed_quality_engineer_role.sql` at `services/work-order-service/src/main/resources/db/migration/` — INSERT INTO `iam.role` (if not exists) for `QUALITY_ENGINEER`; INSERT INTO `iam.role_privilege` granting `item-master:records:view` and `item-master:as5553:manage` to `QUALITY_ENGINEER`; INSERT INTO `iam.privilege` for `item-master:as5553:manage` if not already present; use SELECT to look up existing role/privilege IDs to remain idempotent — `services/work-order-service/src/main/resources/db/migration/V014__seed_quality_engineer_role.sql`
+- [ ] T191 [P] [US6] Add `qualityEngineerToken()` helper method to `BaseIntegrationTest.java` — issues a JWT signed with the test RSA key, containing `sub = "quality-engineer-sub"`, `org_id = TEST_ORG_ID`, and `roles = ["QUALITY_ENGINEER"]`; follows the same pattern as existing `engineerToken()` and `adminToken()` methods — `services/work-order-service/src/test/java/com/mes/workorder/integration/BaseIntegrationTest.java`
+- [ ] T192 [P] [US6] Update `AS5553IT` to use `qualityEngineerToken()` for all AS5553 PATCH assertions; add new test scenario: PATCH item master AS5553 fields with `engineerToken()` → assert HTTP 403 (FR-016a: ENGINEER does not hold `item-master:as5553:manage`); add `FlywayMigrationIT` assertion: assert `QUALITY_ENGINEER` role exists and holds `item-master:as5553:manage` grant in `iam.role_privilege` — `services/work-order-service/src/test/java/com/mes/workorder/integration/itemmaster/AS5553IT.java`
+
 ### Tests (write FIRST — must FAIL before implementation)
 
 - [X] T088 [P] [US6] Write `AS5553IT`: PATCH item master with AS5553 fields → 200 and GET returns fields; BOM explosion node for HIGH-risk component has counterfeitRiskAlert=true; search by counterfeitRiskLevel=HIGH returns matching item — `services/work-order-service/src/test/java/com/mes/workorder/integration/itemmaster/AS5553IT.java`
@@ -259,7 +281,7 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 **Checkpoint**: AS5553 fields surfaced. Explosion alert flags working. Risk-level search working.
 
-> **Raise PR 4 after this checkpoint** (T088–T094) | CI: `./gradlew :services:work-order-service:check` | Target: `Develop`
+> **Raise PR 4 after this checkpoint** (T088–T094, T190–T192) | CI: `./gradlew :services:work-order-service:check` | Target: `Develop`
 
 ---
 
@@ -336,13 +358,13 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 - [ ] T139 Replace plain Status text cells with dot-indicator badges — ACTIVE: green filled circle `●` (`color: #22C55E`); OBSOLETE: grey ring `◎` (`color: #94A3B8`); PENDING: amber dot; rendered via a `StatusBadgeComponent` (standalone, one `@Input() status: string`) at `frontend/angular/src/app/shared/ui/status-badge/status-badge.component.ts`; export from `frontend/angular/src/app/shared/ui/index.ts`
 - [ ] T140 Add Actions column as the last column of the p-table in `ItemMasterListComponent` — not in column picker (always visible, locked); each row has three controls: "View" text button (`routerLink` to `/item-master/:id`), "Edit" text button (opens edit dialog with row data), PrimeNG `p-menu` overflow button (`pi-ellipsis-v`) with "Obsolete" option that calls `ItemMasterApiService.obsolete(id)` and refreshes table
 - [ ] T141 Add row selection checkbox column (first column, not in picker, locked) to `ItemMasterListComponent` — PrimeNG `[(selection)]` bound to `selectedItems`; when `selectedItems.length > 0` show selection action bar above table: "N items selected" + "Obsolete Selected" button + "Clear" link; "Obsolete Selected" calls `ItemMasterApiService.obsolete()` for each selected ID sequentially and refreshes
-- [ ] T142 Add Make/Buy filter to filter bar in `ItemMasterListComponent` — PrimeNG `p-selectbutton` with options `[{label:'All'},{label:'Make'},{label:'Buy'},{label:'Phantom'}]`; bound to `makeBuyFilter` property; passed as `makeBuyCode` query param to `ItemMasterApiService.list()`
+- [ ] T142 Add Make/Buy filter to filter bar in `ItemMasterListComponent` — PrimeNG `p-selectbutton` with options `[{label:'All',value:null},{label:'Make',value:'MAKE'},{label:'Buy',value:'BUY'},{label:'Either',value:'EITHER'}]`; bound to `selectedMakeBuy` property (`MakeBuyCode | null`); passed as `makeBuyCode` query param to `ItemMasterApiService.list()` when non-null
 
 ### Item Master Create/Edit Form
 
 - [ ] T143 Create `ItemMasterFormComponent` (standalone dialog) at `frontend/angular/src/app/features/item-master/components/item-master-form/item-master-form.component.ts` — PrimeNG `p-dialog` with `[modal]="true"`, `[style]="{width: '720px'}"`; reactive form using `FormBuilder`; sections: Identity (partNumber, revision, description required), Classification (classification dropdown, makeBuyCode dropdown, traceabilityMethod dropdown, unitOfMeasure, cageCode), Shelf Life (shelfLifeControlled toggle; `shelfLifeDays` number input revealed when true with `Validators.required` added dynamically), AS5553 (collapsible panel: counterfeitRiskLevel dropdown, approvedSuppliers textarea, verificationRequired toggle), UDF Fields (loaded on open from `GET /udf/fields?module=ITEM_MASTER`, rendered as typed inputs matching field type); `@Input() itemId?: string` — when set the form loads existing item via `ItemMasterApiService.getById()` and switches to edit mode; Save button calls `create()` or `patch()` accordingly; emits `@Output() saved = new EventEmitter<ItemMasterDto>()` on success; shows inline PrimeNG `p-message` errors on 422 responses (maps `violations` array from response body)
 - [ ] T144 Wire `ItemMasterFormComponent` into `ItemMasterListComponent` — `openCreateDialog()` sets `editItemId = undefined` and `showFormDialog = true`; Edit row action sets `editItemId = row.id` and `showFormDialog = true`; on `(saved)` event: show PrimeNG `p-toast` success message "Item saved" and call `loadItemMasters()` to refresh the table
-- [ ] T145 Create `ItemMasterDetailComponent` (standalone page) at `frontend/angular/src/app/features/item-master/pages/item-master-detail/item-master-detail.component.ts` — route `/item-master/:id`; calls `ItemMasterApiService.getById(id)`; displays all fields in a two-column read-only card layout using PrimeNG `p-card`; back button returns to list; Edit button opens `ItemMasterFormComponent` in edit mode via `p-dialog`; shows UDF fields in a separate "Custom Fields" card
+- [ ] T145 Create `ItemMasterDetailComponent` (standalone page) at `frontend/angular/src/app/features/item-master/pages/item-master-detail/item-master-detail.component.ts` — route `/item-master/:id`; calls `ItemMasterApiService.getById(id)`; displays all fields in a two-column read-only card layout using PrimeNG `p-card`; back button returns to list; **Edit button navigates to `/item-master/:id/edit` using `[routerLink]="['/item-master', item.id, 'edit']"` — MUST NOT open a modal dialog** (per FR-034 and FR-044); shows UDF fields in a separate "Custom Fields" card
 
 ### Verification
 
