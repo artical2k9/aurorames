@@ -227,10 +227,18 @@ Authoritative values from Penpot token set `aurora/dark` (verified against dark 
 - Dark: Shell (collapsed rail), Shell (flyout open), Item Master List, Item Master Column Picker, Item Master Create, BOM / Explosion Tree, BOM / Authoring final, BOM / Header Edit *(current)*
 - Light: Shell (collapsed rail — light), Item Master List (light), Item Master Column Picker (light), Item Master Edit, BOM / Explosion Tree (light), BOM / Authoring final (light), BOM / Header Edit (light) *(current)*
 
+> **Naming note**: The dark side has "Item Master / Create (dark)" and the light side has "Item Master / Edit (light)" — these are intentionally different scenarios, not paired equivalents of the same screen.
+
+> **Duplicate frames** (audit 2026-05-31): Two frame-name duplicates exist in the Penpot file. The second copy in each pair is the current authoritative version (higher ID, created later):
+> - "Item Master / List & Search" dark — IDs `137a1557caff` (earlier) and `137a50e2afcd` (current)
+> - "BOM / Explosion Tree (light)" — IDs `139798a5fc2b` (earlier) and `1397d2d3a99b` (current)
+> The earlier copies should be deleted from Penpot when convenient; they are not referenced by any task.
+
 | Frame | Mode | Penpot ID | Notes |
 |---|---|---|---|
 | Shell (collapsed rail) | Dark | `d1e9cefe-fcab-80d7-8008-1377eccc2a11` | |
-| Item Master / List & Search | Dark | `d1e9cefe-fcab-80d7-8008-137a1557caff` | |
+| Shell (flyout open — Materials) | Dark | `d1e9cefe-fcab-80d7-8008-13788ebad07c` | Flyout group: Materials > Item Master, BOM Management, Inventory (coming soon) |
+| Item Master / List & Search | Dark | `d1e9cefe-fcab-80d7-8008-137a50e2afcd` | Current (duplicate of `137a1557caff` — earlier copy) |
 | Item Master / Column Picker | Dark | `d1e9cefe-fcab-80d7-8008-137d0178c6b2` | |
 | Item Master / Create | Dark | `d1e9cefe-fcab-80d7-8008-138b99f8d400` | |
 | BOM / Explosion Tree | Dark | `d1e9cefe-fcab-80d7-8008-1394bcf67efc` | |
@@ -241,9 +249,81 @@ Authoritative values from Penpot token set `aurora/dark` (verified against dark 
 | Shell (collapsed rail) | Light | `d1e9cefe-fcab-80d7-8008-1385436e319f` | |
 | Item Master / List & Search | Light | `d1e9cefe-fcab-80d7-8008-13856f83fb22` | |
 | Item Master / Column Picker | Light | `d1e9cefe-fcab-80d7-8008-1385d5f1262e` | |
-| Item Master / Edit | Light | `d1e9cefe-fcab-80d7-8008-138bde15a086` | |
-| BOM / Explosion Tree | Light | `d1e9cefe-fcab-80d7-8008-1397d2d3a99b` | |
+| Item Master / Edit | Light | `d1e9cefe-fcab-80d7-8008-138bde15a086` | Edit dialog in light mode — different scenario from Create (dark) |
+| BOM / Explosion Tree | Light | `d1e9cefe-fcab-80d7-8008-1397d2d3a99b` | Current (duplicate of `139798a5fc2b` — earlier copy) |
 | BOM / Authoring v1 | Light | `d1e9cefe-fcab-80d7-8008-13997f6538b8` | Superseded |
 | BOM / Authoring v2 | Light | `d1e9cefe-fcab-80d7-8008-139dbd1988d3` | Superseded |
 | **BOM / Authoring final** | **Light** | **`86f35c31-9e0e-809d-8008-13a00d8698d5`** | **Current** — Seq, Find #, UDF cols as headers, unit eff |
 | **BOM / Header Edit** | **Light** | **`ae108caa-e755-807c-8008-140d20b38509`** | **Current** — modal: same fields as dark, light theme |
+
+---
+
+## Decision 10 — Shell Navigation: Flyout Group vs Flat Rail (Design Divergence)
+
+**Penpot frame**: `🖥 Shell — flyout open (Materials)` (ID `d1e9cefe-fcab-80d7-8008-13788ebad07c`)
+
+**What the design shows**: Clicking a rail item labelled "Materials" opens a horizontal flyout panel containing sub-items: "Item Master", "BOM Management", and "Inventory" (marked COMING SOON). The breadcrumb reads "Home / Materials / Item Master". The rail item is a group — not a direct link.
+
+**What FR-031 and T131 specify**: Four flat top-level rail items — Dashboard, Item Master, BOM, ECO — each linking directly to their own route. No grouping flyout.
+
+**What is implemented**: The `AppShellComponent` follows FR-031 exactly: four flat nav items. The flyout frame is an exploratory design iteration that was not selected for implementation.
+
+**Resolution**: The flat rail (FR-031 / T131) is the accepted implementation. The flyout frame is retained in Penpot as a future-state reference for when Inventory, Receiving, and other material modules are added and grouping becomes necessary. No code change required. Task T131 specification is authoritative.
+
+---
+
+## Decision 11 — BOM Authoring: Final Column Specification and Action Buttons
+
+**Penpot frame**: `📝 BOM / Authoring final (dark/light)` (IDs `86f35c31-9e0e-809d-8008-139f969d722f` / `86f35c31-9e0e-809d-8008-13a00d8698d5`)
+
+**Column order** (authoritative from final Penpot frame):
+
+`Seq | Find # | Part Number | Description | Rev | Qty | Unit | Eff From | Eff To | [UDF columns…] | Actions`
+
+The "⊕ Columns" button sits inline at the far-right of the table header row (Decision 9).
+
+**Divergence from T153**: T153 lists "Find #, Component Part # / Rev (linked), Description, Quantity, UoM, Effectivity" — this is superseded by the final design above. Seq is a mandatory locked first column; Eff From / Eff To are two separate columns (not one combined "Effectivity" column); Rev is a separate column adjacent to Part Number.
+
+**Action buttons in the BOM Authoring header bar** (extracted from Penpot frame, y ≈ 157):
+
+| Button | Label | Behaviour |
+|---|---|---|
+| Primary-left | `+ Add Line` | Opens inline add-line form (T154) |
+| Secondary | `Save Draft` | PATCHes BOM description/header fields without state change; available in DRAFT status only |
+| Caution | `Submit for Review` | Maps to "Release BOM" in the backend state machine (DRAFT → RELEASED); label differs from T153 which says "Release BOM" — see note below |
+| Text link | `← Explosion View` | Navigates to `/boms/{bomId}/explosion` |
+
+**"Submit for Review" vs "Release BOM"**: The Penpot label is "Submit for Review" but the backend endpoint is `POST /boms/{bomId}/release` which transitions directly to RELEASED. The UI label "Submit for Review" is the accepted display label; the underlying operation remains `BomApiService.release()`. Task T153 should use this label when implemented.
+
+**Per-row actions**: Each BOM line row shows ✏ (edit inline) and 🗑 (remove line). Both are only shown when BOM status is DRAFT. T153 currently specifies "Remove line" only — the edit (inline row edit) is an additional interaction that needs a task (see tasks.md T175).
+
+---
+
+## Decision 12 — BOM Header Edit Modal (Design Requirement, No Prior FR)
+
+**Penpot frames**: `📝 BOM / Header Edit (dark/light)` (IDs `ae108caa-e755-807c-8008-140ccbadbeac` / `ae108caa-e755-807c-8008-140d20b38509`)
+
+**What the design shows**: A modal dialog titled "Edit BOM Header" accessible from the BOM Authoring screen (via ✏ icon adjacent to the BOM part number in the header). Fields extracted verbatim from Penpot:
+
+| Field | Type | Editable | Source |
+|---|---|---|---|
+| Part Number | Text (read-only) | No — shown with 🔒 icon | `item_master.part_number` |
+| BOM Description | Text input | Yes | `bill_of_materials.description` |
+| Reason for Revision | Text input | Yes | `bill_of_materials.reason_for_revision` (new column — see gap below) |
+| Production Line | Dropdown | Yes | Org-configured lookup |
+| BOM Type | Dropdown | Yes | e.g. "Manufacturing BOM" — stored as `bill_of_materials.bom_type` |
+| Effectivity Type | Dropdown | Yes | DATE / UNIT / NONE — stored as `bill_of_materials.effectivity_type` |
+| BOM Header UDFs | Dynamic UDF fields | Yes | `bill_of_materials.custom_fields` JSONB (module_key = 'bom-header') |
+| Cancel | Button | — | Discards changes, closes modal |
+| Save Changes | Button | — | PATCHes BOM header; calls `PATCH /boms/{bomId}` |
+
+**Schema gaps this creates**: The BOM Header Edit modal introduces fields not currently in V003 migration:
+- `reason_for_revision VARCHAR(500)` — not in `bill_of_materials` table
+- `bom_type VARCHAR(50)` — not in `bill_of_materials` table
+- `effectivity_type VARCHAR(10)` — not in `bill_of_materials` table (currently only `bom_line.effectivity_method` exists)
+- `custom_fields JSONB` — not in `bill_of_materials` table (only `bom_line.custom_fields` exists)
+- Production Line is likely a FK or a free-text field — scope to be determined during implementation
+
+**Frontend API gap**: `BomApiService` needs a `patchHeader(bomId, req)` method. `BomController` needs a `PATCH /boms/{bomId}` endpoint. Neither exists. See tasks.md T175, T176.
+
+**Scope decision**: BOM Header Edit is a Phase 12 deliverable (PR 7). It is not part of the current Phase 11 scope.
