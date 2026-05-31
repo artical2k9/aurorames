@@ -1,0 +1,24 @@
+SC-002 BOM Explosion Load Test — Baseline Placeholder
+======================================================
+
+Status: PENDING — baseline not yet recorded.
+
+Prerequisites:
+1. PR 2 (BOM backend) must be merged and work-order-service running.
+2. Seed a 10-level BOM with 50 components:
+     node specs/008-item-master-bom-management/performance/seed-bom-fixture.js
+   Note the exported BOM_ID.
+
+To capture the baseline run:
+
+  BASE_URL=http://localhost:8082 \
+  ENGINEER_TOKEN=$(./scripts/get-test-token.sh engineer) \
+  BOM_ID=<uuid-from-seed-script> \
+  k6 run specs/008-item-master-bom-management/performance/bom-explosion-load-test.js \
+    --out json=specs/008-item-master-bom-management/performance/baselines/sc-002-raw.json
+
+Then paste the summary block into this file and commit.
+
+Expected pass criteria (T172):
+  http_req_duration p(95) < 2000 ms
+  http_req_failed         < 1%

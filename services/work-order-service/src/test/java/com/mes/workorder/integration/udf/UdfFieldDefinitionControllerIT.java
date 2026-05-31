@@ -33,7 +33,7 @@ class UdfFieldDefinitionControllerIT extends BaseIntegrationTest {
         jdbcTemplate.update("DELETE FROM work_order.udf_field_definition WHERE org_id = ?",
                 UUID.fromString(ORG_ID));
     }
-    static final String UDF_URL = "/udf/fields";
+    static final String UDF_URL = "/api/v1/udf/fields";
     static final String ITEM_URL = "/api/v1/item-master";
 
     @Test

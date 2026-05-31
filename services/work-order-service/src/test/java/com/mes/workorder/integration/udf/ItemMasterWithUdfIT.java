@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ItemMasterWithUdfIT extends BaseIntegrationTest {
 
     static final String ORG_ID = "00000000-0000-0000-0000-000000000001";
-    static final String UDF_URL = "/udf/fields";
+    static final String UDF_URL = "/api/v1/udf/fields";
     static final String ITEM_URL = "/api/v1/item-master";
 
     @Test

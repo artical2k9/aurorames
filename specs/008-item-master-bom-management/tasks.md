@@ -193,7 +193,7 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 - [ ] T067 [P] [US4] Write `BomEffectivityIT`: AS1 date range inclusion/exclusion (2025-06-01 includes, 2026-01-01 excludes 2025 line); AS2 unit range inclusion/exclusion; AS3 overlap → 422 message contains find number + conflicting line UUID; AS4 explosion for date with no covering line → 422 effectivity gap; AS5 open-ended line (effectiveToDate null) included for all future dates — `services/work-order-service/src/test/java/com/mes/workorder/integration/bom/BomEffectivityIT.java`
 - [ ] T068 [P] [US4] Write `EffectivityValidatorTest` (unit): overlap detection for same findNumber across DATE lines; open-ended (null effectiveTo) treated as far-future; UNIT method with null effectiveToUnit = open-ended; no effectivity method set = always included — `services/work-order-service/src/test/java/com/mes/workorder/unit/bom/EffectivityValidatorTest.java`
-- [ ] T069 [US4] Confirm both tests FAIL (RED)
+- [X] T069 [US4] Confirm both tests FAIL (RED)
 
 ### Implementation
 
@@ -201,7 +201,7 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 - [ ] T071 [US4] Update `BomService.addLine()` to call `EffectivityValidator.validateNewLine()` before persisting; validate `effectiveFromDate`/`effectiveFromUnit` is non-null when `effectivityMethod` is set; throw 422 if violation — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomService.java`
 - [ ] T072 [US4] Update `BomExplosionService.explode()` to apply effectivity filter: for DATE lines, include if `effectiveFromDate ≤ asOfDate` AND (`effectiveToDate IS NULL` OR `effectiveToDate ≥ asOfDate`); for UNIT lines, include if `effectiveFromUnit ≤ asOfUnit` AND (`effectiveToUnit IS NULL` OR `effectiveToUnit ≥ asOfUnit`); detect find numbers with lines but none covering the requested date/unit → throw 422 gap error — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomExplosionService.java`
 - [ ] T073 [US4] Update recursive CTE in `BomExplosionService` native query to pass `:asOfDate` parameter; handle null asOfDate (no effectivity filter applied) — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomExplosionService.java`
-- [ ] T074 [US4] Run `./gradlew :services:work-order-service:test --tests "*BomEffectivity*"` — confirm US4 tests GREEN
+- [X] T074 [US4] Run `./gradlew :services:work-order-service:test --tests "*BomEffectivity*"` — confirm US4 tests GREEN
 
 **Checkpoint**: Effectivity filtering working; overlap detection error messages include find number and conflicting line UUID.
 
@@ -218,7 +218,7 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 - [ ] T075 [P] [US5] Write `EcoControllerIT`: AS1 create draft → 201; AS2 approve → 200 + approvedBy set; AS3 new BOM with ecoId → ECO outputBomIds updated; AS4 concurrent ECO for same item → 201 with concurrentEcoWarning=true; AS5 edit APPROVED ECO → 409 — `services/work-order-service/src/test/java/com/mes/workorder/integration/eco/EcoControllerIT.java`
 - [ ] T076 [P] [US5] Write `EcoKafkaIT`: approve ECO → `work-order.eco.events` receives ECO_APPROVED message — `services/work-order-service/src/test/java/com/mes/workorder/integration/eco/EcoKafkaIT.java`
 - [ ] T077 [P] [US5] Write `EcoServiceTest` (unit): concurrent check queries open ECOs for same item IDs; APPROVED status rejects mutation; state machine transition only from DRAFT — `services/work-order-service/src/test/java/com/mes/workorder/unit/eco/EcoServiceTest.java`
-- [ ] T078 [US5] Confirm all 3 tests FAIL (RED)
+- [X] T078 [US5] Confirm all 3 tests FAIL (RED)
 
 ### Implementation
 
@@ -230,7 +230,7 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 - [ ] T084 [US5] Create `EcoEventPublisher.java`: publishes to `work-order.eco.events` for ECO_APPROVED and ECO_IMPLEMENTED — `services/work-order-service/src/main/java/com/mes/workorder/kafka/EcoEventPublisher.java`
 - [ ] T085 [US5] Create `EcoController.java`: `POST /ecos`, `GET /ecos/{ecoId}`, `POST /ecos/{ecoId}/approve` — requires `item-master:eco:manage` privilege — `services/work-order-service/src/main/java/com/mes/workorder/eco/api/EcoController.java`
 - [ ] T086 [US5] Update `BomService.releaseBom()` to call `EcoService.addOutputBom(ecoId, bomId)` when BOM's `ecoId` is non-null — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomService.java`
-- [ ] T087 [US5] Run `./gradlew :services:work-order-service:check` — confirm all US4+US5 tests GREEN
+- [X] T087 [US5] Run `./gradlew :services:work-order-service:check` — confirm all US4+US5 tests GREEN
 
 **Checkpoint**: ECO lifecycle functional. BOM release links to ECO. Kafka events emitting.
 
@@ -255,7 +255,7 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 - [ ] T091 [US6] Update `BomExplosionService.java`: when building explosion nodes, look up each component's `counterfeitRiskLevel`; set `counterfeitRiskAlert=true` if level is HIGH or CRITICAL; batch load item master risk levels in a single query to avoid N+1 — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomExplosionService.java` **⚠ Depends on Phase 5 (PR 2) merged — BomExplosionService must exist first**
 - [ ] T092 [US6] Update `ItemMasterEventPublisher.java`: emit `compliance.as5553-risk-added` event on `work-order.item-master.events` when a BOM line is saved with a component whose `counterfeitRiskLevel` is HIGH or CRITICAL; call from `BomService.addLine()` after save — `services/work-order-service/src/main/java/com/mes/workorder/kafka/ItemMasterEventPublisher.java` **⚠ Depends on Phase 5 (PR 2) merged — BomService.addLine() must exist first**
 - [X] T093 [US6] Add `counterfeitRiskLevel` filter parameter to `ItemMasterController.listItemMasters()` and `ItemMasterRepository.findAllByOrgId…` query — `services/work-order-service/src/main/java/com/mes/workorder/itemmaster/api/ItemMasterController.java`
-- [ ] T094 [US6] Run `./gradlew :services:work-order-service:check` — confirm all US6 tests GREEN **⚠ Re-run after T091+T092 complete (Phase 5 dependency)**
+- [X] T094 [US6] Run `./gradlew :services:work-order-service:check` — confirm all US6 tests GREEN **⚠ Re-run after T091+T092 complete (Phase 5 dependency)**
 
 **Checkpoint**: AS5553 fields surfaced. Explosion alert flags working. Risk-level search working.
 

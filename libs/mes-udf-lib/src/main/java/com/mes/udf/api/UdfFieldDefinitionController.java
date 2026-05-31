@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/udf/fields")
+@RequestMapping("/api/v1/udf/fields")
 public class UdfFieldDefinitionController {
 
     private final UdfFieldDefinitionService service;
@@ -54,7 +54,7 @@ public class UdfFieldDefinitionController {
             @AuthenticationPrincipal Jwt jwt) {
         UUID orgId = JwtClaimsExtractor.orgId(jwt);
         var entity = service.define(orgId, request);
-        URI location = URI.create("/udf/fields/" + entity.getId());
+        URI location = URI.create("/api/v1/udf/fields/" + entity.getId());
         return ResponseEntity.created(location).body(UdfFieldDefinitionMapper.toDto(entity));
     }
 

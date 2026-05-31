@@ -198,7 +198,7 @@ import { ItemMasterFormComponent } from '../../components/item-master-form/item-
 
     <!-- Edit dialog -->
     @if (showEditDialog) {
-      @defer {
+      @defer (on immediate) {
         <app-item-master-form
           [visible]="showEditDialog"
           [itemId]="itemId"

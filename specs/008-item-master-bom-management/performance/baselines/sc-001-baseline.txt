@@ -1,0 +1,18 @@
+SC-001 Item Master Load Test — Baseline Placeholder
+=====================================================
+
+Status: PENDING — baseline not yet recorded.
+
+To capture the baseline run:
+
+  BASE_URL=http://localhost:8082 \
+  ENGINEER_TOKEN=$(./scripts/get-test-token.sh engineer) \
+  k6 run specs/008-item-master-bom-management/performance/item-master-load-test.js \
+    --out json=specs/008-item-master-bom-management/performance/baselines/sc-001-raw.json
+
+Then paste the summary block (scenarios, thresholds, http_req_duration percentiles,
+http_req_failed rate) from k6 output into this file and commit.
+
+Expected pass criteria (T171):
+  http_req_duration p(95) < 500 ms
+  http_req_failed         < 1%

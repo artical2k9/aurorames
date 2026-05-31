@@ -170,7 +170,7 @@ import {
 
     <!-- Form dialog (lazy loaded when opened) -->
     @if (showFormDialog) {
-      @defer {
+      @defer (on immediate) {
         <app-item-master-form
           [visible]="showFormDialog"
           [itemId]="editItemId"
