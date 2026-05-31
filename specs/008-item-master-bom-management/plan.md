@@ -187,6 +187,7 @@ See [research.md](research.md) for all decisions. Key outcomes:
 | V012 | CREATE TABLE eco_output_bom (ECO → BOM output relationship) | ✅ Merged (PR 1) |
 | V013 | ALTER TABLE bill_of_materials ADD COLUMNS: reason_for_revision VARCHAR(500), **production_line VARCHAR(200)**, bom_type VARCHAR(50), effectivity_type VARCHAR(10), custom_fields JSONB; mirror all five columns in bill_of_materials_aud — required for BOM Header Edit modal (FR-036a); scope: PR 2 | Planned (PR 2) |
 | V014 | INSERT INTO iam.role for QUALITY_ENGINEER; INSERT INTO iam.privilege for `item-master:as5553:manage`; INSERT INTO iam.role_privilege granting `item-master:records:view` + `item-master:as5553:manage` to QUALITY_ENGINEER — required by FR-016a; scope: PR 4 | Planned (PR 4) |
+| V015 | `CREATE SEQUENCE work_order.eco_number_seq START WITH 1000 INCREMENT BY 1`; `ALTER TABLE work_order.engineering_change_order ALTER COLUMN eco_number SET DEFAULT nextval('work_order.eco_number_seq')` — V004 created the column with UNIQUE constraint but no generator; this migration wires the auto-increment sequence required by `EcoService.create()` (T083); scope: PR 3 | Planned (PR 3) |
 
 ### Privilege Registration
 
