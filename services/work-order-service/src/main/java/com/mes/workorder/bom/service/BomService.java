@@ -221,12 +221,24 @@ public class BomService {
     public BillOfMaterials patchHeader(UUID orgId, UUID bomId, PatchBomHeaderRequest req) {
         BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        if (req.getDescription() != null) bom.setDescription(req.getDescription());
-        if (req.getReasonForRevision() != null) bom.setReasonForRevision(req.getReasonForRevision());
-        if (req.getProductionLine() != null) bom.setProductionLine(req.getProductionLine());
-        if (req.getBomType() != null) bom.setBomType(req.getBomType());
-        if (req.getEffectivityType() != null) bom.setEffectivityType(req.getEffectivityType());
-        if (req.getCustomFields() != null) bom.setCustomFields(req.getCustomFields());
+        if (req.getDescription() != null) {
+            bom.setDescription(req.getDescription());
+        }
+        if (req.getReasonForRevision() != null) {
+            bom.setReasonForRevision(req.getReasonForRevision());
+        }
+        if (req.getProductionLine() != null) {
+            bom.setProductionLine(req.getProductionLine());
+        }
+        if (req.getBomType() != null) {
+            bom.setBomType(req.getBomType());
+        }
+        if (req.getEffectivityType() != null) {
+            bom.setEffectivityType(req.getEffectivityType());
+        }
+        if (req.getCustomFields() != null) {
+            bom.setCustomFields(req.getCustomFields());
+        }
         return bomRepository.save(bom);
     }
 

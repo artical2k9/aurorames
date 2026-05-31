@@ -23,21 +23,51 @@ public class PatchBomHeaderRequest {
 
     private Map<String, Object> customFields;
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public String getDescription() {
+        return description;
+    }
 
-    public String getReasonForRevision() { return reasonForRevision; }
-    public void setReasonForRevision(String reasonForRevision) { this.reasonForRevision = reasonForRevision; }
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
-    public String getProductionLine() { return productionLine; }
-    public void setProductionLine(String productionLine) { this.productionLine = productionLine; }
+    public String getReasonForRevision() {
+        return reasonForRevision;
+    }
 
-    public String getBomType() { return bomType; }
-    public void setBomType(String bomType) { this.bomType = bomType; }
+    public void setReasonForRevision(String reasonForRevision) {
+        this.reasonForRevision = reasonForRevision;
+    }
 
-    public String getEffectivityType() { return effectivityType; }
-    public void setEffectivityType(String effectivityType) { this.effectivityType = effectivityType; }
+    public String getProductionLine() {
+        return productionLine;
+    }
 
-    public Map<String, Object> getCustomFields() { return customFields; }
-    public void setCustomFields(Map<String, Object> customFields) { this.customFields = customFields; }
+    public void setProductionLine(String productionLine) {
+        this.productionLine = productionLine;
+    }
+
+    public String getBomType() {
+        return bomType;
+    }
+
+    public void setBomType(String bomType) {
+        this.bomType = bomType;
+    }
+
+    public String getEffectivityType() {
+        return effectivityType;
+    }
+
+    public void setEffectivityType(String effectivityType) {
+        this.effectivityType = effectivityType;
+    }
+
+    public Map<String, Object> getCustomFields() {
+        return customFields;
+    }
+
+    public void setCustomFields(Map<String, Object> customFields) {
+        this.customFields = customFields;
+    }
 }

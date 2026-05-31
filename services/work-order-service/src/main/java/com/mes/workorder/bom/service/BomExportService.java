@@ -138,7 +138,9 @@ public class BomExportService {
     }
 
     private String csvEscape(String value) {
-        if (value == null) return "";
+        if (value == null) {
+            return "";
+        }
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
@@ -146,7 +148,9 @@ public class BomExportService {
     }
 
     private String truncate(String s, int max) {
-        if (s == null) return "";
+        if (s == null) {
+            return "";
+        }
         return s.length() > max ? s.substring(0, max - 1) + "…" : s;
     }
 }

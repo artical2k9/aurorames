@@ -93,18 +93,43 @@ public class BomDto {
         this.createdAt = createdAt;
     }
 
-    public String getReasonForRevision() { return reasonForRevision; }
-    public void setReasonForRevision(String r) { this.reasonForRevision = r; }
+    public String getReasonForRevision() {
+        return reasonForRevision;
+    }
 
-    public String getProductionLine() { return productionLine; }
-    public void setProductionLine(String p) { this.productionLine = p; }
+    public void setReasonForRevision(String reasonForRevision) {
+        this.reasonForRevision = reasonForRevision;
+    }
 
-    public String getBomType() { return bomType; }
-    public void setBomType(String b) { this.bomType = b; }
+    public String getProductionLine() {
+        return productionLine;
+    }
 
-    public String getEffectivityType() { return effectivityType; }
-    public void setEffectivityType(String e) { this.effectivityType = e; }
+    public void setProductionLine(String productionLine) {
+        this.productionLine = productionLine;
+    }
 
-    public Map<String, Object> getCustomFields() { return customFields; }
-    public void setCustomFields(Map<String, Object> c) { this.customFields = c; }
+    public String getBomType() {
+        return bomType;
+    }
+
+    public void setBomType(String bomType) {
+        this.bomType = bomType;
+    }
+
+    public String getEffectivityType() {
+        return effectivityType;
+    }
+
+    public void setEffectivityType(String effectivityType) {
+        this.effectivityType = effectivityType;
+    }
+
+    public Map<String, Object> getCustomFields() {
+        return customFields;
+    }
+
+    public void setCustomFields(Map<String, Object> customFields) {
+        this.customFields = customFields;
+    }
 }

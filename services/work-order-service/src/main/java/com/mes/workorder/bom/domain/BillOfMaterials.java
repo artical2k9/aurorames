@@ -154,18 +154,43 @@ public class BillOfMaterials {
         return modifiedAt;
     }
 
-    public String getReasonForRevision() { return reasonForRevision; }
-    public void setReasonForRevision(String reasonForRevision) { this.reasonForRevision = reasonForRevision; }
+    public String getReasonForRevision() {
+        return reasonForRevision;
+    }
 
-    public String getProductionLine() { return productionLine; }
-    public void setProductionLine(String productionLine) { this.productionLine = productionLine; }
+    public void setReasonForRevision(String reasonForRevision) {
+        this.reasonForRevision = reasonForRevision;
+    }
 
-    public String getBomType() { return bomType; }
-    public void setBomType(String bomType) { this.bomType = bomType; }
+    public String getProductionLine() {
+        return productionLine;
+    }
 
-    public String getEffectivityType() { return effectivityType; }
-    public void setEffectivityType(String effectivityType) { this.effectivityType = effectivityType; }
+    public void setProductionLine(String productionLine) {
+        this.productionLine = productionLine;
+    }
 
-    public Map<String, Object> getCustomFields() { return customFields; }
-    public void setCustomFields(Map<String, Object> customFields) { this.customFields = customFields; }
+    public String getBomType() {
+        return bomType;
+    }
+
+    public void setBomType(String bomType) {
+        this.bomType = bomType;
+    }
+
+    public String getEffectivityType() {
+        return effectivityType;
+    }
+
+    public void setEffectivityType(String effectivityType) {
+        this.effectivityType = effectivityType;
+    }
+
+    public Map<String, Object> getCustomFields() {
+        return customFields;
+    }
+
+    public void setCustomFields(Map<String, Object> customFields) {
+        this.customFields = customFields;
+    }
 }
