@@ -1,0 +1,458 @@
+import { Component, inject, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, ActivatedRoute } from '@angular/router';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { SelectModule } from 'primeng/select';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { TextareaModule } from 'primeng/textarea';
+import { MessageModule } from 'primeng/message';
+import { SkeletonModule } from 'primeng/skeleton';
+import { BreadcrumbComponent } from '../../../../shared/ui/breadcrumb/breadcrumb.component';
+import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
+import { ItemMasterApiService } from '../../services/item-master-api.service';
+import { UdfApiService, UdfFieldDefinition } from '../../services/udf-api.service';
+import {
+  ItemMasterDto, Classification, CounterfeitRiskLevel, MakeBuyCode,
+} from '../../models/item-master.model';
+
+@Component({
+  selector: 'app-item-master-edit',
+  standalone: true,
+  imports: [
+    CommonModule, ReactiveFormsModule,
+    ButtonModule, InputTextModule, SelectModule,
+    ToggleSwitchModule, InputNumberModule, TextareaModule, MessageModule, SkeletonModule,
+    BreadcrumbComponent, StatusBadgeComponent,
+  ],
+  template: `
+    <div class="imed">
+
+      <app-breadcrumb [crumbs]="breadcrumbs" />
+
+      <div class="imed__header">
+        <div class="imed__title-row">
+          @if (item) {
+            <h2 class="imed__title">{{ item.partNumber }} / Rev {{ item.revision }}</h2>
+            <app-status-badge [status]="item.status" />
+          } @else {
+            <h2 class="imed__title">Edit Item</h2>
+          }
+        </div>
+        <div class="imed__header-actions">
+          @if (item && item.status !== 'OBSOLETE') {
+            <p-button label="Obsolete this item" [link]="true" severity="danger" size="small"
+                      [loading]="obsoleting" (onClick)="obsoleteItem()" />
+          }
+          <p-button label="Cancel" severity="secondary" size="small" (onClick)="cancel()" />
+          <p-button label="Save Changes" severity="primary" size="small"
+                    [loading]="saving" [disabled]="!canSave()" (onClick)="save()" />
+        </div>
+      </div>
+
+      @if (loading) {
+        <div class="imed__skeleton-grid">
+          @for (i of [1,2,3,4,5,6]; track i) { <p-skeleton height="2rem" /> }
+        </div>
+      } @else if (item) {
+
+        <!-- Read-only identity fields -->
+        <div class="imed__locked-fields">
+          <div class="imed__readonly-row">
+            <span class="imed__readonly-label">Part Number</span>
+            <span class="imed__readonly-value">{{ item.partNumber }}</span>
+          </div>
+          <div class="imed__readonly-row">
+            <span class="imed__readonly-label">Revision</span>
+            <span class="imed__readonly-value">{{ item.revision }}</span>
+          </div>
+          <div class="imed__readonly-row">
+            <span class="imed__readonly-label">Traceability Method</span>
+            <span class="imed__readonly-value">{{ item.traceabilityMethod }}</span>
+          </div>
+        </div>
+
+        @if (serverErrors.length) {
+          <div class="imed__errors">
+            @for (err of serverErrors; track err) {
+              <p-message severity="error" [text]="err" />
+            }
+          </div>
+        }
+
+        <form [formGroup]="form" class="imed__form">
+          <div class="imed__two-col">
+
+            <!-- Left: Core Identification -->
+            <div class="imed__section">
+              <h3 class="imed__section-title">Core Identification</h3>
+
+              <div class="imed__field">
+                <label class="imed__label">Description <span class="imed__req">*</span></label>
+                <textarea pTextarea formControlName="description" rows="3"
+                          placeholder="Brief item description" style="width:100%"></textarea>
+              </div>
+
+              <div class="imed__field">
+                <label class="imed__label">Unit of Measure <span class="imed__req">*</span></label>
+                <input pInputText formControlName="unitOfMeasure" placeholder="e.g. EA" />
+              </div>
+
+              <div class="imed__field">
+                <label class="imed__label">Classification <span class="imed__req">*</span></label>
+                <p-select formControlName="classification" [options]="classificationOptions"
+                          optionLabel="label" optionValue="value" placeholder="Select…" />
+              </div>
+
+              <div class="imed__field">
+                <label class="imed__label">Make / Buy Code <span class="imed__req">*</span></label>
+                <div class="imed__makebuy">
+                  <p-button label="Make" size="small" type="button"
+                            [severity]="makeActive ? 'primary' : 'secondary'"
+                            (onClick)="toggleMake()" />
+                  <p-button label="Buy" size="small" type="button"
+                            [severity]="buyActive ? 'primary' : 'secondary'"
+                            (onClick)="toggleBuy()" />
+                </div>
+                @if (makeBuyTouched && !makeActive && !buyActive) {
+                  <small class="imed__error-text">At least one of Make or Buy must be selected</small>
+                }
+              </div>
+            </div>
+
+            <!-- Right: Traceability & Compliance -->
+            <div class="imed__section">
+              <h3 class="imed__section-title">Traceability & Compliance</h3>
+
+              <div class="imed__field">
+                <div class="imed__toggle-row">
+                  <p-toggleswitch formControlName="shelfLifeControlled" />
+                  <label class="imed__label">Shelf Life Controlled</label>
+                </div>
+                @if (form.get('shelfLifeControlled')?.value) {
+                  <div class="imed__field" style="margin-top:0.5rem">
+                    <label class="imed__label">Shelf Life Days <span class="imed__req">*</span></label>
+                    <p-inputnumber formControlName="shelfLifeDays" [min]="1" placeholder="Days" />
+                  </div>
+                }
+              </div>
+
+              <div class="imed__field">
+                <label class="imed__label">CAGE Code</label>
+                <input pInputText formControlName="cageCode" placeholder="Optional" />
+              </div>
+
+              <div class="imed__field">
+                <label class="imed__label">Counterfeit Risk Level</label>
+                <p-select formControlName="counterfeitRiskLevel" [options]="riskOptions"
+                          optionLabel="label" optionValue="value"
+                          placeholder="Select…" [showClear]="true" />
+              </div>
+
+              <div class="imed__field">
+                <div class="imed__toggle-row">
+                  <p-toggleswitch formControlName="verificationRequired" />
+                  <label class="imed__label">Verification Required</label>
+                </div>
+              </div>
+
+              <div class="imed__field">
+                <label class="imed__label">STEP Part Reference</label>
+                <input pInputText formControlName="stepPartRef" placeholder="e.g. S000-BRKT-001" />
+              </div>
+            </div>
+          </div>
+
+          <!-- UDF Section (full width) -->
+          @if (udfFields.length > 0) {
+            <div class="imed__udf-section">
+              <h3 class="imed__section-title">User-Defined Fields</h3>
+              <p class="imed__udf-subtitle">
+                {{ udfFields.length }} field{{ udfFields.length !== 1 ? 's' : '' }} configured for ITEM_MASTER module
+              </p>
+              <div class="imed__udf-grid" formGroupName="udfValues">
+                @for (field of udfFields; track field.fieldKey) {
+                  <div class="imed__field">
+                    <label class="imed__label">
+                      {{ field.label }}
+                      @if (field.required) { <span class="imed__req">*</span> }
+                    </label>
+                    @switch (field.fieldType) {
+                      @case ('NUMBER') { <p-inputnumber [formControlName]="field.fieldKey" /> }
+                      @case ('BOOLEAN') { <p-toggleswitch [formControlName]="field.fieldKey" /> }
+                      @case ('LIST') {
+                        <p-select [formControlName]="field.fieldKey"
+                                  [options]="field.listOptions ?? []" placeholder="Select…" />
+                      }
+                      @default { <input pInputText [formControlName]="field.fieldKey" /> }
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </form>
+
+      } @else {
+        <div class="imed__not-found">Item not found.</div>
+      }
+
+    </div>
+  `,
+  styles: [`
+    .imed { padding: 1.25rem; }
+
+    .imed__header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .imed__title-row { display: flex; align-items: center; gap: 0.75rem; }
+    .imed__title { margin: 0; font-size: 1.375rem; font-weight: 700; }
+    .imed__header-actions { display: flex; align-items: center; gap: 0.5rem; }
+
+    .imed__skeleton-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem;
+    }
+
+    .imed__locked-fields {
+      display: flex; gap: 2rem; flex-wrap: wrap;
+      padding: 0.75rem 1rem; margin-bottom: 1rem;
+      background: var(--p-surface-50); border: 1px solid var(--p-surface-border);
+      border-radius: 6px;
+    }
+    .imed__readonly-row { display: flex; flex-direction: column; gap: 0.125rem; }
+    .imed__readonly-label { font-size: 0.75rem; font-weight: 500; color: var(--p-text-muted-color); text-transform: uppercase; letter-spacing: 0.04em; }
+    .imed__readonly-value { font-size: 0.9375rem; font-weight: 600; }
+
+    .imed__errors { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 1rem; }
+
+    .imed__form { display: flex; flex-direction: column; gap: 1.25rem; }
+
+    .imed__two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+
+    .imed__section {
+      border: 1px solid var(--p-surface-border); border-radius: 8px;
+      padding: 1.25rem; display: flex; flex-direction: column; gap: 0.875rem;
+    }
+    .imed__section-title { margin: 0 0 0.25rem; font-size: 0.9375rem; font-weight: 600; }
+
+    .imed__field { display: flex; flex-direction: column; gap: 0.3rem; }
+    .imed__label { font-size: 0.8125rem; font-weight: 500; color: var(--p-text-muted-color); }
+    .imed__req { color: #EF4444; }
+    .imed__error-text { font-size: 0.75rem; color: #EF4444; margin-top: 0.25rem; }
+
+    .imed__toggle-row { display: flex; align-items: center; gap: 0.5rem; }
+    .imed__makebuy { display: flex; gap: 0.5rem; }
+
+    .imed__udf-section {
+      border: 1px solid var(--p-surface-border); border-radius: 8px; padding: 1.25rem;
+    }
+    .imed__udf-subtitle { font-size: 0.8125rem; color: var(--p-text-muted-color); margin: 0.25rem 0 1rem; }
+    .imed__udf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.875rem; }
+
+    .imed__not-found { padding: 2rem; text-align: center; color: var(--p-text-muted-color); }
+  `],
+})
+export class ItemMasterEditComponent implements OnInit {
+  private readonly fb = inject(FormBuilder);
+  private readonly api = inject(ItemMasterApiService);
+  private readonly udfApi = inject(UdfApiService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  item: ItemMasterDto | null = null;
+  itemId!: string;
+  udfFields: UdfFieldDefinition[] = [];
+  serverErrors: string[] = [];
+  loading = true;
+  saving = false;
+  obsoleting = false;
+
+  makeActive = false;
+  buyActive = false;
+  makeBuyTouched = false;
+
+  breadcrumbs: { label: string; route?: string[] }[] = [
+    { label: 'Materials' },
+    { label: 'Item Master', route: ['/item-master'] },
+    { label: 'Edit' },
+  ];
+
+  readonly classificationOptions = [
+    { label: 'Assembly',       value: 'ASSEMBLY' },
+    { label: 'COTS',           value: 'COTS' },
+    { label: 'Fabricated',     value: 'FABRICATED' },
+    { label: 'Purchased Part', value: 'PURCHASED_PART' },
+    { label: 'Raw Material',   value: 'RAW_MATERIAL' },
+    { label: 'Service',        value: 'SERVICE' },
+  ];
+
+  readonly riskOptions = [
+    { label: 'Low',      value: 'LOW' },
+    { label: 'Medium',   value: 'MEDIUM' },
+    { label: 'High',     value: 'HIGH' },
+    { label: 'Critical', value: 'CRITICAL' },
+  ];
+
+  form = this.fb.group({
+    description:          ['', Validators.required],
+    unitOfMeasure:        ['', Validators.required],
+    classification:       [null as Classification | null, Validators.required],
+    cageCode:             [''],
+    shelfLifeControlled:  [false],
+    shelfLifeDays:        [null as number | null],
+    counterfeitRiskLevel: [null as CounterfeitRiskLevel | null],
+    verificationRequired: [false],
+    stepPartRef:          [''],
+    udfValues:            this.fb.group({}),
+  });
+
+  get derivedMakeBuyCode(): MakeBuyCode | null {
+    if (this.makeActive && this.buyActive) return 'EITHER';
+    if (this.makeActive) return 'MAKE';
+    if (this.buyActive) return 'BUY';
+    return null;
+  }
+
+  canSave(): boolean {
+    return this.form.valid && this.derivedMakeBuyCode !== null;
+  }
+
+  toggleMake(): void {
+    this.makeActive = !this.makeActive;
+    this.makeBuyTouched = true;
+  }
+
+  toggleBuy(): void {
+    this.buyActive = !this.buyActive;
+    this.makeBuyTouched = true;
+  }
+
+  ngOnInit(): void {
+    this.itemId = this.route.snapshot.paramMap.get('id')!;
+
+    this.form.get('shelfLifeControlled')!.valueChanges.subscribe(on => {
+      const ctrl = this.form.get('shelfLifeDays')!;
+      if (on) {
+        ctrl.addValidators(Validators.required);
+      } else {
+        ctrl.clearValidators();
+        ctrl.setValue(null);
+      }
+      ctrl.updateValueAndValidity();
+    });
+
+    this.udfApi.listFields('ITEM_MASTER').subscribe(fields => {
+      this.udfFields = fields;
+      const udfGroup = this.form.get('udfValues') as ReturnType<typeof this.fb.group>;
+      fields.forEach(f => {
+        udfGroup.addControl(
+          f.fieldKey,
+          this.fb.control(
+            this.item?.customFields?.[f.fieldKey] ?? f.defaultValue ?? null,
+            f.required ? Validators.required : [],
+          ),
+        );
+      });
+    });
+
+    this.loadItem();
+  }
+
+  private loadItem(): void {
+    this.loading = true;
+    this.api.getById(this.itemId).subscribe({
+      next: item => {
+        this.item = item;
+        this.loading = false;
+        this.populateForm(item);
+      },
+      error: () => { this.item = null; this.loading = false; },
+    });
+  }
+
+  private populateForm(item: ItemMasterDto): void {
+    this.breadcrumbs = [
+      { label: 'Materials' },
+      { label: 'Item Master', route: ['/item-master'] },
+      { label: `${item.partNumber} Rev ${item.revision}` },
+    ];
+    this.form.patchValue({
+      description:          item.description,
+      unitOfMeasure:        item.unitOfMeasure,
+      classification:       item.classification,
+      cageCode:             item.cageCode ?? '',
+      shelfLifeControlled:  item.shelfLifeControlled,
+      shelfLifeDays:        item.shelfLifeDays ?? null,
+      counterfeitRiskLevel: item.counterfeitRiskLevel ?? null,
+      verificationRequired: item.verificationRequired,
+      stepPartRef:          item.stepPartRef ?? '',
+    });
+    this.makeActive = item.makeBuyCode === 'MAKE' || item.makeBuyCode === 'EITHER';
+    this.buyActive  = item.makeBuyCode === 'BUY'  || item.makeBuyCode === 'EITHER';
+  }
+
+  cancel(): void {
+    this.router.navigate(['/item-master', this.itemId]);
+  }
+
+  obsoleteItem(): void {
+    this.obsoleting = true;
+    this.api.obsolete(this.itemId).subscribe({
+      next: item => {
+        this.item = item;
+        this.obsoleting = false;
+      },
+      error: () => { this.obsoleting = false; },
+    });
+  }
+
+  save(): void {
+    this.makeBuyTouched = true;
+    if (this.form.invalid || !this.derivedMakeBuyCode) return;
+
+    this.saving = true;
+    this.serverErrors = [];
+    const v = this.form.value;
+
+    this.api.patch(this.itemId, {
+      description:          v.description ?? undefined,
+      unitOfMeasure:        v.unitOfMeasure ?? undefined,
+      classification:       (v.classification as Classification) ?? undefined,
+      makeBuyCode:          this.derivedMakeBuyCode,
+      cageCode:             v.cageCode ?? undefined,
+      shelfLifeControlled:  v.shelfLifeControlled ?? undefined,
+      shelfLifeDays:        v.shelfLifeDays ?? null,
+      counterfeitRiskLevel: (v.counterfeitRiskLevel as CounterfeitRiskLevel) ?? null,
+      verificationRequired: v.verificationRequired ?? undefined,
+      stepPartRef:          v.stepPartRef || undefined,
+      customFields:         this.buildCustomFields(),
+    }).subscribe({
+      next: () => {
+        this.saving = false;
+        this.router.navigate(['/item-master', this.itemId]);
+      },
+      error: (err: { status: number; error?: { violations?: { field: string; message: string }[] } }) => {
+        this.saving = false;
+        if (err.status === 422 && err.error?.violations) {
+          this.serverErrors = err.error.violations.map(v => `${v.field}: ${v.message}`);
+        }
+      },
+    });
+  }
+
+  private buildCustomFields(): Record<string, unknown> | undefined {
+    const udfGroup = this.form.get('udfValues');
+    if (!udfGroup || !this.udfFields.length) return undefined;
+    const result: Record<string, unknown> = {};
+    this.udfFields.forEach(f => {
+      const val = udfGroup.get(f.fieldKey)?.value;
+      if (val !== null && val !== undefined && val !== '') {
+        result[f.fieldKey] = val;
+      }
+    });
+    return Object.keys(result).length ? result : undefined;
+  }
+}
