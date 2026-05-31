@@ -14,7 +14,7 @@ import { ColumnDef } from '../../models/column-def.model';
   template: `
     <div class="column-picker">
       <div class="column-picker__header">
-        <span>Columns</span>
+        <span>Customise Columns</span>
         <a class="column-picker__reset" (click)="reset.emit()">Reset to default</a>
       </div>
 
@@ -22,7 +22,7 @@ import { ColumnDef } from '../../models/column-def.model';
       <div cdkDropList [cdkDropListData]="standardColumns" (cdkDropListDropped)="drop($event, false)">
         @for (col of standardColumns; track col.key) {
           <div class="column-picker__row" cdkDrag [cdkDragDisabled]="col.locked ?? false">
-            <span *ngIf="!col.locked" class="column-picker__drag-handle" cdkDragHandle>⠿</span>
+            <span class="column-picker__drag-handle" cdkDragHandle>⠿</span>
             <p-checkbox [(ngModel)]="col.visible" [binary]="true" [disabled]="col.locked ?? false" />
             <span class="column-picker__label">{{ col.label }}</span>
             @if (col.locked) {
