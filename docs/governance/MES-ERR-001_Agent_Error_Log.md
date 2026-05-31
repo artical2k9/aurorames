@@ -16,6 +16,20 @@
 
 <!-- Add new errors below this line. Oldest at the top, newest at the bottom. -->
 
+## ERR-MES-055 — tasks.md stale markers cannot distinguish "planned but skipped" from "done but unchecked"
+**Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
+**Symptom:** Backend tasks T193–T196 appeared in the PR 2 task range in `tasks.md`. PR 2 was recorded as merged (PR #11/#17) in `HANDOVER.md`. Agent treated the backend dependency as satisfied without verifying the code. At implementation time, `ModuleKey.java` was missing `BOM_LINE`/`BOM_HEADER`, V013 migration did not exist, and several BomController/EcoController endpoints were absent.
+**Root cause:** `tasks.md` `[ ]`/`[X]` markers stopped being updated after PR #10. Tasks in a merged PR's declared range may still be `[ ]` (done but not checked), and tasks that were planned for a PR but silently dropped are also still `[ ]`. The file gives no structural signal to distinguish the two states.
+**Fix applied:** Pre-flight read of every controller/service that the new frontend tasks called; confirmed the missing endpoints by inspection and added them.
+**Rule:** "PR N merged" does not mean every task in PR N's range was implemented. Before starting any PR whose frontend tasks call backend APIs, read each referenced controller/service file and confirm that the specific endpoints/methods the frontend needs are present. Do not infer completeness from tasks.md markers or HANDOVER merged-PR entries alone.
+
+## ERR-MES-056 — speckit-clarify and speckit-analyze do not detect backend endpoint gaps
+**Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
+**Symptom:** `/speckit-clarify` and `/speckit-analyze` were both run before PR 7 implementation. Neither surfaced the missing `BomController` list/delete/patch endpoints, the missing `EcoController.list` endpoint, or the missing ModuleKey enum values — all of which were required for the frontend to function.
+**Root cause:** `speckit-clarify` generates questions about *spec ambiguities* (underspecified requirements). `speckit-analyze` checks cross-artifact consistency between `spec.md`, `plan.md`, and `tasks.md`. Neither tool reads the codebase to compare what backend endpoints the frontend tasks assume against what is actually implemented. The gap was structural: the tools analyse *documents*, not *code*.
+**Fix applied:** Manual pre-flight controller reads at session start.
+**Rule:** For any PR whose tasks call backend APIs, treat speckit-clarify/analyze as insufficient for dependency verification. Add an explicit pre-flight step: for each service the frontend calls, read the controller class and verify the required HTTP methods exist. This applies even when prior PRs are marked merged — speckit tooling has no visibility into what was actually committed.
+
 ## ERR-MES-040 — PrimeNG 21 breaking API: `darkModeSelector` moved to `theme.options`; `overlaypanel` → `popover`
 **Date:** 2026-05-29  **Category:** Frontend — PrimeNG  **Status:** Promoted 2026-05-29
 **Symptom:** (1) TypeScript error `TS2353: 'darkModeSelector' does not exist in type 'PrimeNGConfigType'` when passing it at the top level of `providePrimeNG()`. (2) TypeScript error `TS2307: Cannot find module 'primeng/overlaypanel'` — the module path no longer exists.

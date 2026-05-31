@@ -4,6 +4,32 @@
 
 ---
 
+## ERR-MES-055 — tasks.md stale markers cannot distinguish "planned but skipped" from "done but unchecked"
+**Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
+
+**Symptom:** Backend tasks T193–T196 appeared in the PR 2 task range in `tasks.md`. PR 2 was recorded as merged (PR #11/#17) in `HANDOVER.md`. Agent treated the backend dependency as satisfied without verifying the code. At implementation time, `ModuleKey.java` was missing `BOM_LINE`/`BOM_HEADER`, V013 migration did not exist, and several `BomController`/`EcoController` endpoints were absent. All had to be added as backend prerequisites inside PR 7.
+
+**Root cause:** `tasks.md` `[ ]`/`[X]` markers stopped being updated after PR #10. Tasks in a merged PR's declared range may still show `[ ]` (done but not checked off), and tasks that were planned for a PR but silently dropped are also `[ ]`. The file gives no structural signal to distinguish the two states. The HANDOVER.md partially compensated by flagging T193/T194 as "verify before starting", but the broader set of missing endpoints was not called out anywhere.
+
+**Fix applied:** Pre-flight read of every controller/service the new frontend tasks called; confirmed the missing endpoints by inspection and added them to the same PR.
+
+**Rule:** "PR N merged" does not mean every task in PR N's declared range was implemented. Before starting any PR whose frontend tasks call backend APIs, read each referenced controller/service file and confirm that the specific endpoints/methods the frontend needs are present. Do not infer completeness from `tasks.md` markers or `HANDOVER.md` merged-PR entries alone.
+
+---
+
+## ERR-MES-056 — speckit-clarify and speckit-analyze do not detect backend endpoint gaps
+**Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
+
+**Symptom:** `/speckit-clarify` and `/speckit-analyze` were both run before PR 7 implementation. Neither surfaced the missing `BomController` list/delete/patch endpoints, the missing `EcoController.list` endpoint, or the missing `ModuleKey` enum values — all of which the frontend required.
+
+**Root cause:** `speckit-clarify` generates questions about *spec ambiguities* (underspecified requirements in `spec.md`). `speckit-analyze` checks cross-artifact consistency across `spec.md`, `plan.md`, and `tasks.md`. Neither tool reads the codebase to compare what backend endpoints the frontend tasks assume against what is actually implemented. The gap is structural: both tools analyse *documents*, not *code*.
+
+**Fix applied:** Manual pre-flight controller reads at session start identified the gaps before any frontend code was written.
+
+**Rule:** For any PR whose tasks call backend APIs, treat speckit-clarify/analyze as insufficient for dependency verification. Add an explicit pre-flight step: for each service the frontend calls, read the controller class and verify the required HTTP methods exist. This applies even when prior PRs are marked merged in `HANDOVER.md` — speckit tooling has no visibility into what was actually committed.
+
+---
+
 ## ERR-MES-051 — Filtered `--tests` Gradle run overwrites JaCoCo exec file
 **Date:** 2026-05-30  **Category:** Testing — JaCoCo / Gradle  **Status:** Promoted 2026-05-30
 
