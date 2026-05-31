@@ -88,13 +88,13 @@ services/work-order-service/
     │   ├── java/com/mes/workorder/
     │   │   ├── WorkOrderServiceApplication.java
     │   │   ├── config/SecurityConfig.java
-    │   │   ├── itemmaster/   (domain, api, service, repository)
-    │   │   ├── bom/          (domain, api, service, repository)
+    │   │   ├── itemmaster/   (domain, api [clone endpoint added], service [clone()], repository)
+    │   │   ├── bom/          (domain, api [PATCH header, explosion download], service, repository)
     │   │   ├── eco/          (domain, api, service, repository)
-    │   │   └── kafka/        (event publishers)
+    │   │   └── kafka/        (ItemMasterEventPublisher, BomEventPublisher, EcoEventPublisher)
     │   └── resources/
     │       ├── application.yml
-    │       └── db/migration/ (V001–V007 Flyway scripts)
+    │       └── db/migration/ (V001–V013 Flyway scripts)
     └── test/
         └── java/com/mes/workorder/
             ├── unit/
@@ -106,9 +106,34 @@ libs/mes-udf-lib/
     ├── main/java/com/mes/udf/
     │   ├── domain/UdfFieldDefinition.java
     │   ├── service/UdfValidator.java
-    │   ├── api/UdfFieldDefinitionController.java
+    │   ├── api/UdfFieldDefinitionController.java   (mapped to /api/v1/udf/fields)
     │   └── repository/UdfFieldDefinitionRepository.java
     └── test/java/com/mes/udf/
+        ├── service/UdfValidatorTest.java
+        └── UdfLibReusabilityIT.java                (SC-009 module-agnostic proof)
+
+frontend/angular/src/app/
+├── layout/shell/app-shell.component.ts             (nav rail + top bar)
+├── shared/
+│   ├── grid/                                       (ColumnPickerComponent, GridPreferenceService)
+│   ├── theme/                                      (ThemeService, ThemeToggleComponent)
+│   └── ui/
+│       ├── status-badge/                           (StatusBadgeComponent)
+│       └── breadcrumb/                             (BreadcrumbComponent — T178)
+└── features/item-master/
+    ├── constants/default-columns.ts
+    ├── models/item-master.model.ts
+    ├── pipes/classification-label.pipe.ts          (T177)
+    ├── services/
+    │   ├── item-master-api.service.ts              (includes clone(), patch())
+    │   └── udf-api.service.ts
+    ├── pages/
+    │   ├── item-master-list/                       (ItemMasterListComponent)
+    │   ├── item-master-create/                     (ItemMasterCreateComponent — T182, FR-033)
+    │   ├── item-master-edit/                       (ItemMasterEditComponent — T183, FR-033a)
+    │   └── item-master-detail/                     (ItemMasterDetailComponent)
+    └── components/
+        └── item-master-form/                       (interim dialog — superseded by pages above)
 ```
 
 ### Modified Files
@@ -120,8 +145,10 @@ libs/mes-udf-lib/
 | `docker/compose-prod.yml` | Add `work-order-service` with ghcr.io image |
 | `docker/compose-local-override.yml` | Add `work-order-service:local` override |
 | `.github/workflows/publish.yml` | Add `work-order-service` to image build matrix |
-| `sonar-project.properties` | Add `services/work-order-service/src/main/java` to `sonar.sources` |
+| `sonar-project.properties` | Add `services/work-order-service/src/main/java` and `libs/mes-udf-lib/src/main/java` to `sonar.sources` |
 | `keycloak/mes-realm.json` | No change — roles/privileges managed via Flyway + PrivilegeRegistryClient |
+| `services/work-order-service/src/main/resources/db/migration/V013__bom_header_edit_fields.sql` | ADD COLUMNS reason_for_revision, bom_type, effectivity_type, custom_fields to bill_of_materials (PR 2) |
+| `frontend/angular/src/app/app.routes.ts` | Add `/item-master/new`, `/item-master/:id/edit` routes (PR 6b) |
 
 ---
 
@@ -143,15 +170,21 @@ See [research.md](research.md) for all decisions. Key outcomes:
 
 ### Flyway Migration Sequence
 
-| Migration | Contents |
-|---|---|
-| V001 | CREATE SCHEMA work_order |
-| V002 | CREATE TABLE item_master (all columns, constraints, indexes) |
-| V003 | CREATE TABLE bill_of_materials, bom_line (FK to item_master) |
-| V004 | CREATE TABLE engineering_change_order, eco_affected_item |
-| V005 | CREATE TABLE udf_field_definition |
-| V006 | CREATE TABLE revinfo, item_master_aud, bill_of_materials_aud, bom_line_aud, engineering_change_order_aud (Envers) |
-| V007 | INSERT privileges into iam.privilege and grant to SYSTEM_ADMIN + ENGINEER via iam.role_privilege |
+| Migration | Contents | Status |
+|---|---|---|
+| V001 | CREATE SCHEMA work_order | ✅ Merged (PR 1) |
+| V002 | CREATE TABLE item_master (all columns, constraints, indexes) | ✅ Merged (PR 1) |
+| V003 | CREATE TABLE bill_of_materials, bom_line (FK to item_master) | ✅ Merged (PR 1) |
+| V004 | CREATE TABLE engineering_change_order, eco_affected_item | ✅ Merged (PR 1) |
+| V005 | CREATE TABLE udf_field_definition | ✅ Merged (PR 1) |
+| V006 | CREATE TABLE revinfo, item_master_aud, bill_of_materials_aud, bom_line_aud, engineering_change_order_aud (Envers) | ✅ Merged (PR 1) |
+| V007 | INSERT privileges into iam.privilege and grant to SYSTEM_ADMIN + ENGINEER via iam.role_privilege | ✅ Merged (PR 1) |
+| V008 | CREATE TABLE user_grid_preferences | ✅ Merged (PR 1) |
+| V009 | CREATE TABLE udf_field_definition_aud (Envers audit for UDF definitions) | ✅ Merged (PR 1) |
+| V010 | ALTER TABLE item_master make cage_code nullable correction | ✅ Merged (PR 1) |
+| V011 | ALTER audit tables — add Envers REVEND columns | ✅ Merged (PR 1) |
+| V012 | CREATE TABLE eco_output_bom (ECO → BOM output relationship) | ✅ Merged (PR 1) |
+| V013 | ALTER TABLE bill_of_materials ADD COLUMNS: reason_for_revision VARCHAR(500), bom_type VARCHAR(50), effectivity_type VARCHAR(10), custom_fields JSONB — required for BOM Header Edit modal (FR-036a); scope: PR 2 | Planned (PR 2) |
 
 ### Privilege Registration
 
@@ -178,6 +211,9 @@ See [research.md](research.md) for all decisions. Key outcomes:
 - **ECO immutability**: service rejects mutations to ECOs in APPROVED or IMPLEMENTED state (HTTP 409)
 - **Concurrent ECO warning**: on ECO create, service checks for open ECOs on the same `affectedItemIds`; sets `concurrentEcoWarning = true` in response (non-blocking)
 - **UDF validation**: `UdfValidator.validate(moduleKey, orgId, customFields)` is called on every item master create/patch; fails fast with 422 listing all missing/invalid fields
+- **Clone Item**: `POST /api/v1/item-master/{id}/clone` copies all fields from the source record to a new entity, clearing `partNumber`, `revision`, `id`, and audit fields; the cloned record is saved with status ACTIVE; returns 201 with Location header; requires `item-master:records:manage`; no UDF values are cloned (custom_fields = null on new record)
+- **BOM header PATCH**: `PATCH /api/v1/boms/{id}` accepts partial updates to `description`, `reasonForRevision`, `productionLine`, `bomType`, `effectivityType`, `customFields`; all fields optional; allowed only when BOM status is DRAFT (HTTP 409 if RELEASED/OBSOLETE); changing `effectivityType` is blocked if any BOM lines already have effectivity values set (HTTP 422 with message)
+- **BOM explosion depth limit**: `GET /api/v1/boms/{id}/explosion` accepts `maxDepth` query parameter (integer, 1–50); defaults to `mes.bom.max-depth` property (50); backend enforces this limit in the recursive CTE depth clause
 
 ### Kafka Event Schema (JSON)
 
@@ -196,18 +232,21 @@ All events follow the pattern used by `lib-common-audit`:
 }
 ```
 
+**Additional event type**: `compliance.as5553-risk-added` is published to `work-order.item-master.events` when `BomService.addLine()` saves a BOM line whose component item has `counterfeitRiskLevel` of HIGH or CRITICAL. The `entityType` for this event is `ItemMaster` (the component) and the payload is the component's full DTO snapshot. This event enables downstream compliance monitoring consumers to be notified when high-risk parts enter production BOMs.
+
 ---
 
 ## PR Strategy
 
 | PR | Phases | Scope | CI Anchor | Notes |
 |---|---|---|---|---|
-| PR 1 | Setup + US1 | Scaffold `work-order-service` + `mes-udf-lib` modules; Flyway V001–V007; Item Master CRUD (create, get, patch, list, obsolete) + Kafka events + Envers audit; UDF framework (field definition CRUD + validation on item master); privilege registration | `./gradlew :services:work-order-service:check :libs:mes-udf-lib:check` | Bundle setup with US1+US3 to satisfy SonarCloud coverage gate on new modules. US3 (UDF) is P2 but shares the item_master schema — separating it would require a later migration and breaking PATCH. |
-| PR 2 | US2 | BOM authoring: BOM header CRUD, BOM line add/remove, BOM release workflow, BOM explosion (flat + indented), circular detection, BOM Kafka events | `./gradlew :services:work-order-service:check` | Depends on PR 1 merged (item master must exist for BOM parent FK). |
-| PR 3 | US4 + US5 | BOM effectivity (date/unit ranges, overlap validation, gap detection in explosion); Engineering Change Orders (CRUD, approve, link to BOM revisions, concurrent warning) | `./gradlew :services:work-order-service:check` | Depends on PR 2 merged. US4 and US5 are tightly related (both extend BOM) — bundling avoids a mid-PR state where BOM is released but ECO link is missing. |
-| PR 4 | US6 | AS5553 fields (`counterfeitRiskLevel`, `approvedSuppliers`, `verificationRequired`) — already in schema from PR 1; PR 4 adds `counterfeitRiskAlert` flag to BOM line response and `compliance.as5553-risk-added` Kafka event | `./gradlew :services:work-order-service:check` | Depends on PR 2 merged. P3 priority — raise after PR 3. |
-| PR 5 | Phase 10 | Angular shared grid infrastructure (column picker, dark/light theme, grid preference API); Item Master list screen (basic functional) | `ng build --configuration=production` in `frontend/angular/` | Depends on PR 1 merged. Angular-only. **MERGED** — item master list screen built without app shell, visual fidelity gaps, and no create form. |
-| PR 6 | Phase 11 | App shell (nav rail, user avatar, breadcrumb); Item Master list visual fidelity (badges, status dots, actions column, row selection bar, item count, "+ New Item" button, Make/Buy filter); Item Master create/edit form | `ng build --configuration=production` in `frontend/angular/` | Depends on PR 5 merged. Angular-only. Closes the visual and functional gap identified post-PR-5 review. |
-| PR 7 | Phase 12 + 13 | BOM frontend screens (BOM list per item, BOM authoring, BOM explosion tree); ECO frontend screens (ECO list, create, approve) | `ng build --configuration=production` in `frontend/angular/` | Depends on PR 6 merged (app shell required). Depends on PRs 2–3 merged (backend APIs required). |
+| PR 1 | Setup + US1 | Scaffold `work-order-service` + `mes-udf-lib` modules; Flyway V001–V012; Item Master CRUD (create, get, patch, list, obsolete, **clone**) + Kafka events + Envers audit; UDF framework (field definition CRUD + validation on item master); privilege registration; `stepPartRef` in `CreateItemMasterRequest` and `PatchItemMasterRequest` | `./gradlew :services:work-order-service:check :libs:mes-udf-lib:check` | **MERGED.** Clone endpoint (FR-041, T180) and stepPartRef DTO fields (FR-047, T184) added via remediation commits. |
+| PR 2 | US2 | BOM authoring: BOM header CRUD (create, get, **PATCH header** per FR-036a), BOM line add/remove/update, BOM release workflow, BOM explosion (flat + indented, **maxDepth param**, **CSV/PDF download**), circular detection, BOM Kafka events; **Flyway V013** (reason_for_revision, bom_type, effectivity_type, custom_fields on bill_of_materials) | `./gradlew :services:work-order-service:check` | Depends on PR 1 merged. V013 adds BOM header edit fields required by FR-036a. |
+| PR 3 | US4 + US5 | BOM effectivity (date/unit ranges, overlap validation, gap detection in explosion); Engineering Change Orders (CRUD, approve, link to BOM revisions, concurrent warning) | `./gradlew :services:work-order-service:check` | Depends on PR 2 merged. |
+| PR 4 | US6 | AS5553 fields — already in schema from PR 1; PR 4 adds `counterfeitRiskAlert` flag to BOM explosion response and `compliance.as5553-risk-added` Kafka event | `./gradlew :services:work-order-service:check` | Depends on PR 2 merged. P3 priority. |
+| PR 5 | Phase 10 | Angular shared grid infrastructure (column picker, dark/light theme, grid preference API); Item Master list screen (basic functional) | `ng build --configuration=production` in `frontend/angular/` | **MERGED.** |
+| PR 6 | Phase 11 | App shell (nav rail, top bar, avatar, theme toggle); Item Master list visual fidelity (badges, status dots, actions column, row selection, "+ New Item", Make/Buy filter); `ItemMasterFormComponent` (p-dialog, interim); `ItemMasterDetailComponent` | `ng build --configuration=production` in `frontend/angular/` | **MERGED.** Note: create/edit form was implemented as a modal dialog (p-dialog) as an interim; Phase 11b (PR 6b or bundled into PR 7) will replace with full-page routes per FR-044. |
+| PR 6b | Phase 11b | Item Master frontend Penpot fidelity corrections: `ClassificationLabelPipe` (FR-040); `BreadcrumbComponent` (FR-043); pagination "Showing X–Y of Z items" (FR-042); Clone Item overflow action + backend endpoint (FR-041); full-page `ItemMasterCreateComponent` route `/item-master/new` (FR-033, FR-044–FR-047); full-page `ItemMasterEditComponent` route `/item-master/:id/edit` (FR-033a, FR-048); Make/Buy as `p-selectbutton` (FR-046); `STEP Part Reference` field (FR-047); column picker section corrections (FR-049) | `ng build --configuration=production` + `./gradlew :services:work-order-service:check` | Depends on PR 6 merged. Contains one backend change (clone endpoint). Frontend replaces the interim dialog with proper page-based routes. |
+| PR 7 | Phase 12 + 13 + 11b backend | BOM frontend screens (BOM list, BOM authoring per FR-036 with exact column order/buttons/column-picker, BOM Header Edit dialog FR-036a, BOM explosion per FR-037/FR-050–FR-052 with CSV/PDF, inline row edit); ECO frontend; Reference Designator column (FR-053); bottom status bar + unit-effectivity badge (FR-054) | `ng build --configuration=production` in `frontend/angular/` | Depends on PR 6 merged + PRs 2–3 merged. |
 
 **Sequencing note**: US3 (UDF framework) is classified P2 in the spec but is bundled with PR 1 (P1) because the `customFields` JSONB column and UDF validation are part of the item master create/patch flow. Implementing them separately would require a second migration modifying `item_master` and a second PR touching the same controller — more risk, less coverage benefit.
