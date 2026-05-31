@@ -56,6 +56,32 @@
 
 ---
 
+## ERR-MES-053 — Angular getter returning new array/object reference triggers NG0100 in dev mode and tests
+**Date:** 2026-05-31  **Category:** Frontend — Angular Change Detection  **Status:** Promoted 2026-05-31
+
+**Symptom:** `ItemMasterEditComponent` Vitest tests all failed with `NG0100: ExpressionChangedAfterItHasBeenCheckedError`. Error pointed to a template expression whose value differed between Angular's render pass and verify pass.
+
+**Root cause:** Angular dev mode runs every template expression TWICE per `detectChanges()` call (render pass + verify pass). A `get breadcrumbs()` getter returned a fresh array literal on every call (`return [{...}, {...}, {...}]`). Angular's `===` comparison sees a different object reference on the second evaluation even though the content is identical — NG0100 is thrown. In tests, `fixture.detectChanges()` always runs dev-mode checks, exposing the issue on every test run.
+
+**Fix applied:** Converted `get breadcrumbs()` to a class property initialised with a default array. The property is updated only when the item loads (inside the HTTP subscribe callback). The verify pass sees the same reference on both evaluations.
+
+**Rule:** Never use a getter that returns a newly-created array or object literal when the return value is bound to an `@Input` or template expression. Use a class property reassigned only when data actually changes. Pattern: `breadcrumbs: Crumb[] = defaultCrumbs;` (property), updated in the data-load callback — NOT `get breadcrumbs() { return [{...}]; }`.
+
+---
+
+## ERR-MES-054 — Wrote Jasmine-style matchers in a Vitest-based Angular project
+**Date:** 2026-05-31  **Category:** Frontend — Testing / Vitest  **Status:** Promoted 2026-05-31
+
+**Symptom:** Angular spec files failed to compile: `TS2339: Property 'toBeTrue' does not exist on type 'Assertion<boolean>'`, `TS2552: Cannot find name 'spyOn'. Did you mean 'spy'?`.
+
+**Root cause:** The project uses the Vitest runner (`@angular/build:vitest`). Vitest does not include Jasmine's custom matchers (`toBeTrue`, `toBeFalse`) or the global `spyOn`. The agent wrote tests using Jasmine patterns without checking the project's test runner.
+
+**Fix applied:** Replaced `toBeTrue()` → `toBe(true)`, `toBeFalse()` → `toBe(false)`, global `spyOn` → `vi.spyOn` (`import { vi } from 'vitest'`). Switched HTTP service mocks from `HttpTestingController` to `vi.fn().mockReturnValue(of(...))` to avoid async timing issues with `detectChanges()`.
+
+**Rule:** Before writing Angular specs, check `angular.json` for `"builder": "@angular/build:vitest"` (Vitest) vs `"@angular/build:karma"` (Jasmine/Karma). In a Vitest project: `toBe(true)` not `toBeTrue()`; `toBe(false)` not `toBeFalse()`; import `vi` from `'vitest'` for `vi.spyOn()`. Prefer `vi.fn().mockReturnValue(of(...))` service mocks over `HttpTestingController` for components that make HTTP calls — synchronous `of()` observables avoid NG0100 from async state changes mid-`detectChanges()`.
+
+---
+
 ## ERR-MES-001 — `cd` in Bash tool triggers safety gate
 **Date:** 2026-05-20  **Category:** Shell — Bash tool  **Status:** Promoted 2026-05-20
 
