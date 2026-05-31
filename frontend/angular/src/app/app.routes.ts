@@ -37,6 +37,36 @@ export const routes: Routes = [
           import('./features/item-master/pages/item-master-detail/item-master-detail.component')
             .then(m => m.ItemMasterDetailComponent),
       },
+      {
+        path: 'item-master/:itemId/boms',
+        loadComponent: () =>
+          import('./features/bom/pages/bom-list/bom-list.component')
+            .then(m => m.BomListComponent),
+      },
+      {
+        path: 'boms/:bomId/explosion',
+        loadComponent: () =>
+          import('./features/bom/pages/bom-explosion/bom-explosion.component')
+            .then(m => m.BomExplosionComponent),
+      },
+      {
+        path: 'boms/:bomId',
+        loadComponent: () =>
+          import('./features/bom/pages/bom-authoring/bom-authoring.component')
+            .then(m => m.BomAuthoringComponent),
+      },
+      {
+        path: 'ecos/:ecoId',
+        loadComponent: () =>
+          import('./features/eco/pages/eco-detail/eco-detail.component')
+            .then(m => m.EcoDetailComponent),
+      },
+      {
+        path: 'ecos',
+        loadComponent: () =>
+          import('./features/eco/pages/eco-list/eco-list.component')
+            .then(m => m.EcoListComponent),
+      },
     ],
   },
 ];

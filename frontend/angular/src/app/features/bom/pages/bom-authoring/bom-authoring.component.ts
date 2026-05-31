@@ -1,0 +1,383 @@
+import {
+  ChangeDetectorRef, Component, inject, OnInit,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { ButtonModule } from 'primeng/button';
+import { TableModule } from 'primeng/table';
+import { TagModule } from 'primeng/tag';
+import { DialogModule } from 'primeng/dialog';
+import { MessageModule } from 'primeng/message';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { MessageService, ConfirmationService } from 'primeng/api';
+import { BreadcrumbComponent, StatusBadgeComponent } from '../../../../shared/ui';
+import { BomApiService } from '../../services/bom-api.service';
+import { AddBomLineFormComponent } from '../../components/add-bom-line-form/add-bom-line-form.component';
+import { BomHeaderEditDialogComponent } from '../../components/bom-header-edit-dialog/bom-header-edit-dialog.component';
+import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
+import { DEFAULT_BOM_LINE_COLUMNS } from '../../constants/default-columns';
+import { BomDto, BomLineDto } from '../../models/bom.model';
+import { AsyncPipe } from '@angular/common';
+import { PopoverModule } from 'primeng/popover';
+import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
+import { ItemMasterDto } from '../../../item-master/models/item-master.model';
+
+@Component({
+  selector: 'app-bom-authoring',
+  standalone: true,
+  imports: [
+    CommonModule, AsyncPipe, FormsModule, RouterLink,
+    TableModule, ButtonModule, TagModule, DialogModule, MessageModule,
+    ToastModule, ConfirmDialogModule, PopoverModule,
+    BreadcrumbComponent, StatusBadgeComponent,
+    AddBomLineFormComponent, BomHeaderEditDialogComponent, ColumnPickerComponent,
+  ],
+  providers: [
+    MessageService,
+    ConfirmationService,
+    {
+      provide: GridPreferenceService,
+      useFactory: () => new GridPreferenceService('BOM_LINE', DEFAULT_BOM_LINE_COLUMNS),
+    },
+  ],
+  template: `
+    <p-toast />
+    <p-confirmDialog />
+
+    <div class="ba">
+      <app-breadcrumb [crumbs]="breadcrumbs" />
+
+      @if (bom) {
+        <!-- Header card -->
+        <div class="ba__header-card">
+          <div class="ba__header-left">
+            <div class="ba__parent-link">
+              @if (parentItem) {
+                <a [routerLink]="['/item-master', bom.parentItemId]" class="ba__link">
+                  {{ parentItem.partNumber }} Rev {{ parentItem.revision }}
+                </a>
+              }
+              <button class="ba__edit-btn" (click)="showHeaderEdit = true"
+                      title="Edit BOM header">✏</button>
+            </div>
+            <div class="ba__meta">
+              <span class="ba__revision">Rev {{ bom.bomRevision }}</span>
+              <app-status-badge [status]="bom.status" />
+              @if (bom.description) {
+                <span class="ba__desc">{{ bom.description }}</span>
+              }
+            </div>
+          </div>
+          <div class="ba__header-right">
+            @if (bom.ecoId) {
+              <span class="ba__eco">ECO: {{ bom.ecoId }}</span>
+            } @else {
+              <span class="ba__eco ba__eco--none">No active ECO</span>
+            }
+          </div>
+        </div>
+
+        <!-- Toolbar -->
+        @if (bom.status === 'DRAFT') {
+          <div class="ba__toolbar">
+            <p-button label="+ Add Line" severity="primary" size="small"
+                      (onClick)="addingLine = !addingLine" />
+            <p-button label="Save Draft" severity="secondary" size="small"
+                      [loading]="saving" (onClick)="saveDraft()" />
+            <p-button label="Submit for Review" severity="success" size="small"
+                      [loading]="releasing" (onClick)="confirmRelease()" />
+            <p-button label="← Explosion View" [text]="true" size="small"
+                      (onClick)="goToExplosion()" />
+            <span class="ba__spacer"></span>
+            <p-button icon="pi pi-sliders-h" [rounded]="true" [text]="true"
+                      aria-label="Customise columns"
+                      (onClick)="colPickerPanel.toggle($event)" />
+          </div>
+        } @else {
+          <div class="ba__toolbar">
+            <p-button label="← Explosion View" [text]="true" size="small"
+                      (onClick)="goToExplosion()" />
+          </div>
+        }
+
+        <p-popover #colPickerPanel>
+          <app-column-picker
+            [columns]="(gridPreference.activeColumns$ | async) ?? []"
+            (applied)="onColumnsApplied($event); colPickerPanel.hide()"
+            (reset)="gridPreference.reset(); colPickerPanel.hide()"
+          />
+        </p-popover>
+
+        <!-- Add line form -->
+        @if (addingLine) {
+          <app-add-bom-line-form
+            [bomId]="bom.id"
+            (saved)="onLineSaved($event)"
+            (cancelled)="addingLine = false"
+          />
+        }
+
+        <!-- Lines table -->
+        <p-table [value]="lines"
+                 [columns]="(gridPreference.activeColumns$ | async) ?? []"
+                 dataKey="id"
+                 styleClass="p-datatable-gridlines p-datatable-sm">
+          <ng-template pTemplate="header" let-columns>
+            <tr>
+              @for (col of visibleCols(columns); track col.key) {
+                <th>{{ col.label }}</th>
+              }
+              @if (bom.status === 'DRAFT') {
+                <th style="width:6rem">Actions</th>
+              }
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="body" let-line let-ri="rowIndex" let-columns="columns">
+            <tr>
+              @for (col of visibleCols(columns); track col.key) {
+                <td>
+                  @switch (col.key) {
+                    @case ('seq') { {{ ri + 1 }} }
+                    @case ('effectiveFromDate') {
+                      {{ line.effectiveFromDate ?? '—' }}
+                      @if (line.effectivityMethod === 'UNIT') {
+                        <span class="ba__unit-badge">(Unit)</span>
+                      }
+                    }
+                    @case ('effectiveToDate') {
+                      {{ line.effectiveToDate ?? '—' }}
+                      @if (line.effectivityMethod === 'UNIT') {
+                        <span class="ba__unit-badge">(Unit)</span>
+                      }
+                    }
+                    @default { {{ lineValue(line, col.key) }} }
+                  }
+                </td>
+              }
+              @if (bom.status === 'DRAFT') {
+                <td>
+                  <p-button icon="pi pi-trash" [text]="true" severity="danger" size="small"
+                            (onClick)="removeLine(line)" />
+                </td>
+              }
+            </tr>
+          </ng-template>
+
+          <ng-template pTemplate="emptymessage" let-columns>
+            <tr>
+              <td [attr.colspan]="visibleColCount(columns) + (bom.status === 'DRAFT' ? 1 : 0)">
+                No lines added yet.
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+
+        <!-- Status bar -->
+        <div class="ba__statusbar" [class.ba__statusbar--dirty]="isDirty">
+          <span>{{ lines.length }} component{{ lines.length !== 1 ? 's' : '' }}</span>
+          @if (isDirty) {
+            <span class="ba__dirty-msg">· Unsaved changes — click Save Draft to retain</span>
+          }
+        </div>
+      }
+
+      <!-- BOM Header Edit dialog -->
+      <app-bom-header-edit-dialog
+        [visible]="showHeaderEdit"
+        [bom]="bom"
+        (visibleChange)="showHeaderEdit = $event"
+        (saved)="onHeaderSaved($event)"
+      />
+    </div>
+  `,
+  styles: [`
+    .ba { padding: 1.25rem; }
+
+    .ba__header-card {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      background: var(--p-surface-50); border: 1px solid var(--p-surface-border);
+      border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem;
+    }
+    .ba__header-left { display: flex; flex-direction: column; gap: 0.4rem; }
+    .ba__parent-link { display: flex; align-items: center; gap: 0.5rem; }
+    .ba__link { color: var(--p-primary-color); text-decoration: none; font-weight: 600; }
+    .ba__link:hover { text-decoration: underline; }
+    .ba__edit-btn {
+      background: none; border: none; cursor: pointer; font-size: 0.875rem;
+      color: var(--p-text-muted-color); padding: 0.1rem 0.3rem;
+    }
+    .ba__meta { display: flex; align-items: center; gap: 0.5rem; }
+    .ba__revision { font-size: 0.875rem; color: var(--p-text-muted-color); }
+    .ba__desc { font-size: 0.8125rem; color: var(--p-text-muted-color); }
+    .ba__eco { font-size: 0.8125rem; color: var(--p-text-muted-color); }
+    .ba__eco--none { font-style: italic; }
+
+    .ba__toolbar {
+      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;
+    }
+    .ba__spacer { flex: 1; }
+
+    .ba__unit-badge {
+      font-size: 0.7rem; color: var(--p-text-muted-color); display: block;
+    }
+
+    .ba__statusbar {
+      margin-top: 0.5rem; padding: 0.4rem 0.75rem; font-size: 0.8125rem;
+      color: var(--p-text-muted-color); border-top: 1px solid var(--p-surface-border);
+    }
+    .ba__statusbar--dirty { color: #F59E0B; }
+    .ba__dirty-msg { margin-left: 0.25rem; }
+  `],
+})
+export class BomAuthoringComponent implements OnInit {
+  private readonly bomApi = inject(BomApiService);
+  private readonly itemApi = inject(ItemMasterApiService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly messageService = inject(MessageService);
+  private readonly confirmationService = inject(ConfirmationService);
+  readonly gridPreference = inject(GridPreferenceService);
+
+  bomId = '';
+  bom: BomDto | null = null;
+  parentItem: ItemMasterDto | null = null;
+  lines: BomLineDto[] = [];
+  loading = false;
+  saving = false;
+  releasing = false;
+  addingLine = false;
+  showHeaderEdit = false;
+  isDirty = false;
+
+  breadcrumbs = [
+    { label: 'Materials' },
+    { label: 'Item Master', route: ['/item-master'] },
+    { label: 'BOMs' },
+    { label: 'Authoring' },
+  ];
+
+  ngOnInit(): void {
+    this.bomId = this.route.snapshot.paramMap.get('bomId') ?? '';
+    this.gridPreference.load();
+    this.loadBom();
+  }
+
+  loadBom(): void {
+    this.loading = true;
+    this.bomApi.getById(this.bomId).subscribe(bom => {
+      this.bom = bom;
+      this.loading = false;
+      this.itemApi.getById(bom.parentItemId).subscribe(item => {
+        this.parentItem = item;
+        this.breadcrumbs = [
+          { label: 'Materials' },
+          { label: 'Item Master', route: ['/item-master'] },
+          { label: item.partNumber, route: ['/item-master', bom.parentItemId, 'boms'] },
+          { label: 'Rev ' + bom.bomRevision },
+        ];
+        this.cdr.detectChanges();
+      });
+      this.loadLines();
+    });
+  }
+
+  loadLines(): void {
+    this.bomApi.getLines(this.bomId).subscribe(lines => {
+      this.lines = lines;
+      this.isDirty = false;
+      this.cdr.detectChanges();
+    });
+  }
+
+  onLineSaved(line: BomLineDto): void {
+    this.lines = [...this.lines, line];
+    this.isDirty = true;
+    this.addingLine = false;
+    this.cdr.detectChanges();
+  }
+
+  removeLine(line: BomLineDto): void {
+    this.bomApi.removeLine(this.bomId, line.id).subscribe({
+      next: () => {
+        this.lines = this.lines.filter(l => l.id !== line.id);
+        this.isDirty = true;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.messageService.add({ severity: 'error', summary: 'Failed to remove line' });
+      },
+    });
+  }
+
+  saveDraft(): void {
+    this.saving = true;
+    this.bomApi.patchHeader(this.bomId, {}).subscribe({
+      next: () => {
+        this.saving = false;
+        this.isDirty = false;
+        this.messageService.add({ severity: 'success', summary: 'Draft saved' });
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.saving = false;
+        this.messageService.add({ severity: 'error', summary: 'Save failed' });
+      },
+    });
+  }
+
+  confirmRelease(): void {
+    this.confirmationService.confirm({
+      message: `Release BOM Rev ${this.bom?.bomRevision}? This cannot be undone.`,
+      accept: () => this.releaseBom(),
+    });
+  }
+
+  releaseBom(): void {
+    this.releasing = true;
+    this.bomApi.release(this.bomId).subscribe({
+      next: bom => {
+        this.bom = bom;
+        this.releasing = false;
+        this.isDirty = false;
+        this.messageService.add({ severity: 'success', summary: 'BOM released' });
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.releasing = false;
+        this.messageService.add({ severity: 'error', summary: 'Release failed' });
+      },
+    });
+  }
+
+  goToExplosion(): void {
+    this.router.navigate(['/boms', this.bomId, 'explosion']);
+  }
+
+  onHeaderSaved(bom: BomDto): void {
+    this.bom = bom;
+    this.showHeaderEdit = false;
+    this.messageService.add({ severity: 'success', summary: 'BOM header updated' });
+    this.cdr.detectChanges();
+  }
+
+  onColumnsApplied(columns: ColumnDef[]): void {
+    this.gridPreference.apply(columns);
+  }
+
+  visibleCols(columns: ColumnDef[]): ColumnDef[] {
+    return columns.filter(c => c.visible).sort((a, b) => a.order - b.order);
+  }
+
+  visibleColCount(columns: ColumnDef[]): number {
+    return this.visibleCols(columns).length;
+  }
+
+  lineValue(line: BomLineDto, key: string): string | number {
+    const val = (line as unknown as Record<string, unknown>)[key];
+    return val != null ? String(val) : '—';
+  }
+}

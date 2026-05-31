@@ -366,6 +366,11 @@ export class ItemMasterListComponent implements OnInit {
         command: () => this.router.navigate(['/item-master/new'], { queryParams: { cloneFrom: item.id } }),
       },
       {
+        label: 'BOMs',
+        icon: 'pi pi-sitemap',
+        command: () => this.router.navigate(['/item-master', item.id, 'boms']),
+      },
+      {
         label: 'Obsolete',
         icon: 'pi pi-ban',
         command: () => this.obsoleteItem(item.id),
