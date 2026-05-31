@@ -16,6 +16,20 @@
 
 <!-- Add new errors below this line. Oldest at the top, newest at the bottom. -->
 
+## ERR-MES-057 — Adding columns to @Audited entity without updating _aud table breaks schema-validation
+**Date:** 2026-05-31  **Category:** Backend — Hibernate Envers  **Status:** Promoted 2026-05-31
+**Symptom:** All integration tests failed at context startup with `SchemaManagementException: Schema-validation: missing column [bom_type] in table [work_order.bill_of_materials_aud]`. V013 added five new columns to `bill_of_materials` but left `bill_of_materials_aud` unchanged.
+**Root cause:** `BillOfMaterials` is `@Audited`. Hibernate Envers validates at startup that every column on the entity also exists in the `_aud` shadow table. V013 updated the main table and the entity/DTO correctly but did not update the audit table. Pre-PR retrospective spot-check against ERR-MES-023 (Envers category) was skipped.
+**Fix applied:** Created V014 migration adding the same five columns to `bill_of_materials_aud`.
+**Rule:** Whenever adding columns to a `@Audited` entity, always include an `ALTER TABLE <entity>_aud ADD COLUMN ...` for each new column in the same migration (or an immediately-following one). Envers schema-validation at startup enforces column parity between the main table and its `_aud` counterpart. Spot-check this via the ERR-MES-023 (Envers) category in the retrospective gate.
+
+## ERR-MES-058 — Pre-PR retrospective spot-check skipped; Envers gap not caught until CI
+**Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
+**Symptom:** PR #20 failed CI on the first run due to the V014 miss (ERR-MES-057). The CLAUDE.md pre-PR checklist requires identifying relevant error categories and spot-checking each against code written. This step was not performed before `gh pr create`.
+**Root cause:** The retrospective gate was treated as a governance formality to complete after raising the PR rather than a technical gate that must pass before it. Skipping it caused a known Envers pattern (ERR-MES-023 category) to be missed.
+**Fix applied:** V014 pushed; PR re-ran CI.
+**Rule:** The pre-PR retrospective is a technical gate, not a documentation task. Before every `gh pr create`: (1) list the error categories touched by this PR's changes (JPA, Envers, Security, Frontend, etc.), (2) read the corresponding index entries, (3) confirm the code does not repeat any listed pattern. Only then raise the PR. A CI failure caused by a lesson already in the error log is a process violation, not just a bug.
+
 ## ERR-MES-055 — tasks.md stale markers cannot distinguish "planned but skipped" from "done but unchecked"
 **Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
 **Symptom:** Backend tasks T193–T196 appeared in the PR 2 task range in `tasks.md`. PR 2 was recorded as merged (PR #11/#17) in `HANDOVER.md`. Agent treated the backend dependency as satisfied without verifying the code. At implementation time, `ModuleKey.java` was missing `BOM_LINE`/`BOM_HEADER`, V013 migration did not exist, and several BomController/EcoController endpoints were absent.
