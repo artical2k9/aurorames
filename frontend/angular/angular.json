@@ -67,7 +67,12 @@
               "buildTarget": "mes-frontend:build:development"
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "development",
+          "options": {
+            "allowedHosts": [
+              "host.docker.internal"
+            ]
+          }
         },
         "test": {
           "builder": "@angular/build:unit-test"

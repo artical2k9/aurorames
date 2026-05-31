@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, CdkDropList, CdkDrag, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -64,7 +64,7 @@ import { ColumnDef } from '../../models/column-def.model';
     :host ::ng-deep .column-picker__udf-tag .p-tag { background: #BFDBFE; color: #1E40AF; }
   `],
 })
-export class ColumnPickerComponent implements OnInit {
+export class ColumnPickerComponent implements OnChanges {
   @Input() columns: ColumnDef[] = [];
   @Output() applied = new EventEmitter<ColumnDef[]>();
   @Output() reset = new EventEmitter<void>();
@@ -72,9 +72,11 @@ export class ColumnPickerComponent implements OnInit {
   standardColumns: ColumnDef[] = [];
   udfColumns: ColumnDef[] = [];
 
-  ngOnInit(): void {
-    this.standardColumns = this.columns.filter(c => !c.udf).map(c => ({ ...c }));
-    this.udfColumns = this.columns.filter(c => c.udf).map(c => ({ ...c }));
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['columns']) {
+      this.standardColumns = this.columns.filter(c => !c.udf).map(c => ({ ...c }));
+      this.udfColumns = this.columns.filter(c => c.udf).map(c => ({ ...c }));
+    }
   }
 
   drop(event: CdkDragDrop<ColumnDef[]>, isUdf: boolean): void {
