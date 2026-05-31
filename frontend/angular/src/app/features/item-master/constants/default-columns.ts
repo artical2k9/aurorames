@@ -9,5 +9,7 @@ export const DEFAULT_ITEM_MASTER_COLUMNS: ColumnDef[] = [
   { key: 'unitOfMeasure', label: 'Unit of Measure', visible: true,  order: 5 },
   { key: 'status',        label: 'Status',          visible: true,  order: 6 },
   { key: 'cageCode',      label: 'CAGE Code',       visible: false, order: 7 },
-  { key: 'shelfLifeDays', label: 'Shelf Life Days', visible: false, order: 8 },
+  { key: 'shelfLifeDays',         label: 'Shelf Life Days',       visible: false, order: 8 },
+  { key: 'counterfeitRiskLevel', label: 'Counterfeit Risk Level', visible: false, order: 9,  udf: true },
+  { key: 'stepPartRef',          label: 'STEP Part Reference',    visible: false, order: 10, udf: true },
 ];

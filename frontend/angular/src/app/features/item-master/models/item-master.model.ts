@@ -25,6 +25,7 @@ export interface ItemMasterDto {
   status: ItemStatus;
   shelfLifeControlled: boolean;
   shelfLifeDays?: number;
+  stepPartRef?: string;
   counterfeitRiskLevel?: CounterfeitRiskLevel;
   verificationRequired: boolean;
   approvedSuppliers?: string[];
@@ -61,6 +62,14 @@ export interface CreateItemMasterRequest {
   classification: Classification;
   makeBuyCode: MakeBuyCode;
   traceabilityMethod: TraceabilityMethod;
+  cageCode?: string;
+  shelfLifeControlled?: boolean;
+  shelfLifeDays?: number;
+  counterfeitRiskLevel?: CounterfeitRiskLevel;
+  verificationRequired?: boolean;
+  approvedSuppliers?: string[];
+  stepPartRef?: string;
+  customFields?: Record<string, unknown>;
 }
 
 export interface PatchItemMasterRequest {
@@ -69,11 +78,13 @@ export interface PatchItemMasterRequest {
   cageCode?: string;
   classification?: Classification;
   makeBuyCode?: MakeBuyCode;
+  traceabilityMethod?: TraceabilityMethod;
   status?: ItemStatus;
   shelfLifeControlled?: boolean;
   shelfLifeDays?: number | null;
   counterfeitRiskLevel?: CounterfeitRiskLevel | null;
   verificationRequired?: boolean;
   approvedSuppliers?: string[];
+  stepPartRef?: string;
   customFields?: Record<string, unknown>;
 }

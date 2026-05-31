@@ -131,7 +131,7 @@
 | AS9102 (FAI) | [Yes / No / Partial] | |
 | AS9131 (NCM) | [Yes / No / Partial] | |
 | NIST SP 800-171 / CMMC | [Yes / No / Partial] | |
-| 21 CFR Part 11 / Annex 11 | [Yes / No / Partial] | |
+| 21 CFR Part 11 / Annex 11 | [Yes / No / Partial — aerospace-only features: mark "No" with one-line justification; any module handling FDA-regulated data: mark "Yes" or "Partial"] | |
 | ISA-95 | [Yes / No / Partial] | |
 | [Other applicable standards] | | |
 

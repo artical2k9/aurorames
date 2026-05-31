@@ -147,7 +147,8 @@ frontend/angular/src/app/
 | `.github/workflows/publish.yml` | Add `work-order-service` to image build matrix |
 | `sonar-project.properties` | Add `services/work-order-service/src/main/java` and `libs/mes-udf-lib/src/main/java` to `sonar.sources` |
 | `keycloak/mes-realm.json` | No change — roles/privileges managed via Flyway + PrivilegeRegistryClient |
-| `services/work-order-service/src/main/resources/db/migration/V013__bom_header_edit_fields.sql` | ADD COLUMNS reason_for_revision, bom_type, effectivity_type, custom_fields to bill_of_materials (PR 2) |
+| `services/work-order-service/src/main/resources/db/migration/V013__bom_header_edit_fields.sql` | ADD COLUMNS reason_for_revision, production_line, bom_type, effectivity_type, custom_fields to bill_of_materials + aud mirrors (PR 2) |
+| `services/work-order-service/src/main/resources/db/migration/V014__seed_quality_engineer_role.sql` | INSERT QUALITY_ENGINEER role + item-master:as5553:manage privilege + role_privilege grants (PR 4) |
 | `frontend/angular/src/app/app.routes.ts` | Add `/item-master/new`, `/item-master/:id/edit` routes (PR 6b) |
 
 ---
@@ -184,7 +185,9 @@ See [research.md](research.md) for all decisions. Key outcomes:
 | V010 | ALTER TABLE item_master make cage_code nullable correction | ✅ Merged (PR 1) |
 | V011 | ALTER audit tables — add Envers REVEND columns | ✅ Merged (PR 1) |
 | V012 | CREATE TABLE eco_output_bom (ECO → BOM output relationship) | ✅ Merged (PR 1) |
-| V013 | ALTER TABLE bill_of_materials ADD COLUMNS: reason_for_revision VARCHAR(500), bom_type VARCHAR(50), effectivity_type VARCHAR(10), custom_fields JSONB — required for BOM Header Edit modal (FR-036a); scope: PR 2 | Planned (PR 2) |
+| V013 | ALTER TABLE bill_of_materials ADD COLUMNS: reason_for_revision VARCHAR(500), **production_line VARCHAR(200)**, bom_type VARCHAR(50), effectivity_type VARCHAR(10), custom_fields JSONB; mirror all five columns in bill_of_materials_aud — required for BOM Header Edit modal (FR-036a); scope: PR 2 | Planned (PR 2) |
+| V014 | INSERT INTO iam.role for QUALITY_ENGINEER; INSERT INTO iam.privilege for `item-master:as5553:manage`; INSERT INTO iam.role_privilege granting `item-master:records:view` + `item-master:as5553:manage` to QUALITY_ENGINEER — required by FR-016a; scope: PR 4 | Planned (PR 4) |
+| V015 | `CREATE SEQUENCE work_order.eco_number_seq START WITH 1000 INCREMENT BY 1`; `ALTER TABLE work_order.engineering_change_order ALTER COLUMN eco_number SET DEFAULT nextval('work_order.eco_number_seq')` — V004 created the column with UNIQUE constraint but no generator; this migration wires the auto-increment sequence required by `EcoService.create()` (T083); scope: PR 3 | Planned (PR 3) |
 
 ### Privilege Registration
 
@@ -197,10 +200,22 @@ See [research.md](research.md) for all decisions. Key outcomes:
     { "privilegeKey": "item-master:records:manage", "description": "Create and update item master records" },
     { "privilegeKey": "item-master:bom:manage",     "description": "Author and release BOM revisions" },
     { "privilegeKey": "item-master:eco:manage",     "description": "Create and approve ECOs" },
-    { "privilegeKey": "item-master:udf:manage",     "description": "Define and delete UDF fields" }
+    { "privilegeKey": "item-master:udf:manage",     "description": "Define and delete UDF fields" },
+    { "privilegeKey": "item-master:as5553:manage",  "description": "Record AS5553 counterfeit-risk fields on item master records" }
   ]
 }
 ```
+
+**Role–Privilege Matrix** (seeded via Flyway):
+
+| Privilege | SYSTEM_ADMIN | ENGINEER | QUALITY_ENGINEER |
+|---|---|---|---|
+| `item-master:records:view` | ✅ | ✅ | ✅ |
+| `item-master:records:manage` | ✅ | ✅ | — |
+| `item-master:bom:manage` | ✅ | ✅ | — |
+| `item-master:eco:manage` | ✅ | ✅ | — |
+| `item-master:udf:manage` | ✅ | — | — |
+| `item-master:as5553:manage` | ✅ | — | ✅ |
 
 ### Key Service-Layer Rules
 
@@ -211,6 +226,8 @@ See [research.md](research.md) for all decisions. Key outcomes:
 - **ECO immutability**: service rejects mutations to ECOs in APPROVED or IMPLEMENTED state (HTTP 409)
 - **Concurrent ECO warning**: on ECO create, service checks for open ECOs on the same `affectedItemIds`; sets `concurrentEcoWarning = true` in response (non-blocking)
 - **UDF validation**: `UdfValidator.validate(moduleKey, orgId, customFields)` is called on every item master create/patch; fails fast with 422 listing all missing/invalid fields
+- **AS5553 per-field privilege guard**: `ItemMasterService.patch()` inspects the request body before applying updates. If the body contains any AS5553 field (`counterfeitRiskLevel`, `approvedSuppliers`, `verificationRequired`), the service checks `item-master:as5553:manage` and returns HTTP 403 if absent. If the body contains only non-AS5553 fields, only `item-master:records:manage` is checked. Mixed requests (AS5553 + non-AS5553 fields) require the caller to hold both privileges; if either is absent the entire request is rejected with HTTP 403 — no partial update is applied. The QUALITY_ENGINEER role holds `item-master:as5553:manage` + `item-master:records:view` but NOT `item-master:records:manage`
+- **ModuleKey enum scope**: `mes-udf-lib` `ModuleKey` enum contains 7 values: `ITEM_MASTER`, `BOM_LINE`, `BOM_HEADER`, `WORK_ORDER`, `ROUTING`, `RECEIVING`, `INVENTORY`; `BOM_LINE` and `BOM_HEADER` were added in Phase 4b (PR 2) to support FR-036 and FR-036a UDF fields respectively
 - **Clone Item**: `POST /api/v1/item-master/{id}/clone` copies all fields from the source record to a new entity, clearing `partNumber`, `revision`, `id`, and audit fields; the cloned record is saved with status ACTIVE; returns 201 with Location header; requires `item-master:records:manage`; no UDF values are cloned (custom_fields = null on new record)
 - **BOM header PATCH**: `PATCH /api/v1/boms/{id}` accepts partial updates to `description`, `reasonForRevision`, `productionLine`, `bomType`, `effectivityType`, `customFields`; all fields optional; allowed only when BOM status is DRAFT (HTTP 409 if RELEASED/OBSOLETE); changing `effectivityType` is blocked if any BOM lines already have effectivity values set (HTTP 422 with message)
 - **BOM explosion depth limit**: `GET /api/v1/boms/{id}/explosion` accepts `maxDepth` query parameter (integer, 1–50); defaults to `mes.bom.max-depth` property (50); backend enforces this limit in the recursive CTE depth clause

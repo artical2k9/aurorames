@@ -5,27 +5,24 @@ import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { SkeletonModule } from 'primeng/skeleton';
-import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
 import { UdfApiService, UdfFieldDefinition } from '../../services/udf-api.service';
 import { ItemMasterDto, Classification } from '../../models/item-master.model';
-import { StatusBadgeComponent } from '../../../../shared/ui';
-import { ItemMasterFormComponent } from '../../components/item-master-form/item-master-form.component';
+import { StatusBadgeComponent, BreadcrumbComponent } from '../../../../shared/ui';
 
 @Component({
   selector: 'app-item-master-detail',
   standalone: true,
   imports: [
     CommonModule,
-    CardModule, ButtonModule, TagModule, SkeletonModule, ToastModule,
-    StatusBadgeComponent, ItemMasterFormComponent,
+    CardModule, ButtonModule, TagModule, SkeletonModule,
+    StatusBadgeComponent, BreadcrumbComponent,
   ],
-  providers: [MessageService],
   template: `
-    <p-toast />
 
     <div class="imd">
+
+      <app-breadcrumb [crumbs]="breadcrumbs" />
 
       <!-- Back + actions bar -->
       <div class="imd__topbar">
@@ -195,18 +192,6 @@ import { ItemMasterFormComponent } from '../../components/item-master-form/item-
       }
 
     </div>
-
-    <!-- Edit dialog -->
-    @if (showEditDialog) {
-      @defer (on immediate) {
-        <app-item-master-form
-          [visible]="showEditDialog"
-          [itemId]="itemId"
-          (visibleChange)="showEditDialog = $event"
-          (saved)="onItemSaved($event)"
-        />
-      }
-    }
   `,
   styles: [`
     .imd { padding: 1.25rem; }
@@ -263,13 +248,16 @@ export class ItemMasterDetailComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly api = inject(ItemMasterApiService);
   private readonly udfApi = inject(UdfApiService);
-  private readonly messageService = inject(MessageService);
-
   item: ItemMasterDto | null = null;
   udfFields: UdfFieldDefinition[] = [];
   loading = true;
-  showEditDialog = false;
   itemId!: string;
+
+  breadcrumbs: { label: string; route?: string[] }[] = [
+    { label: 'Materials' },
+    { label: 'Item Master', route: ['/item-master'] },
+    { label: 'Detail' },
+  ];
 
   ngOnInit(): void {
     this.itemId = this.route.snapshot.paramMap.get('id')!;
@@ -282,7 +270,15 @@ export class ItemMasterDetailComponent implements OnInit {
   private loadItem(): void {
     this.loading = true;
     this.api.getById(this.itemId).subscribe({
-      next: item => { this.item = item; this.loading = false; },
+      next: item => {
+        this.item = item;
+        this.breadcrumbs = [
+          { label: 'Materials' },
+          { label: 'Item Master', route: ['/item-master'] },
+          { label: `${item.partNumber} Rev ${item.revision}` },
+        ];
+        this.loading = false;
+      },
       error: () => { this.item = null; this.loading = false; },
     });
   }
@@ -292,12 +288,7 @@ export class ItemMasterDetailComponent implements OnInit {
   }
 
   openEdit(): void {
-    this.showEditDialog = true;
-  }
-
-  onItemSaved(item: ItemMasterDto): void {
-    this.item = item;
-    this.messageService.add({ severity: 'success', summary: 'Item saved', detail: item.partNumber });
+    this.router.navigate(['/item-master', this.itemId, 'edit']);
   }
 
   udfDisplayValue(field: UdfFieldDefinition): string {
