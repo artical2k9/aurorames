@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TableModule, TableLazyLoadEvent } from 'primeng/table';
@@ -96,6 +96,7 @@ import { ItemMasterDto, Classification, ItemStatus } from '../../models/item-mas
 })
 export class ItemMasterListComponent implements OnInit {
   private readonly api = inject(ItemMasterApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
   readonly gridPreference = inject(GridPreferenceService);
 
   rows: ItemMasterDto[] = [];
@@ -176,8 +177,9 @@ export class ItemMasterListComponent implements OnInit {
         this.rows = page.content;
         this.totalRecords = page.totalElements;
         this.loading = false;
+        this.cdr.detectChanges();
       },
-      error: () => { this.loading = false; },
+      error: () => { this.loading = false; this.cdr.detectChanges(); },
     });
   }
 }
