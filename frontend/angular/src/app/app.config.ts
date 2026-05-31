@@ -35,7 +35,7 @@ const AuroraPreset = definePreset(Aura, {
 function initializeOAuth(oauthService: OAuthService) {
   return () => {
     oauthService.configure(authConfig);
-    return oauthService.loadDiscoveryDocumentAndTryLogin();
+    return oauthService.loadDiscoveryDocumentAndTryLogin().catch(() => false);
   };
 }
 
