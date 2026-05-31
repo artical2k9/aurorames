@@ -41,4 +41,8 @@ export class ItemMasterApiService {
   obsolete(id: string): Observable<ItemMasterDto> {
     return this.http.post<ItemMasterDto>(`${this.base}/${id}/obsolete`, {});
   }
+
+  clone(id: string): Observable<ItemMasterDto> {
+    return this.http.post<ItemMasterDto>(`${this.base}/${id}/clone`, {});
+  }
 }
