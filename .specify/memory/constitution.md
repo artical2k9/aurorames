@@ -1,6 +1,26 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.2.0 → 1.2.1 (PATCH — §IV 21 CFR Part 11 scope clarification)
+
+Amendment 2026-05-31:
+  - §IV Compliance by Design: replaced blanket "applies to all quality records"
+    statement for 21 CFR Part 11 / Annex 11 with an industry-scoped clarification.
+    Aerospace/defence deployments governed by AS9100D, CMMC, and related standards
+    are explicitly carved out; FDA-regulated contexts remain covered.
+  - Rationale: speckit-analyze D1 finding identified a constitution conflict with
+    MES-8 spec.md Compliance References table (which correctly marks 21 CFR Part 11
+    as "No" for an aerospace-only MES). The principle intent is unchanged; the
+    amendment adds deployment-context precision. Approved by project owner
+    (MES-8 session 2026-05-31).
+  - No principles added or removed; Technology Stack section unchanged.
+
+Templates updated:
+  ✅ .specify/memory/constitution.md — this file
+  ✅ .specify/templates/spec-template.md — 21 CFR Part 11 compliance row updated
+     with inline applicability guidance for spec authors
+
+---
 Version change: 1.1.0 → 1.2.0 (MINOR — Angular version corrected 19→21)
 
 Amendment 2026-05-30:
@@ -129,8 +149,18 @@ post-hoc audit activity.
   applicable standards.
 - Changes that affect compliance scope require explicit owner sign-off separate
   from routine code review.
-- 21 CFR Part 11 / Annex 11 requirements (electronic records and electronic
-  signatures) apply to **all** data that serves as an official quality record.
+- 21 CFR Part 11 / EU Annex 11 requirements (electronic records and electronic
+  signatures) apply to **all** data that serves as an official quality record
+  **in FDA-regulated deployment contexts** (pharmaceutical, biotech, medical
+  device manufacture). For Aurora MES deployments serving exclusively aerospace
+  and defence customers under AS9100D, AS9102, and CMMC, 21 CFR Part 11
+  certification is NOT required; equivalent electronic record integrity is
+  mandated by AS9100D §7.5 (documented information control), CMMC access
+  controls, and the platform's Keycloak-bound OIDC actor identity combined with
+  Hibernate Envers immutable audit trail. Teams MUST explicitly document the
+  applicability determination in each feature spec's "Compliance References"
+  section: mark "No" with a one-line justification for aerospace-only features;
+  mark "Yes" or "Partial" for any module handling FDA-regulated data.
 
 ### V. Full System Auditability
 
@@ -476,4 +506,4 @@ Aurora MES/                          ← root Gradle project
   justification in the Complexity Tracking section of the plan.
 - This constitution supersedes all other informal conventions and practices.
 
-**Version**: 1.2.0 | **Ratified**: 2026-05-19 | **Last Amended**: 2026-05-30
+**Version**: 1.2.1 | **Ratified**: 2026-05-19 | **Last Amended**: 2026-05-31
