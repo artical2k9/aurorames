@@ -36,6 +36,10 @@ export class BomApiService {
     return this.http.post<BomLineDto>(`${this.base}/${bomId}/lines`, req);
   }
 
+  patchLine(bomId: string, lineId: string, req: { quantity?: number; referenceDesignators?: string }): Observable<BomLineDto> {
+    return this.http.patch<BomLineDto>(`${this.base}/${bomId}/lines/${lineId}`, req);
+  }
+
   removeLine(bomId: string, lineId: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/${bomId}/lines/${lineId}`);
   }

@@ -49,6 +49,8 @@ import { BomDto, PatchBomHeaderRequest } from '../../models/bom.model';
             <input pInputText formControlName="productionLine" placeholder="e.g. LINE-A" />
           </div>
 
+          <div class="bhd__section-header">BOM HEADER PROPERTIES</div>
+
           <div class="bhd__field">
             <label>BOM Type</label>
             <p-select formControlName="bomType" [options]="bomTypeOptions"
@@ -81,7 +83,7 @@ import { BomDto, PatchBomHeaderRequest } from '../../models/bom.model';
       <ng-template pTemplate="footer">
         <p-button label="Cancel" severity="secondary" size="small"
                   (onClick)="close()" />
-        <p-button label="Save" severity="primary" size="small"
+        <p-button label="Save Changes" severity="primary" size="small"
                   [loading]="saving" (onClick)="save()" />
       </ng-template>
     </p-dialog>
@@ -90,6 +92,11 @@ import { BomDto, PatchBomHeaderRequest } from '../../models/bom.model';
     .bhd__form { display: flex; flex-direction: column; gap: 0.75rem; }
     .bhd__field { display: flex; flex-direction: column; gap: 0.25rem; }
     .bhd__readonly { font-size: 0.8125rem; color: var(--p-text-muted-color); }
+    .bhd__section-header {
+      font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--p-primary-color);
+      margin: 0.5rem 0 0.25rem;
+    }
     .bhd__udf-title { margin: 0.5rem 0 0.25rem; font-size: 0.875rem; font-weight: 600; }
   `],
 })

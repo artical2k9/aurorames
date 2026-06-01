@@ -7,7 +7,6 @@ import { Router } from '@angular/router';
 import { TableModule, TableLazyLoadEvent } from 'primeng/table';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
-import { SelectButtonModule } from 'primeng/selectbutton';
 import { ButtonModule } from 'primeng/button';
 import { PopoverModule } from 'primeng/popover';
 import { TagModule } from 'primeng/tag';
@@ -29,7 +28,7 @@ import {
   standalone: true,
   imports: [
     CommonModule, AsyncPipe, FormsModule,
-    TableModule, InputTextModule, SelectModule, SelectButtonModule,
+    TableModule, InputTextModule, SelectModule,
     ButtonModule, PopoverModule, TagModule, MenuModule, ToastModule,
     ColumnPickerComponent, StatusBadgeComponent, BreadcrumbComponent,
     ClassificationLabelPipe,
@@ -71,9 +70,10 @@ import {
                   placeholder="Status" [showClear]="true"
                   (onChange)="reload()" styleClass="filter-select" />
 
-        <p-selectbutton [options]="makeBuyOptions" [(ngModel)]="selectedMakeBuy"
-                        optionLabel="label" optionValue="value"
-                        (onChange)="reload()" styleClass="iml__makebuy" />
+        <p-select [options]="makeBuyOptions" [(ngModel)]="selectedMakeBuy"
+                  optionLabel="label" optionValue="value"
+                  placeholder="Make / Buy" [showClear]="true"
+                  (onChange)="reload()" styleClass="filter-select" />
 
         <p-button label="Clear" severity="secondary" size="small" (onClick)="clearFilters()" />
 
@@ -85,7 +85,16 @@ import {
       @if (selectedItems.length > 0) {
         <div class="iml__selection-bar">
           <span>{{ selectedItems.length }} item{{ selectedItems.length > 1 ? 's' : '' }} selected</span>
-          <p-button label="Obsolete Selected" severity="danger" size="small"
+          <p-button label="View Detail" severity="secondary" size="small"
+                    [disabled]="selectedItems.length !== 1"
+                    (onClick)="navigateToDetail(selectedItems[0].id)" />
+          <p-button label="Edit" severity="secondary" size="small"
+                    [disabled]="selectedItems.length !== 1"
+                    (onClick)="navigateToEdit(selectedItems[0].id)" />
+          <p-button label="Clone Item" severity="secondary" size="small"
+                    [disabled]="selectedItems.length !== 1"
+                    (onClick)="cloneSelected()" />
+          <p-button label="Obsolete" severity="danger" size="small"
                     [loading]="obsoleting" (onClick)="obsoleteSelected()" />
           <p-button label="Clear" [text]="true" size="small" (onClick)="selectedItems = []" />
         </div>
@@ -266,7 +275,6 @@ export class ItemMasterListComponent implements OnInit {
   ];
 
   readonly makeBuyOptions = [
-    { label: 'All',    value: null },
     { label: 'Make',   value: 'MAKE' },
     { label: 'Buy',    value: 'BUY' },
     { label: 'Either', value: 'EITHER' },
@@ -346,6 +354,12 @@ export class ItemMasterListComponent implements OnInit {
 
   navigateToEdit(id: string): void {
     this.router.navigate(['/item-master', id, 'edit']);
+  }
+
+  cloneSelected(): void {
+    if (this.selectedItems.length === 1) {
+      this.router.navigate(['/item-master/new'], { queryParams: { cloneFrom: this.selectedItems[0].id } });
+    }
   }
 
   showRowMenu(event: Event, item: ItemMasterDto): void {

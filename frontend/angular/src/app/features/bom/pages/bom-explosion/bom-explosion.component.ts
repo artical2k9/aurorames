@@ -40,7 +40,10 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
           </div>
           <div class="be__header-mid">
             <div class="be__label">BOM REVISION</div>
-            <div class="be__revision">Rev {{ bom.bomRevision }}</div>
+            <p-select [options]="revisionOptions" [(ngModel)]="selectedRevisionId"
+                      optionLabel="label" optionValue="value"
+                      styleClass="be__rev-select"
+                      (onChange)="onRevisionChange($event.value)" />
             <app-status-badge [status]="bom.status" />
           </div>
           <div class="be__header-right">
@@ -80,8 +83,6 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
 
         <p-button label="⬇ CSV" severity="secondary" size="small"
                   [disabled]="loading" (onClick)="downloadCsv()" />
-        <p-button label="⬇ PDF" severity="secondary" size="small"
-                  [disabled]="loading" (onClick)="downloadPdf()" />
       </div>
 
       <!-- Tree table -->
@@ -110,8 +111,8 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             </td>
             <td>{{ rowData['revision'] }}</td>
             <td>{{ rowData['description'] }}</td>
-            <td></td>
-            <td></td>
+            <td>{{ rowData['quantity'] ?? '—' }}</td>
+            <td>{{ rowData['makeBuyCode'] ?? '—' }}</td>
             <td>
               @if (rowData['counterfeitRiskAlert']) {
                 <span class="be__risk-badge">⚠ HIGH</span>
@@ -170,6 +171,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     .be__risk-badge {
       font-size: 0.8125rem; color: #B91C1C; font-weight: 600;
     }
+    :host ::ng-deep .be__rev-select { min-width: 110px; font-size: 0.8125rem; }
 
     .be__statusbar {
       margin-top: 0.5rem; padding: 0.4rem 0;
@@ -192,6 +194,9 @@ export class BomExplosionComponent implements OnInit {
   treeNodes: TreeNode[] = [];
   loading = false;
   explosionError = '';
+
+  revisionOptions: { label: string; value: string }[] = [];
+  selectedRevisionId = '';
 
   selectedFormat: 'flat' | 'indented' = 'indented';
   asOfDate: Date | null = null;
@@ -237,6 +242,11 @@ export class BomExplosionComponent implements OnInit {
     this.bomId = this.route.snapshot.paramMap.get('bomId') ?? '';
     this.bomApi.getById(this.bomId).subscribe(bom => {
       this.bom = bom;
+      this.selectedRevisionId = bom.id;
+      this.bomApi.listForItem(bom.parentItemId).subscribe(revisions => {
+        this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.bomRevision, value: r.id }));
+        this.cdr.detectChanges();
+      });
       this.itemApi.getById(bom.parentItemId).subscribe(item => {
         this.parentItem = item;
         this.breadcrumbs = [
@@ -271,6 +281,12 @@ export class BomExplosionComponent implements OnInit {
     });
   }
 
+  onRevisionChange(bomId: string): void {
+    if (bomId && bomId !== this.bomId) {
+      this.router.navigate(['/boms', bomId, 'explosion']);
+    }
+  }
+
   expandAll(): void {
     this.treeNodes = this.setExpanded(this.treeNodes, true);
     this.cdr.detectChanges();
@@ -297,13 +313,15 @@ export class BomExplosionComponent implements OnInit {
     return nodes.map(n => ({
       data: {
         componentItemId: n.componentItemId,
+        findNumber: n.findNumber ?? '—',
         partNumber: n.partNumber,
         revision: n.revision,
         description: n.description,
+        quantity: n.quantity,
+        makeBuyCode: n.makeBuyCode,
         unitOfMeasure: n.unitOfMeasure,
         counterfeitRiskAlert: n.counterfeitRiskAlert,
         componentObsoleted: n.componentObsoleted,
-        findNumber: '',
         status: n.componentObsoleted ? 'OBSOLETE' : 'ACTIVE',
       },
       children: n.children?.length ? this.toTreeNodes(n.children) : undefined,

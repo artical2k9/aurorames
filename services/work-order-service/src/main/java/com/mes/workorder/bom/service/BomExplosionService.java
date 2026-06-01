@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -127,6 +128,11 @@ public class BomExplosionService {
         String riskLevel = (String) row[7];
         node.setCounterfeitRiskAlert("HIGH".equals(riskLevel) || "CRITICAL".equals(riskLevel));
         node.setComponentObsoleted("OBSOLETE".equals(row[8]));
+        node.setFindNumber((String) row[14]);
+        if (row[15] != null) {
+            node.setQuantity(new BigDecimal(row[15].toString()));
+        }
+        node.setMakeBuyCode((String) row[16]);
         return node;
     }
 

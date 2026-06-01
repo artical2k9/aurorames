@@ -11,6 +11,8 @@ import { DialogModule } from 'primeng/dialog';
 import { MessageModule } from 'primeng/message';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { SelectModule } from 'primeng/select';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { BreadcrumbComponent, StatusBadgeComponent } from '../../../../shared/ui';
 import { BomApiService } from '../../services/bom-api.service';
@@ -30,7 +32,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
   imports: [
     CommonModule, AsyncPipe, FormsModule, RouterLink,
     TableModule, ButtonModule, TagModule, DialogModule, MessageModule,
-    ToastModule, ConfirmDialogModule, PopoverModule,
+    ToastModule, ConfirmDialogModule, PopoverModule, SelectModule, InputNumberModule,
     BreadcrumbComponent, StatusBadgeComponent,
     AddBomLineFormComponent, BomHeaderEditDialogComponent, ColumnPickerComponent,
   ],
@@ -63,7 +65,11 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
                       title="Edit BOM header">✏</button>
             </div>
             <div class="ba__meta">
-              <span class="ba__revision">Rev {{ bom.bomRevision }}</span>
+              <span class="ba__rev-label">BOM Rev:</span>
+              <p-select [options]="revisionOptions" [(ngModel)]="selectedRevisionId"
+                        optionLabel="label" optionValue="value"
+                        styleClass="ba__rev-select"
+                        (onChange)="onRevisionChange($event.value)" />
               <app-status-badge [status]="bom.status" />
               @if (bom.description) {
                 <span class="ba__desc">{{ bom.description }}</span>
@@ -82,15 +88,16 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
         <!-- Toolbar -->
         @if (bom.status === 'DRAFT') {
           <div class="ba__toolbar">
+            <p-button label="← Explosion View" [text]="true" size="small"
+                      (onClick)="goToExplosion()" />
+            <span class="ba__lines-count">BOM Lines — {{ lines.length }} component{{ lines.length !== 1 ? 's' : '' }}</span>
+            <span class="ba__spacer"></span>
             <p-button label="+ Add Line" severity="primary" size="small"
                       (onClick)="addingLine = !addingLine" />
             <p-button label="Save Draft" severity="secondary" size="small"
                       [loading]="saving" (onClick)="saveDraft()" />
             <p-button label="Submit for Review" severity="success" size="small"
                       [loading]="releasing" (onClick)="confirmRelease()" />
-            <p-button label="← Explosion View" [text]="true" size="small"
-                      (onClick)="goToExplosion()" />
-            <span class="ba__spacer"></span>
             <p-button icon="pi pi-sliders-h" [rounded]="true" [text]="true"
                       aria-label="Customise columns"
                       (onClick)="colPickerPanel.toggle($event)" />
@@ -99,6 +106,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
           <div class="ba__toolbar">
             <p-button label="← Explosion View" [text]="true" size="small"
                       (onClick)="goToExplosion()" />
+            <span class="ba__lines-count">BOM Lines — {{ lines.length }} component{{ lines.length !== 1 ? 's' : '' }}</span>
           </div>
         }
 
@@ -130,37 +138,51 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
                 <th>{{ col.label }}</th>
               }
               @if (bom.status === 'DRAFT') {
-                <th style="width:6rem">Actions</th>
+                <th style="width:8rem">Actions</th>
               }
             </tr>
           </ng-template>
 
           <ng-template pTemplate="body" let-line let-ri="rowIndex" let-columns="columns">
-            <tr>
+            <tr [class.ba__row--editing]="editingLineId === line.id">
               @for (col of visibleCols(columns); track col.key) {
                 <td>
-                  @switch (col.key) {
-                    @case ('seq') { {{ ri + 1 }} }
-                    @case ('effectiveFromDate') {
-                      {{ line.effectiveFromDate ?? '—' }}
-                      @if (line.effectivityMethod === 'UNIT') {
-                        <span class="ba__unit-badge">(Unit)</span>
+                  @if (editingLineId === line.id && col.key === 'quantity') {
+                    <p-inputnumber [(ngModel)]="editQty" [min]="0.000001" [maxFractionDigits]="6"
+                                   styleClass="ba__inline-input" />
+                  } @else {
+                    @switch (col.key) {
+                      @case ('seq') { {{ ri + 1 }} }
+                      @case ('effectiveFromDate') {
+                        {{ line.effectiveFromDate ?? '—' }}
+                        @if (line.effectivityMethod === 'UNIT') {
+                          <span class="ba__unit-badge">(Unit)</span>
+                        }
                       }
-                    }
-                    @case ('effectiveToDate') {
-                      {{ line.effectiveToDate ?? '—' }}
-                      @if (line.effectivityMethod === 'UNIT') {
-                        <span class="ba__unit-badge">(Unit)</span>
+                      @case ('effectiveToDate') {
+                        {{ line.effectiveToDate ?? '—' }}
+                        @if (line.effectivityMethod === 'UNIT') {
+                          <span class="ba__unit-badge">(Unit)</span>
+                        }
                       }
+                      @default { {{ lineValue(line, col.key) }} }
                     }
-                    @default { {{ lineValue(line, col.key) }} }
                   }
                 </td>
               }
               @if (bom.status === 'DRAFT') {
                 <td>
-                  <p-button icon="pi pi-trash" [text]="true" severity="danger" size="small"
-                            (onClick)="removeLine(line)" />
+                  @if (editingLineId === line.id) {
+                    <p-button label="Save" severity="primary" size="small"
+                              [loading]="savingLine" (onClick)="saveLineEdit(line)" />
+                    <p-button icon="pi pi-times" [text]="true" size="small"
+                              (onClick)="cancelLineEdit()" />
+                  } @else {
+                    <p-button icon="pi pi-pencil" [text]="true" size="small"
+                              (onClick)="startLineEdit(line)" />
+                    <p-button icon="pi pi-trash" [text]="true" severity="danger" size="small"
+                              (onClick)="removeLine(line)" />
+                  }
                 </td>
               }
             </tr>
@@ -230,6 +252,11 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     }
     .ba__statusbar--dirty { color: #F59E0B; }
     .ba__dirty-msg { margin-left: 0.25rem; }
+    .ba__rev-label { font-size: 0.8125rem; color: var(--p-text-muted-color); }
+    :host ::ng-deep .ba__rev-select { min-width: 110px; font-size: 0.8125rem; }
+    .ba__lines-count { font-size: 0.8125rem; font-weight: 600; }
+    .ba__row--editing td { background: var(--p-surface-50); }
+    :host ::ng-deep .ba__inline-input input { width: 80px; }
   `],
 })
 export class BomAuthoringComponent implements OnInit {
@@ -249,9 +276,16 @@ export class BomAuthoringComponent implements OnInit {
   loading = false;
   saving = false;
   releasing = false;
+  savingLine = false;
   addingLine = false;
   showHeaderEdit = false;
   isDirty = false;
+
+  revisionOptions: { label: string; value: string }[] = [];
+  selectedRevisionId = '';
+
+  editingLineId: string | null = null;
+  editQty: number | null = null;
 
   breadcrumbs = [
     { label: 'Materials' },
@@ -270,6 +304,7 @@ export class BomAuthoringComponent implements OnInit {
     this.loading = true;
     this.bomApi.getById(this.bomId).subscribe(bom => {
       this.bom = bom;
+      this.selectedRevisionId = bom.id;
       this.loading = false;
       this.itemApi.getById(bom.parentItemId).subscribe(item => {
         this.parentItem = item;
@@ -281,8 +316,18 @@ export class BomAuthoringComponent implements OnInit {
         ];
         this.cdr.detectChanges();
       });
+      this.bomApi.listForItem(bom.parentItemId).subscribe(revisions => {
+        this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.bomRevision, value: r.id }));
+        this.cdr.detectChanges();
+      });
       this.loadLines();
     });
+  }
+
+  onRevisionChange(bomId: string): void {
+    if (bomId && bomId !== this.bomId) {
+      this.router.navigate(['/boms', bomId]);
+    }
   }
 
   loadLines(): void {
@@ -349,6 +394,37 @@ export class BomAuthoringComponent implements OnInit {
       error: () => {
         this.releasing = false;
         this.messageService.add({ severity: 'error', summary: 'Release failed' });
+      },
+    });
+  }
+
+  startLineEdit(line: BomLineDto): void {
+    this.editingLineId = line.id;
+    this.editQty = line.quantity ?? null;
+  }
+
+  cancelLineEdit(): void {
+    this.editingLineId = null;
+    this.editQty = null;
+  }
+
+  saveLineEdit(line: BomLineDto): void {
+    if (this.editQty == null) {
+      return;
+    }
+    this.savingLine = true;
+    this.bomApi.patchLine(this.bomId, line.id, { quantity: this.editQty }).subscribe({
+      next: updated => {
+        this.lines = this.lines.map(l => l.id === updated.id ? updated : l);
+        this.editingLineId = null;
+        this.editQty = null;
+        this.savingLine = false;
+        this.isDirty = true;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.savingLine = false;
+        this.messageService.add({ severity: 'error', summary: 'Failed to save line' });
       },
     });
   }

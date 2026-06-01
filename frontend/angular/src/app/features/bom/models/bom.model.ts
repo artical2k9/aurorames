@@ -41,6 +41,9 @@ export interface BomExplosionNode {
   componentItemId: string;
   parentItemId: string;
   depth: number;
+  findNumber?: string;
+  quantity?: number;
+  makeBuyCode?: string;
   partNumber: string;
   revision: string;
   description: string;

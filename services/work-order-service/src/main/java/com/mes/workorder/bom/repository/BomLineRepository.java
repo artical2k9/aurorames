@@ -23,7 +23,8 @@ public interface BomLineRepository extends JpaRepository<BomLine, UUID> {
      *          [6] unit_of_measure, [7] counterfeit_risk_level (nullable), [8] status,
      *          [9] effectivity_method (nullable), [10] effective_from_date (text, nullable),
      *          [11] effective_to_date (text, nullable), [12] effective_from_unit (nullable),
-     *          [13] effective_to_unit (nullable), [14] find_number
+     *          [13] effective_to_unit (nullable), [14] find_number,
+     *          [15] quantity (numeric nullable), [16] make_buy_code (nullable)
      */
     @Query(nativeQuery = true, value = """
             WITH RECURSIVE bom_tree AS (
@@ -36,7 +37,8 @@ public interface BomLineRepository extends JpaRepository<BomLine, UUID> {
                     bl.effective_to_date,
                     bl.effective_from_unit,
                     bl.effective_to_unit,
-                    bl.find_number
+                    bl.find_number,
+                    bl.quantity
                 FROM work_order.bom_line bl
                 JOIN work_order.bill_of_materials bom ON bom.id = bl.bom_id
                 WHERE bl.bom_id = CAST(:rootBomId AS uuid)
@@ -50,7 +52,8 @@ public interface BomLineRepository extends JpaRepository<BomLine, UUID> {
                     bl.effective_to_date,
                     bl.effective_from_unit,
                     bl.effective_to_unit,
-                    bl.find_number
+                    bl.find_number,
+                    bl.quantity
                 FROM bom_tree bt
                 JOIN work_order.bill_of_materials bom ON bom.parent_item_id = bt.component_item_id
                 JOIN work_order.bom_line bl ON bl.bom_id = bom.id
@@ -70,7 +73,9 @@ public interface BomLineRepository extends JpaRepository<BomLine, UUID> {
                 bt.effective_to_date::text,
                 bt.effective_from_unit,
                 bt.effective_to_unit,
-                bt.find_number
+                bt.find_number,
+                bt.quantity,
+                im.make_buy_code
             FROM bom_tree bt
             JOIN work_order.item_master im ON im.id = bt.component_item_id
             ORDER BY bt.depth, bt.component_item_id

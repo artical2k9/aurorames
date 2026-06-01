@@ -97,7 +97,9 @@ import {
 
               <div class="imed__field">
                 <label class="imed__label">Unit of Measure <span class="imed__req">*</span></label>
-                <input pInputText formControlName="unitOfMeasure" placeholder="e.g. EA" />
+                <p-select formControlName="unitOfMeasure" [options]="uomOptions"
+                          optionLabel="label" optionValue="value"
+                          [editable]="true" placeholder="Each (EA)" />
               </div>
 
               <div class="imed__field">
@@ -278,6 +280,15 @@ export class ItemMasterEditComponent implements OnInit {
     { label: 'Materials' },
     { label: 'Item Master', route: ['/item-master'] },
     { label: 'Edit' },
+  ];
+
+  readonly uomOptions = [
+    { label: 'Each (EA)',      value: 'EA' },
+    { label: 'Kilogram (KG)', value: 'KG' },
+    { label: 'Metre (M)',     value: 'M' },
+    { label: 'Litre (L)',     value: 'L' },
+    { label: 'Piece (PC)',    value: 'PC' },
+    { label: 'Set (SET)',     value: 'SET' },
   ];
 
   readonly classificationOptions = [
