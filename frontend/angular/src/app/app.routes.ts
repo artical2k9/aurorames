@@ -9,7 +9,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-      { path: 'bom', redirectTo: 'item-master', pathMatch: 'full' },
+      {
+        path: 'bom',
+        loadComponent: () =>
+          import('./features/bom/pages/bom-browser/bom-browser.component')
+            .then(m => m.BomBrowserComponent),
+      },
       {
         path: 'dashboard',
         loadComponent: () => import('./dashboard/dashboard').then(m => m.Dashboard),
