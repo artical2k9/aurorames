@@ -13,6 +13,7 @@
   --aurora-text-primary:   #E8EDF5;
   --aurora-text-secondary: #8A9BB0;
   --aurora-text-disabled:  #3D5270;
+  --aurora-border-subtle:  #243350;
   --aurora-border-default: #243350;
   --aurora-border-strong:  #2E4A6E;
   --aurora-border-focus:   #2E8BF5;
@@ -32,22 +33,27 @@
 }
 
 /* ── Aurora MES light mode tokens ──────────────────────────────────────────── */
+/* Derived from Penpot wireframe extraction (nav/topbar ~#F2F6FF) */
 :root:not(.aurora-dark) {
-  --aurora-bg-base:        #F8FAFC;
-  --aurora-bg-subtle:      #EFF6FF;
-  --aurora-brand-primary:  #2563EB;
+  --aurora-bg-base:        #FFFFFF;
+  --aurora-bg-subtle:      #F2F6FF;
+  --aurora-bg-surface:     #E8EDF5;
+  --aurora-bg-elevated:    #DDE4EF;
+  --aurora-brand-primary:  #1A5FD4;
+  --aurora-brand-bright:   #2E8BF5;
   --aurora-text-primary:   #0F172A;
   --aurora-text-secondary: #64748B;
-  --aurora-border-subtle:  #CBD5E1;
+  --aurora-border-subtle:  #C8D4E8;
+  --aurora-border-default: #B0C0D8;
 
   --p-surface-0:    #FFFFFF;
-  --p-surface-50:   #F8FAFC;
-  --p-surface-100:  #EFF6FF;
-  --p-surface-200:  #CBD5E1;
+  --p-surface-50:   #F2F6FF;
+  --p-surface-100:  #E8EDF5;
+  --p-surface-200:  #C8D4E8;
   --p-text-color:   #0F172A;
   --p-text-muted-color: #64748B;
-  --p-surface-border: #CBD5E1;
-  --p-primary-color: #2563EB;
+  --p-surface-border: #C8D4E8;
+  --p-primary-color: #1A5FD4;
 }
 
 /* ── Global base ────────────────────────────────────────────────────────────── */
