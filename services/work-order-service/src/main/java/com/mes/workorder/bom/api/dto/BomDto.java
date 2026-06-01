@@ -1,6 +1,7 @@
 package com.mes.workorder.bom.api.dto;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 public class BomDto {
@@ -14,6 +15,11 @@ public class BomDto {
     private UUID ecoId;
     private String createdBy;
     private Instant createdAt;
+    private String reasonForRevision;
+    private String productionLine;
+    private String bomType;
+    private String effectivityType;
+    private Map<String, Object> customFields;
 
     public UUID getId() {
         return id;
@@ -85,5 +91,45 @@ public class BomDto {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getReasonForRevision() {
+        return reasonForRevision;
+    }
+
+    public void setReasonForRevision(String reasonForRevision) {
+        this.reasonForRevision = reasonForRevision;
+    }
+
+    public String getProductionLine() {
+        return productionLine;
+    }
+
+    public void setProductionLine(String productionLine) {
+        this.productionLine = productionLine;
+    }
+
+    public String getBomType() {
+        return bomType;
+    }
+
+    public void setBomType(String bomType) {
+        this.bomType = bomType;
+    }
+
+    public String getEffectivityType() {
+        return effectivityType;
+    }
+
+    public void setEffectivityType(String effectivityType) {
+        this.effectivityType = effectivityType;
+    }
+
+    public Map<String, Object> getCustomFields() {
+        return customFields;
+    }
+
+    public void setCustomFields(Map<String, Object> customFields) {
+        this.customFields = customFields;
     }
 }

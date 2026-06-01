@@ -4,6 +4,58 @@
 
 ---
 
+## ERR-MES-057 — Adding columns to @Audited entity without updating _aud table breaks schema-validation
+**Date:** 2026-05-31  **Category:** Backend — Hibernate Envers  **Status:** Promoted 2026-05-31
+
+**Symptom:** All 63 integration tests in PR #20 failed at context startup with `BeanCreationException → SchemaManagementException: Schema-validation: missing column [bom_type] in table [work_order.bill_of_materials_aud]`. V013 added `reason_for_revision`, `production_line`, `bom_type`, `effectivity_type`, `custom_fields` to `bill_of_materials` and the entity/DTO, but `bill_of_materials_aud` was never updated.
+
+**Root cause:** `BillOfMaterials` is `@Audited`. At startup, Hibernate Envers validates that the `_aud` shadow table contains every column present on the entity. The V013 migration correctly updated the main table and the Java entity, but the author did not extend the same change to `bill_of_materials_aud`. The pre-PR retrospective spot-check against the Envers category (ERR-MES-023) was skipped.
+
+**Fix applied:** V014 migration — `ALTER TABLE work_order.bill_of_materials_aud ADD COLUMN IF NOT EXISTS ...` for each of the five new fields.
+
+**Rule:** Whenever adding columns to a `@Audited` entity, always include the corresponding `ALTER TABLE <entity>_aud ADD COLUMN ...` in the same migration or an immediately-following one. Envers schema-validation fires at application startup and checks column parity between the main and `_aud` tables. Cross-check this during the pre-PR retrospective via the Envers category in the index.
+
+---
+
+## ERR-MES-058 — Pre-PR retrospective spot-check skipped; known Envers pattern missed until CI
+**Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
+
+**Symptom:** PR #20 failed CI on its first run due to the V014 miss (ERR-MES-057). The CLAUDE.md pre-PR checklist explicitly requires identifying relevant error categories from the index and spot-checking each against the code written before calling `gh pr create`. This step was not performed.
+
+**Root cause:** The retrospective gate was treated as a governance formality to complete after raising the PR rather than as a technical blocking gate. As a result, the Envers category (ERR-MES-023/057) was never cross-referenced against the `@Audited` entity changes in this PR, and the `_aud` table gap was not caught locally.
+
+**Fix applied:** V014 pushed; PR CI re-ran.
+
+**Rule:** The pre-PR retrospective is a technical gate, not a post-hoc documentation step. Before every `gh pr create`: (1) enumerate the error categories touched by this PR's scope (JPA/Envers, Security, Frontend, Build, etc.), (2) read each relevant index entry, (3) confirm the written code does not repeat any listed pattern. A CI failure caused by a lesson already in the error log is a process violation — it means the gate was skipped, not that the error is new.
+
+---
+
+## ERR-MES-055 — tasks.md stale markers cannot distinguish "planned but skipped" from "done but unchecked"
+**Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
+
+**Symptom:** Backend tasks T193–T196 appeared in the PR 2 task range in `tasks.md`. PR 2 was recorded as merged (PR #11/#17) in `HANDOVER.md`. Agent treated the backend dependency as satisfied without verifying the code. At implementation time, `ModuleKey.java` was missing `BOM_LINE`/`BOM_HEADER`, V013 migration did not exist, and several `BomController`/`EcoController` endpoints were absent. All had to be added as backend prerequisites inside PR 7.
+
+**Root cause:** `tasks.md` `[ ]`/`[X]` markers stopped being updated after PR #10. Tasks in a merged PR's declared range may still show `[ ]` (done but not checked off), and tasks that were planned for a PR but silently dropped are also `[ ]`. The file gives no structural signal to distinguish the two states. The HANDOVER.md partially compensated by flagging T193/T194 as "verify before starting", but the broader set of missing endpoints was not called out anywhere.
+
+**Fix applied:** Pre-flight read of every controller/service the new frontend tasks called; confirmed the missing endpoints by inspection and added them to the same PR.
+
+**Rule:** "PR N merged" does not mean every task in PR N's declared range was implemented. Before starting any PR whose frontend tasks call backend APIs, read each referenced controller/service file and confirm that the specific endpoints/methods the frontend needs are present. Do not infer completeness from `tasks.md` markers or `HANDOVER.md` merged-PR entries alone.
+
+---
+
+## ERR-MES-056 — speckit-clarify and speckit-analyze do not detect backend endpoint gaps
+**Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
+
+**Symptom:** `/speckit-clarify` and `/speckit-analyze` were both run before PR 7 implementation. Neither surfaced the missing `BomController` list/delete/patch endpoints, the missing `EcoController.list` endpoint, or the missing `ModuleKey` enum values — all of which the frontend required.
+
+**Root cause:** `speckit-clarify` generates questions about *spec ambiguities* (underspecified requirements in `spec.md`). `speckit-analyze` checks cross-artifact consistency across `spec.md`, `plan.md`, and `tasks.md`. Neither tool reads the codebase to compare what backend endpoints the frontend tasks assume against what is actually implemented. The gap is structural: both tools analyse *documents*, not *code*.
+
+**Fix applied:** Manual pre-flight controller reads at session start identified the gaps before any frontend code was written.
+
+**Rule:** For any PR whose tasks call backend APIs, treat speckit-clarify/analyze as insufficient for dependency verification. Add an explicit pre-flight step: for each service the frontend calls, read the controller class and verify the required HTTP methods exist. This applies even when prior PRs are marked merged in `HANDOVER.md` — speckit tooling has no visibility into what was actually committed.
+
+---
+
 ## ERR-MES-051 — Filtered `--tests` Gradle run overwrites JaCoCo exec file
 **Date:** 2026-05-30  **Category:** Testing — JaCoCo / Gradle  **Status:** Promoted 2026-05-30
 
@@ -53,6 +105,32 @@
 **Fix applied:** User discarded all assets. The correct resolution is to obtain vector source files before attempting SVG recreation.
 
 **Rule:** When asked to create SVG logos from a raster PNG, immediately surface the limitation: SVG recreation from raster is manual approximation that cannot achieve visual fidelity. Recommend obtaining the original vector source (AI/EPS/SVG with outlined paths) before proceeding. Multiple correction rounds cannot resolve the fundamental absence of path data.
+
+---
+
+## ERR-MES-053 — Angular getter returning new array/object reference triggers NG0100 in dev mode and tests
+**Date:** 2026-05-31  **Category:** Frontend — Angular Change Detection  **Status:** Promoted 2026-05-31
+
+**Symptom:** `ItemMasterEditComponent` Vitest tests all failed with `NG0100: ExpressionChangedAfterItHasBeenCheckedError`. Error pointed to a template expression whose value differed between Angular's render pass and verify pass.
+
+**Root cause:** Angular dev mode runs every template expression TWICE per `detectChanges()` call (render pass + verify pass). A `get breadcrumbs()` getter returned a fresh array literal on every call (`return [{...}, {...}, {...}]`). Angular's `===` comparison sees a different object reference on the second evaluation even though the content is identical — NG0100 is thrown. In tests, `fixture.detectChanges()` always runs dev-mode checks, exposing the issue on every test run.
+
+**Fix applied:** Converted `get breadcrumbs()` to a class property initialised with a default array. The property is updated only when the item loads (inside the HTTP subscribe callback). The verify pass sees the same reference on both evaluations.
+
+**Rule:** Never use a getter that returns a newly-created array or object literal when the return value is bound to an `@Input` or template expression. Use a class property reassigned only when data actually changes. Pattern: `breadcrumbs: Crumb[] = defaultCrumbs;` (property), updated in the data-load callback — NOT `get breadcrumbs() { return [{...}]; }`.
+
+---
+
+## ERR-MES-054 — Wrote Jasmine-style matchers in a Vitest-based Angular project
+**Date:** 2026-05-31  **Category:** Frontend — Testing / Vitest  **Status:** Promoted 2026-05-31
+
+**Symptom:** Angular spec files failed to compile: `TS2339: Property 'toBeTrue' does not exist on type 'Assertion<boolean>'`, `TS2552: Cannot find name 'spyOn'. Did you mean 'spy'?`.
+
+**Root cause:** The project uses the Vitest runner (`@angular/build:vitest`). Vitest does not include Jasmine's custom matchers (`toBeTrue`, `toBeFalse`) or the global `spyOn`. The agent wrote tests using Jasmine patterns without checking the project's test runner.
+
+**Fix applied:** Replaced `toBeTrue()` → `toBe(true)`, `toBeFalse()` → `toBe(false)`, global `spyOn` → `vi.spyOn` (`import { vi } from 'vitest'`). Switched HTTP service mocks from `HttpTestingController` to `vi.fn().mockReturnValue(of(...))` to avoid async timing issues with `detectChanges()`.
+
+**Rule:** Before writing Angular specs, check `angular.json` for `"builder": "@angular/build:vitest"` (Vitest) vs `"@angular/build:karma"` (Jasmine/Karma). In a Vitest project: `toBe(true)` not `toBeTrue()`; `toBe(false)` not `toBeFalse()`; import `vi` from `'vitest'` for `vi.spyOn()`. Prefer `vi.fn().mockReturnValue(of(...))` service mocks over `HttpTestingController` for components that make HTTP calls — synchronous `of()` observables avoid NG0100 from async state changes mid-`detectChanges()`.
 
 ---
 

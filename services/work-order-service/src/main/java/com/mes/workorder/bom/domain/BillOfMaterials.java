@@ -1,5 +1,6 @@
 package com.mes.workorder.bom.domain;
 
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -9,6 +10,9 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.Type;
+
+import java.util.Map;
 import org.hibernate.envers.Audited;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -47,6 +51,22 @@ public class BillOfMaterials {
 
     @Column(name = "eco_id")
     private UUID ecoId;
+
+    @Column(name = "reason_for_revision", length = 500)
+    private String reasonForRevision;
+
+    @Column(name = "production_line", length = 200)
+    private String productionLine;
+
+    @Column(name = "bom_type", length = 30)
+    private String bomType;
+
+    @Column(name = "effectivity_type", length = 10)
+    private String effectivityType;
+
+    @Type(JsonBinaryType.class)
+    @Column(name = "custom_fields", columnDefinition = "jsonb")
+    private Map<String, Object> customFields;
 
     @CreatedBy
     @Column(name = "created_by", nullable = false, length = 255, updatable = false)
@@ -132,5 +152,45 @@ public class BillOfMaterials {
 
     public Instant getModifiedAt() {
         return modifiedAt;
+    }
+
+    public String getReasonForRevision() {
+        return reasonForRevision;
+    }
+
+    public void setReasonForRevision(String reasonForRevision) {
+        this.reasonForRevision = reasonForRevision;
+    }
+
+    public String getProductionLine() {
+        return productionLine;
+    }
+
+    public void setProductionLine(String productionLine) {
+        this.productionLine = productionLine;
+    }
+
+    public String getBomType() {
+        return bomType;
+    }
+
+    public void setBomType(String bomType) {
+        this.bomType = bomType;
+    }
+
+    public String getEffectivityType() {
+        return effectivityType;
+    }
+
+    public void setEffectivityType(String effectivityType) {
+        this.effectivityType = effectivityType;
+    }
+
+    public Map<String, Object> getCustomFields() {
+        return customFields;
+    }
+
+    public void setCustomFields(Map<String, Object> customFields) {
+        this.customFields = customFields;
     }
 }

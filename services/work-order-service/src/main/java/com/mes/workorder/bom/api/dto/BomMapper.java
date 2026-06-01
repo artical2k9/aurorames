@@ -19,6 +19,11 @@ public final class BomMapper {
         dto.setEcoId(bom.getEcoId());
         dto.setCreatedBy(bom.getCreatedBy());
         dto.setCreatedAt(bom.getCreatedAt());
+        dto.setReasonForRevision(bom.getReasonForRevision());
+        dto.setProductionLine(bom.getProductionLine());
+        dto.setBomType(bom.getBomType());
+        dto.setEffectivityType(bom.getEffectivityType());
+        dto.setCustomFields(bom.getCustomFields());
         return dto;
     }
 

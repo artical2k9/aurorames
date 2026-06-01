@@ -16,6 +16,34 @@
 
 <!-- Add new errors below this line. Oldest at the top, newest at the bottom. -->
 
+## ERR-MES-057 — Adding columns to @Audited entity without updating _aud table breaks schema-validation
+**Date:** 2026-05-31  **Category:** Backend — Hibernate Envers  **Status:** Promoted 2026-05-31
+**Symptom:** All integration tests failed at context startup with `SchemaManagementException: Schema-validation: missing column [bom_type] in table [work_order.bill_of_materials_aud]`. V013 added five new columns to `bill_of_materials` but left `bill_of_materials_aud` unchanged.
+**Root cause:** `BillOfMaterials` is `@Audited`. Hibernate Envers validates at startup that every column on the entity also exists in the `_aud` shadow table. V013 updated the main table and the entity/DTO correctly but did not update the audit table. Pre-PR retrospective spot-check against ERR-MES-023 (Envers category) was skipped.
+**Fix applied:** Created V014 migration adding the same five columns to `bill_of_materials_aud`.
+**Rule:** Whenever adding columns to a `@Audited` entity, always include an `ALTER TABLE <entity>_aud ADD COLUMN ...` for each new column in the same migration (or an immediately-following one). Envers schema-validation at startup enforces column parity between the main table and its `_aud` counterpart. Spot-check this via the ERR-MES-023 (Envers) category in the retrospective gate.
+
+## ERR-MES-058 — Pre-PR retrospective spot-check skipped; Envers gap not caught until CI
+**Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
+**Symptom:** PR #20 failed CI on the first run due to the V014 miss (ERR-MES-057). The CLAUDE.md pre-PR checklist requires identifying relevant error categories and spot-checking each against code written. This step was not performed before `gh pr create`.
+**Root cause:** The retrospective gate was treated as a governance formality to complete after raising the PR rather than a technical gate that must pass before it. Skipping it caused a known Envers pattern (ERR-MES-023 category) to be missed.
+**Fix applied:** V014 pushed; PR re-ran CI.
+**Rule:** The pre-PR retrospective is a technical gate, not a documentation task. Before every `gh pr create`: (1) list the error categories touched by this PR's changes (JPA, Envers, Security, Frontend, etc.), (2) read the corresponding index entries, (3) confirm the code does not repeat any listed pattern. Only then raise the PR. A CI failure caused by a lesson already in the error log is a process violation, not just a bug.
+
+## ERR-MES-055 — tasks.md stale markers cannot distinguish "planned but skipped" from "done but unchecked"
+**Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
+**Symptom:** Backend tasks T193–T196 appeared in the PR 2 task range in `tasks.md`. PR 2 was recorded as merged (PR #11/#17) in `HANDOVER.md`. Agent treated the backend dependency as satisfied without verifying the code. At implementation time, `ModuleKey.java` was missing `BOM_LINE`/`BOM_HEADER`, V013 migration did not exist, and several BomController/EcoController endpoints were absent.
+**Root cause:** `tasks.md` `[ ]`/`[X]` markers stopped being updated after PR #10. Tasks in a merged PR's declared range may still be `[ ]` (done but not checked), and tasks that were planned for a PR but silently dropped are also still `[ ]`. The file gives no structural signal to distinguish the two states.
+**Fix applied:** Pre-flight read of every controller/service that the new frontend tasks called; confirmed the missing endpoints by inspection and added them.
+**Rule:** "PR N merged" does not mean every task in PR N's range was implemented. Before starting any PR whose frontend tasks call backend APIs, read each referenced controller/service file and confirm that the specific endpoints/methods the frontend needs are present. Do not infer completeness from tasks.md markers or HANDOVER merged-PR entries alone.
+
+## ERR-MES-056 — speckit-clarify and speckit-analyze do not detect backend endpoint gaps
+**Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
+**Symptom:** `/speckit-clarify` and `/speckit-analyze` were both run before PR 7 implementation. Neither surfaced the missing `BomController` list/delete/patch endpoints, the missing `EcoController.list` endpoint, or the missing ModuleKey enum values — all of which were required for the frontend to function.
+**Root cause:** `speckit-clarify` generates questions about *spec ambiguities* (underspecified requirements). `speckit-analyze` checks cross-artifact consistency between `spec.md`, `plan.md`, and `tasks.md`. Neither tool reads the codebase to compare what backend endpoints the frontend tasks assume against what is actually implemented. The gap was structural: the tools analyse *documents*, not *code*.
+**Fix applied:** Manual pre-flight controller reads at session start.
+**Rule:** For any PR whose tasks call backend APIs, treat speckit-clarify/analyze as insufficient for dependency verification. Add an explicit pre-flight step: for each service the frontend calls, read the controller class and verify the required HTTP methods exist. This applies even when prior PRs are marked merged — speckit tooling has no visibility into what was actually committed.
+
 ## ERR-MES-040 — PrimeNG 21 breaking API: `darkModeSelector` moved to `theme.options`; `overlaypanel` → `popover`
 **Date:** 2026-05-29  **Category:** Frontend — PrimeNG  **Status:** Promoted 2026-05-29
 **Symptom:** (1) TypeScript error `TS2353: 'darkModeSelector' does not exist in type 'PrimeNGConfigType'` when passing it at the top level of `providePrimeNG()`. (2) TypeScript error `TS2307: Cannot find module 'primeng/overlaypanel'` — the module path no longer exists.
@@ -260,6 +288,20 @@
 **Root cause:** SonarCloud's "coverage on new code" metric is calculated against the PR diff — specifically the lines marked as `+` additions. Pre-existing lines in modified files that were already in the target branch do not count. A whole-file JaCoCo number can be misleadingly low if the file has many old uncovered lines alongside a small well-covered addition.
 **Fix applied:** Used `git diff origin/Develop -- <file>` to identify the specific new executable lines, then confirmed they were covered.
 **Rule:** When estimating SonarCloud "coverage on new code" compliance, run `git diff origin/Develop -- <file> | grep "^+"` to list the actual added lines per file. Count only new executable lines when doing the coverage calculation. A JaCoCo whole-file percentage is NOT the same as SonarCloud's "new code" percentage for a partially-modified file.
+
+## ERR-MES-053 — Angular getter returning new array/object reference triggers NG0100 in dev mode and tests
+**Date:** 2026-05-31  **Category:** Frontend — Angular Change Detection  **Status:** Promoted 2026-05-31
+**Symptom:** `ItemMasterEditComponent` Vitest tests all failed with `NG0100: ExpressionChangedAfterItHasBeenCheckedError: Expression has changed after it was checked`. The component was created with `fixture.detectChanges()` using synchronous service mocks. The error pointed to a template expression whose value differed between Angular's render pass and verify pass.
+**Root cause:** Angular dev mode runs every template expression TWICE per `detectChanges()` call (render pass + verify pass). A class `get breadcrumbs()` getter returning a fresh array literal on every call (`return [{...}, {...}, {...}]`) produces a different object reference on each invocation. Angular's `===` comparison between the two passes sees a different reference even though the content is identical — NG0100 is thrown. In tests, `fixture.detectChanges()` always runs dev-mode checks, so the issue surfaces every test run even when the production build is fine (non-dev mode skips the verify pass).
+**Fix applied:** Converted `get breadcrumbs()` getter to a class property (`breadcrumbs: {...}[] = [...]`). The property is initialized with a default value and assigned a new array only when the item data actually loads (inside `populateForm()`/`loadItem()` callbacks). The verify pass sees the same object reference on both evaluations — no NG0100.
+**Rule:** Never use a getter that returns a newly-created array or object literal when the return value is bound to an `@Input` or any template expression that Angular evaluates more than once per change detection cycle. Use a class property that is only reassigned when the underlying data changes. Pattern: `breadcrumbs: Breadcrumb[] = defaultBreadcrumbs;` (property), updated in the data-load callback — NOT `get breadcrumbs() { return [{...}]; }`.
+
+## ERR-MES-054 — Wrote Jasmine-style matchers in a Vitest-based Angular project
+**Date:** 2026-05-31  **Category:** Frontend — Testing / Vitest  **Status:** Promoted 2026-05-31
+**Symptom:** Angular component spec files failed to compile: `TS2339: Property 'toBeTrue' does not exist on type 'Assertion<boolean>'`, `TS2552: Cannot find name 'spyOn'. Did you mean 'spy'?`. The test file used `expect(x).toBeTrue()`, `expect(x).toBeFalse()`, and `spyOn(obj, 'method')`.
+**Root cause:** The project uses Vitest as its test runner (Angular 17+ `@angular/build:vitest` builder). Vitest does not include Jasmine's custom matchers (`toBeTrue`, `toBeFalse`) or the global `spyOn` function — those are Jasmine extensions. The agent wrote tests from memory using Jasmine patterns without checking the project's test runner.
+**Fix applied:** Replaced `toBeTrue()` with `toBe(true)`, `toBeFalse()` with `toBe(false)`, and `spyOn(obj, 'method')` with `vi.spyOn(obj, 'method')` (with `import { vi } from 'vitest'` at the top of the file). Also replaced `HttpClientTestingModule` + `HttpTestingController` approach with synchronous `vi.fn().mockReturnValue(of(...))` service mocks to avoid async HTTP timing issues with `detectChanges()`.
+**Rule:** Before writing Angular specs, check `angular.json` for `"builder": "@angular/build:vitest"` (Vitest) vs `"@angular/build:karma"` (Jasmine/Karma). In a Vitest project: use `toBe(true)` not `toBeTrue()`; use `toBe(false)` not `toBeFalse()`; import `vi` from `'vitest'` and use `vi.spyOn()` not the global `spyOn()`. For components with HTTP calls, prefer `vi.fn().mockReturnValue(of(...))` service mocks over `HttpTestingController` — synchronous `of()` observables avoid NG0100 from async state changes during `detectChanges()`.
 
 ## ERR-MES-019 — ESLint flat config rejects `processor: angular.processInlineTemplates`
 **Date:** 2026-05-20  **Category:** Frontend — ESLint  **Status:** Promoted 2026-05-20

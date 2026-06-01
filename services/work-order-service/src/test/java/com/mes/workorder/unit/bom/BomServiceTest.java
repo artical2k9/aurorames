@@ -413,6 +413,112 @@ class BomServiceTest {
         assertThat(result.getEffectiveToUnit()).isEqualTo("200");
     }
 
+    // ── listByItem ────────────────────────────────────────────────────────────
+
+    @Test
+    void listByItemReturnsBomListFromRepo() {
+        BillOfMaterials bom = draftBom();
+        when(bomRepository.findAllByOrgIdAndParentItemId(orgId, parentItemId))
+                .thenReturn(List.of(bom));
+
+        List<BillOfMaterials> result = bomService.listByItem(orgId, parentItemId);
+
+        assertThat(result).containsExactly(bom);
+    }
+
+    // ── deleteLine ────────────────────────────────────────────────────────────
+
+    @Test
+    void deleteLineRemovesLineFromRepo() {
+        when(bomRepository.findByOrgIdAndId(orgId, bomId)).thenReturn(Optional.of(draftBom()));
+        BomLine line = lineInBom("010");
+        when(bomLineRepository.findById(lineId)).thenReturn(Optional.of(line));
+
+        bomService.deleteLine(orgId, bomId, lineId);
+
+        verify(bomLineRepository).delete(line);
+    }
+
+    @Test
+    void deleteLineThrowsNotFoundWhenBomMissing() {
+        when(bomRepository.findByOrgIdAndId(orgId, bomId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> bomService.deleteLine(orgId, bomId, lineId))
+                .isInstanceOf(BomNotFoundException.class);
+    }
+
+    @Test
+    void deleteLineThrowsConflictWhenBomNotDraft() {
+        BillOfMaterials released = new BillOfMaterials();
+        released.setStatus(BomStatus.RELEASED);
+        when(bomRepository.findByOrgIdAndId(orgId, bomId)).thenReturn(Optional.of(released));
+
+        assertThatThrownBy(() -> bomService.deleteLine(orgId, bomId, lineId))
+                .isInstanceOf(BomConflictException.class);
+    }
+
+    @Test
+    void deleteLineThrowsNotFoundWhenLineNotInBom() {
+        when(bomRepository.findByOrgIdAndId(orgId, bomId)).thenReturn(Optional.of(draftBom()));
+        BomLine line = lineInBom("010");
+        line.setBomId(UUID.randomUUID()); // different BOM
+        when(bomLineRepository.findById(lineId)).thenReturn(Optional.of(line));
+
+        assertThatThrownBy(() -> bomService.deleteLine(orgId, bomId, lineId))
+                .isInstanceOf(BomNotFoundException.class);
+    }
+
+    // ── patchHeader ───────────────────────────────────────────────────────────
+
+    @Test
+    void patchHeaderUpdatesDescriptionAndSaves() {
+        BillOfMaterials bom = draftBom();
+        when(bomRepository.findByOrgIdAndId(orgId, bomId)).thenReturn(Optional.of(bom));
+        when(bomRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        com.mes.workorder.bom.api.dto.PatchBomHeaderRequest req =
+                new com.mes.workorder.bom.api.dto.PatchBomHeaderRequest();
+        req.setDescription("Updated");
+        req.setReasonForRevision("Design change");
+        req.setProductionLine("LINE-A");
+        req.setBomType("MANUFACTURING");
+        req.setEffectivityType("DATE");
+
+        BillOfMaterials result = bomService.patchHeader(orgId, bomId, req);
+
+        assertThat(result.getDescription()).isEqualTo("Updated");
+        assertThat(result.getReasonForRevision()).isEqualTo("Design change");
+        assertThat(result.getProductionLine()).isEqualTo("LINE-A");
+        assertThat(result.getBomType()).isEqualTo("MANUFACTURING");
+        assertThat(result.getEffectivityType()).isEqualTo("DATE");
+        verify(bomRepository).save(bom);
+    }
+
+    @Test
+    void patchHeaderIgnoresNullFields() {
+        BillOfMaterials bom = draftBom();
+        bom.setDescription("Original");
+        when(bomRepository.findByOrgIdAndId(orgId, bomId)).thenReturn(Optional.of(bom));
+        when(bomRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        com.mes.workorder.bom.api.dto.PatchBomHeaderRequest req =
+                new com.mes.workorder.bom.api.dto.PatchBomHeaderRequest();
+        // all fields null
+
+        BillOfMaterials result = bomService.patchHeader(orgId, bomId, req);
+
+        assertThat(result.getDescription()).isEqualTo("Original");
+    }
+
+    @Test
+    void patchHeaderThrowsNotFoundWhenBomMissing() {
+        when(bomRepository.findByOrgIdAndId(orgId, bomId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> bomService.patchHeader(orgId, bomId,
+                new com.mes.workorder.bom.api.dto.PatchBomHeaderRequest()))
+                .isInstanceOf(BomNotFoundException.class);
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private BillOfMaterials draftBom() {

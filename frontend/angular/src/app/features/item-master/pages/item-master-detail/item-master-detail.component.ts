@@ -30,6 +30,8 @@ import { StatusBadgeComponent, BreadcrumbComponent } from '../../../../shared/ui
                   severity="secondary" size="small" (onClick)="goBack()" />
         @if (item) {
           <div class="imd__topbar-actions">
+            <p-button label="BOMs" icon="pi pi-sitemap" severity="secondary"
+                      size="small" (onClick)="openBoms()" />
             <p-button label="Edit" icon="pi pi-pencil" severity="primary"
                       size="small" (onClick)="openEdit()" />
           </div>
@@ -289,6 +291,10 @@ export class ItemMasterDetailComponent implements OnInit {
 
   openEdit(): void {
     this.router.navigate(['/item-master', this.itemId, 'edit']);
+  }
+
+  openBoms(): void {
+    this.router.navigate(['/item-master', this.itemId, 'boms']);
   }
 
   udfDisplayValue(field: UdfFieldDefinition): string {

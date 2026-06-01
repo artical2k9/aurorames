@@ -10,6 +10,9 @@ import com.mes.workorder.kafka.EcoEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Locale;
@@ -49,6 +52,11 @@ public class EcoService {
         EcoDto dto = EcoMapper.toDto(saved);
         dto.setConcurrentEcoWarning(concurrentWarning);
         return dto;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<EcoDto> list(UUID orgId, Pageable pageable) {
+        return ecoRepository.findAllByOrgId(orgId, pageable).map(EcoMapper::toDto);
     }
 
     @Transactional(readOnly = true)

@@ -124,6 +124,24 @@ class EcoControllerIT extends BaseIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 
+    // AS6: list ECOs returns paginated results
+    @Test
+    @SuppressWarnings("unchecked")
+    void listEcosReturns200WithContent() {
+        String token = engineerToken();
+        String itemId = createItem(token, "ECO-LIST-ITEM-001", "A");
+        createEco(token, "List ECO 1", itemId);
+        createEco(token, "List ECO 2", itemId);
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                ECO_BASE + "?page=0&size=20", HttpMethod.GET,
+                bearerRequest(token), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<Object> content = (List<Object>) response.getBody().get("content");
+        assertThat(content).isNotEmpty();
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private String engineerToken() {

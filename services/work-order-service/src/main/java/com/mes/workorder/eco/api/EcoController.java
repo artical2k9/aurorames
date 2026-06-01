@@ -6,6 +6,8 @@ import com.mes.workorder.eco.api.dto.CreateEcoRequest;
 import com.mes.workorder.eco.api.dto.EcoDto;
 import com.mes.workorder.eco.service.EcoService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -28,6 +31,16 @@ public class EcoController {
 
     public EcoController(EcoService ecoService) {
         this.ecoService = ecoService;
+    }
+
+    @GetMapping
+    @RequiresPrivilege("item-master:eco:manage")
+    public Page<EcoDto> listEcos(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        return ecoService.list(JwtClaimsExtractor.orgId(jwt), PageRequest.of(page, size));
     }
 
     @PostMapping

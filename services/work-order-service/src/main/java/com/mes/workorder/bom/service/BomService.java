@@ -2,6 +2,7 @@ package com.mes.workorder.bom.service;
 
 import com.mes.workorder.bom.api.dto.CreateBomLineRequest;
 import com.mes.workorder.bom.api.dto.CreateBomRequest;
+import com.mes.workorder.bom.api.dto.PatchBomHeaderRequest;
 import com.mes.workorder.bom.api.dto.UpdateBomLineRequest;
 import com.mes.workorder.bom.domain.BillOfMaterials;
 import com.mes.workorder.bom.domain.BomLine;
@@ -20,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 @Service
 @Transactional
@@ -185,6 +189,57 @@ public class BomService {
         if (req.getReferenceDesignators() != null) {
             line.setReferenceDesignators(req.getReferenceDesignators());
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<BillOfMaterials> listByItem(UUID orgId, UUID parentItemId) {
+        return bomRepository.findAllByOrgIdAndParentItemId(orgId, parentItemId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<BillOfMaterials> list(UUID orgId, Pageable pageable) {
+        List<BillOfMaterials> all = bomRepository.findAll().stream()
+                .filter(b -> b.getOrgId().equals(orgId)).toList();
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), all.size());
+        List<BillOfMaterials> slice = start >= all.size() ? List.of() : all.subList(start, end);
+        return new PageImpl<>(slice, pageable, all.size());
+    }
+
+    public void deleteLine(UUID orgId, UUID bomId, UUID lineId) {
+        BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
+                .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
+        if (bom.getStatus() != BomStatus.DRAFT) {
+            throw new BomConflictException("Cannot modify a BOM that is not in DRAFT status");
+        }
+        BomLine line = bomLineRepository.findById(lineId)
+                .filter(l -> l.getBomId().equals(bomId))
+                .orElseThrow(() -> new BomNotFoundException("BOM line not found: " + lineId));
+        bomLineRepository.delete(line);
+    }
+
+    public BillOfMaterials patchHeader(UUID orgId, UUID bomId, PatchBomHeaderRequest req) {
+        BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
+                .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
+        if (req.getDescription() != null) {
+            bom.setDescription(req.getDescription());
+        }
+        if (req.getReasonForRevision() != null) {
+            bom.setReasonForRevision(req.getReasonForRevision());
+        }
+        if (req.getProductionLine() != null) {
+            bom.setProductionLine(req.getProductionLine());
+        }
+        if (req.getBomType() != null) {
+            bom.setBomType(req.getBomType());
+        }
+        if (req.getEffectivityType() != null) {
+            bom.setEffectivityType(req.getEffectivityType());
+        }
+        if (req.getCustomFields() != null) {
+            bom.setCustomFields(req.getCustomFields());
+        }
+        return bomRepository.save(bom);
     }
 
     private void applyEffectivityUpdates(BomLine line, UUID bomId, UUID lineId, UpdateBomLineRequest req) {

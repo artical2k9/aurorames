@@ -38,3 +38,9 @@
 | ERR-MES-050 | 2026-05-30 | Design — Assets | SVG recreation from raster PNG cannot achieve fidelity; request vector source (AI/EPS) before attempting; do not iterate corrections |
 | ERR-MES-051 | 2026-05-30 | Testing — JaCoCo | `--tests` filtered Gradle run replaces jacoco.exec; always run `check` before reading coverage reports |
 | ERR-MES-052 | 2026-05-30 | CI — SonarCloud | SonarCloud "new code" = PR diff lines only; use `git diff origin/Develop -- <file>` to identify actual new-code scope |
+| ERR-MES-053 | 2026-05-31 | Frontend — Angular Change Detection | Getter returning new array/object each call triggers NG0100 in dev mode; use a class property updated on data load |
+| ERR-MES-054 | 2026-05-31 | Frontend — Testing / Vitest | Jasmine matchers (`toBeTrue`, `spyOn`) don't exist in Vitest; use `toBe(true)` + `vi.spyOn` from `'vitest'` |
+| ERR-MES-055 | 2026-05-31 | Agent Process | `tasks.md` stale markers can't distinguish "planned but skipped" from "done but unchecked"; read controllers to verify endpoints exist before starting a dependent PR |
+| ERR-MES-056 | 2026-05-31 | Agent Process | `speckit-clarify`/`speckit-analyze` analyse documents, not code; they cannot detect missing backend endpoints; manual controller reads are required as a pre-flight for frontend PRs |
+| ERR-MES-057 | 2026-05-31 | Backend — Hibernate Envers | Adding columns to `@Audited` entity requires same columns in `_aud` table in the same migration; Envers schema-validation enforces parity at startup |
+| ERR-MES-058 | 2026-05-31 | Agent Process | Pre-PR retrospective is a technical gate, not a formality; skipping it let a known Envers pattern repeat; must spot-check all relevant index categories before `gh pr create` |
