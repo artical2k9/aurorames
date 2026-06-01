@@ -1,5 +1,5 @@
 # MES-8 Implementation Handover
-**Branch**: `008-item-master-bom-management` | **Date**: 2026-05-31 | **Head**: `9f229b2`
+**Branch**: `008-item-master-bom-management` | **Date**: 2026-06-01 | **Head**: `7fda9e7`
 
 ---
 
@@ -28,147 +28,96 @@ All GitHub PRs below have merged to `Develop`. The tasks.md `[ ]` markers for th
 | PR #17 | Fix-up | PATCH BOM line endpoint, gateway route, some speckit-analyze remediations | T174 (update) |
 | PR #18 | Phase 11 | App shell (nav rail + top bar), Item Master list fidelity, `ItemMasterFormComponent` (interim dialog), `ItemMasterDetailComponent` | T131–T148, T168 |
 | PR #19 | Phase 11b | Angular Item Master create/edit full-page routes, BreadcrumbComponent, ClassificationLabelPipe, overflow menu, pagination text, column picker fixes | T177–T185, T198–T200 |
+| PR #20 | Phase 12+13 | BOM frontend (BomApiService, BomListComponent, BomAuthoringComponent, BomExplosionComponent) + ECO frontend (EcoApiService, EcoListComponent, EcoFormComponent, EcoDetailComponent) + backend prerequisites (ModuleKey BOM_LINE/BOM_HEADER, V013+V014 migrations, BOM list/delete/patch/export endpoints, ECO list endpoint, Apache PDFBox CSV/PDF export) | T149–T166, T169–T170, T175–T176, T186–T189, T193–T196, T201–T202 |
 
 **Note on tasks that are DONE but tasks.md still shows `[ ]`:**
-- T067–T087 (effectivity + ECO) — fully implemented in PR #12
+- T067–T087 (effectivity + ECO backend) — fully implemented in PR #12
 - T088–T094 (AS5553) — fully implemented in PR #13
+- T149–T166, T169–T170, T175–T176, T186–T189, T193–T196, T201–T202 (Phase 12+13) — fully implemented in PR #20
 - T177–T185, T198–T200 (Phase 11b) — fully implemented in PR #19
-- T190–T192 (QUALITY_ENGINEER role seed) — need verification; check `V014__seed_quality_engineer_role.sql` exists
+- T190–T192 (QUALITY_ENGINEER role seed) — need verification; check `V014__seed_quality_engineer_role.sql` exists in `services/work-order-service/src/main/resources/db/migration/`
 
 ---
 
 ## What Remains To Implement
 
-### Next PR: PR 7 — Phase 12 + 13 (BOM + ECO frontend)
-**Target branch**: `008-item-master-bom-management` → PR to `Develop`
-**CI anchor**: `ng build --configuration=production` + `ng test --watch=false` + `ng lint --max-warnings 0`
+### Remaining tasks (polish / performance)
 
-**NO BOM or ECO Angular components exist yet.** Implement in this order:
+| Task(s) | Description | Notes |
+|---------|-------------|-------|
+| T171, T172 | k6 load tests for Item Master and BOM endpoints | Polish — not a CI gate |
+| T173 | `UdfLibReusabilityIT` — verifies UDF lib works with multiple modules | Polish |
 
-| Step | Task(s) | Description |
-|------|---------|-------------|
-| 1 | T149 | `BomApiService` Angular service |
-| 2 | T150–T152 | BOM list screen |
-| 3 | T153 | BOM authoring screen (prerequisite: `DEFAULT_BOM_LINE_COLUMNS` in `features/bom/constants/default-columns.ts`) |
-| 4 | T154 | `AddBomLineFormComponent` |
-| 5 | T175 | `BomHeaderEditDialogComponent` (uses `UdfApiService` with `BOM_HEADER`) |
-| 6 | T176 | `patchHeader()` in `BomApiService` |
-| 7 | T155 | `BomExplosionComponent` |
-| 8 | T156 | BOM routes in `app.routes.ts` |
-| 9 | T186 | CSV/PDF backend endpoints (Apache PDFBox — add to `build.gradle`) |
-| 10 | T187 | Wire export buttons in explosion view |
-| 11 | T188 | `referenceDesignators` frontend column |
-| 12 | T189 | Bottom status bar + unit-effectivity badge |
-| 13 | T159–T164 | ECO API service + list + form + detail + approve + routes |
-| 14 | T169, T170 | Lint gates |
-| 15 | T201, T202 | Angular unit tests: `BomExplosionComponent`, `BomAuthoringComponent` |
-
-**Also verify before starting PR 7:**
-- T193/T194 (ModuleKey `BOM_LINE`/`BOM_HEADER`) — backend lib change, may already exist; check `libs/mes-udf-lib/src/main/java/com/mes/udf/domain/ModuleKey.java`
-- V013 migration — needed for BOM header edit fields; check if it exists in `services/work-order-service/src/main/resources/db/migration/`
-
-**After PR 7:** Performance tasks T171/T172 (k6 load tests) and T173 (UdfLibReusabilityIT).
+These are the only tasks from the original plan not yet delivered. No blocking frontend or backend work remains for MES-8 spec compliance.
 
 ---
 
 ## Current Angular Codebase State
 
-### Files that EXIST (do not recreate):
+### Key files that EXIST (do not recreate):
 
 ```
 frontend/angular/src/app/
-├── app.routes.ts                          ← DONE: /item-master/new + /:id/edit + /:id wired
-├── layout/
-│   ├── index.ts
-│   └── shell/app-shell.component.ts      ← DONE (PR #18)
-├── shared/
-│   ├── grid/
-│   │   ├── index.ts
-│   │   ├── models/column-def.model.ts
-│   │   ├── services/grid-preference.service.ts
-│   │   ├── services/user-grid-preference-api.service.ts
-│   │   └── components/column-picker/column-picker.component.ts  ← DONE: title "Customise Columns", drag handle always shown
-│   ├── theme/
-│   │   ├── index.ts
-│   │   ├── services/theme.service.ts
-│   │   └── components/theme-toggle/theme-toggle.component.ts
-│   └── ui/
-│       ├── index.ts                       ← exports StatusBadgeComponent + BreadcrumbComponent
-│       ├── status-badge/status-badge.component.ts
-│       └── breadcrumb/breadcrumb.component.ts  ← DONE (PR #19)
-└── features/item-master/
-    ├── constants/default-columns.ts       ← DONE: counterfeitRiskLevel + stepPartRef (udf:true) added
-    ├── models/item-master.model.ts        ← DONE: all optional fields + stepPartRef on Create/Patch requests
-    ├── pipes/
-    │   └── classification-label.pipe.ts   ← DONE (PR #19)
-    ├── services/
-    │   ├── item-master-api.service.ts     ← DONE: clone() method added
-    │   └── udf-api.service.ts             ← DONE (PR #18)
-    ├── pages/
-    │   ├── item-master-list/item-master-list.component.ts    ← DONE: navigation + 4-action menu + pagination text + breadcrumbs
-    │   ├── item-master-detail/item-master-detail.component.ts ← DONE: Edit navigates to /:id/edit + breadcrumbs
-    │   ├── item-master-create/item-master-create.component.ts ← DONE (PR #19)
-    │   └── item-master-edit/item-master-edit.component.ts    ← DONE (PR #19)
-    └── components/
-        └── item-master-form/item-master-form.component.ts   ← KEEP as-is (still valid, unused now that pages exist — can be removed in a later cleanup PR)
+├── app.routes.ts                          ← DONE: all routes wired (item-master, bom, eco)
+├── layout/shell/app-shell.component.ts   ← DONE: nav rail has Dashboard, Item Master, BOM, ECO
+├── shared/grid/                          ← DONE: ColumnPicker, GridPreferenceService
+├── shared/theme/                         ← DONE: ThemeService, ThemeToggleComponent
+├── shared/ui/                            ← DONE: StatusBadgeComponent, BreadcrumbComponent
+└── features/
+    ├── item-master/                      ← DONE: list, detail, create, edit pages + all services/pipes
+    ├── bom/                              ← DONE (PR #20)
+    │   ├── constants/default-columns.ts
+    │   ├── models/bom.model.ts
+    │   ├── services/bom-api.service.ts
+    │   ├── pages/bom-list/bom-list.component.ts
+    │   ├── pages/bom-authoring/bom-authoring.component.ts
+    │   ├── pages/bom-explosion/bom-explosion.component.ts
+    │   ├── components/add-bom-line-form/add-bom-line-form.component.ts
+    │   └── components/bom-header-edit-dialog/bom-header-edit-dialog.component.ts
+    └── eco/                              ← DONE (PR #20)
+        ├── models/eco.model.ts
+        ├── services/eco-api.service.ts
+        ├── pages/eco-list/eco-list.component.ts
+        ├── pages/eco-detail/eco-detail.component.ts
+        └── components/eco-form/eco-form.component.ts
 ```
 
-### Files that DO NOT EXIST yet (all in PR 7 scope):
-
-```
-features/bom/
-├── constants/default-columns.ts               (T153 prerequisite)
-├── services/bom-api.service.ts                (T149)
-├── pages/
-│   ├── bom-list/bom-list.component.ts         (T150–T152)
-│   ├── bom-authoring/bom-authoring.component.ts (T153)
-│   └── bom-explosion/bom-explosion.component.ts (T155)
-├── components/
-│   ├── add-bom-line-form/add-bom-line-form.component.ts (T154)
-│   └── bom-header-edit-dialog/bom-header-edit-dialog.component.ts (T175)
-features/eco/
-├── services/eco-api.service.ts                (T159)
-├── pages/
-│   ├── eco-list/eco-list.component.ts         (T160)
-│   ├── eco-form/eco-form.component.ts         (T161)
-│   ├── eco-detail/eco-detail.component.ts     (T162)
-│   └── eco-approve/eco-approve.component.ts   (T163)
-```
+### Routes wired in `app.routes.ts`:
+- `/item-master` → ItemMasterListComponent
+- `/item-master/new` → ItemMasterCreateComponent
+- `/item-master/:id/edit` → ItemMasterEditComponent
+- `/item-master/:id` → ItemMasterDetailComponent
+- `/item-master/:itemId/boms` → BomListComponent
+- `/boms/:bomId` → BomAuthoringComponent
+- `/boms/:bomId/explosion` → BomExplosionComponent
+- `/ecos` → EcoListComponent
+- `/ecos/:ecoId` → EcoDetailComponent
 
 ---
 
-## Key Technical Notes for PR 7
+## Key Technical Notes
 
-### Angular testing
-- Project uses **Vitest** runner (`@angular/build:vitest` in `angular.json`)
-- Use `toBe(true/false)`, `vi.spyOn` — NOT Jasmine's `toBeTrue()`, `spyOn()`
-- Import `{ vi }` from `'vitest'` for mocks
-- For components with HTTP calls, prefer `vi.fn().mockReturnValue(of(...))` service mocks over `HttpTestingController` — avoids NG0100 from async state changes during `detectChanges()`
-- **Never** use a class getter returning a new array/object literal for template-bound inputs — use a class property updated on data load (NG0100 in dev mode)
+### Backend — work-order-service (`/api/v1/`)
+All endpoints are live on Develop:
+- Item Master: CRUD + obsolete + clone + UDF fields
+- BOM: create, get, list-by-item, lines CRUD, release, explode (flat/indented), patch-header, CSV/PDF download
+- ECO: create, get, list (paginated), approve
+- UDF fields: `GET /api/v1/udf/fields?module={MODULE_KEY}`
+- Grid prefs: `GET/PUT /api/v1/grid-preferences/{moduleKey}`
 
-### BomApiService (T149)
-Backend endpoints already exist (merged in PR #11/17). Base path: `/api/v1/bom`.
-Key methods needed: `listHeaders()`, `getHeader(id)`, `createHeader()`, `getLines(headerId)`, `addLine()`, `patchLine()`, `deleteLine()`, `release(id)`, `explode(id)`, `patchHeader()` (T176).
+### Backend — migrations applied (Flyway)
+V001–V014 all applied. V013 adds BOM header edit fields; V014 mirrors them into `bill_of_materials_aud` (required by Envers schema-validation — **lesson ERR-MES-057**: always update `_aud` table in same migration as entity).
 
-### UdfApiService (T197)
-Already exists at `features/item-master/services/udf-api.service.ts`. Do not recreate.
-Method: `listFields(moduleKey: string)`. Use `'BOM_HEADER'` for BOM header edit dialog.
+### Angular — testing
+- Vitest runner: use `toBe(true/false)`, `vi.spyOn` from `'vitest'` — NOT Jasmine matchers
+- Never use class getters returning new array/object literals for template-bound inputs (NG0100)
 
-### Route ordering (critical)
-`/item-master/new` already correctly placed before `/item-master/:id` in `app.routes.ts`.
-For BOM routes, follow the same pattern: `/bom/new` before `/bom/:id`.
-
-### Backend clone endpoint
-Already merged (PR #17). `POST /api/v1/item-master/{id}/clone` — no backend work needed.
-
-### V013 migration
-Needed for BOM header edit fields (`reason_for_revision`, `production_line`, `bom_type`, `effectivity_type`, `custom_fields`). Verify existence before creating frontend edit form.
-
-### Performance tasks
-T171/T172 (k6 load tests) and T173 (UdfLibReusabilityIT) are polish items — address after PR 7.
-
-### Constitution v1.2.1
-Already committed. Do not re-amend.
+### Error log
+33 promoted lessons in `docs/governance/MES-ERR-001_Index.md`. Key new lessons from this session:
+- ERR-MES-055: `tasks.md` stale markers can't distinguish done vs skipped
+- ERR-MES-056: speckit tools analyse documents, not code — manual controller reads required
+- ERR-MES-057: `@Audited` entity column additions require same columns in `_aud` table
+- ERR-MES-058: pre-PR retrospective gate is a technical blocker, not a formality
 
 ---
 
