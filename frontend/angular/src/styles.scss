@@ -65,17 +65,3 @@ html, body {
   color: var(--aurora-text-primary, #0F172A);
 }
 
-nav {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background-color: var(--aurora-bg-subtle, #EFF6FF);
-  border-bottom: 1px solid var(--aurora-border-subtle, #CBD5E1);
-
-  span {
-    font-weight: 700;
-    font-size: 1.1rem;
-    flex: 1;
-  }
-}

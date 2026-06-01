@@ -4,16 +4,34 @@ import { OAuthService } from 'angular-oauth2-oidc';
 import { ButtonModule } from 'primeng/button';
 import { PopoverModule } from 'primeng/popover';
 import { Popover } from 'primeng/popover';
+import {
+  LucideLayoutDashboard,
+  LucidePackage,
+  LucideListTree,
+  LucidePencilRuler,
+  LucideBlocks,
+  LucideSettings,
+  LucideLifeBuoy,
+  LucidePanelLeftOpen,
+  LucidePanelLeftClose,
+  LucideUserCog,
+  LucideList,
+  LucideLayoutGrid,
+  LucideBell,
+} from '@lucide/angular';
 import { ThemeToggleComponent } from '../../shared/theme';
 import { ThemeService } from '../../shared/theme';
 import { filter, Subscription } from 'rxjs';
 
 const NAV_COLLAPSED_KEY = 'aurora-mes-nav-collapsed';
 
+type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help';
+
 interface NavItem {
   label: string;
-  icon: string;
+  iconKey: NavIconKey;
   path: string;
+  disabled?: boolean;
 }
 
 @Component({
@@ -22,6 +40,10 @@ interface NavItem {
   imports: [
     RouterOutlet, RouterLink, RouterLinkActive,
     ButtonModule, PopoverModule,
+    LucideLayoutDashboard, LucidePackage, LucideListTree,
+    LucidePencilRuler, LucideBlocks, LucideSettings, LucideLifeBuoy,
+    LucidePanelLeftOpen, LucidePanelLeftClose,
+    LucideUserCog, LucideList, LucideLayoutGrid, LucideBell,
     ThemeToggleComponent,
   ],
   template: `
@@ -36,30 +58,34 @@ interface NavItem {
           </nav>
         </div>
         <div class="shell__topbar-end">
-          <button class="shell__icon-btn" aria-label="Notifications" title="Notifications">
-            <i class="pi pi-bell"></i>
+          <button class="shell__icon-btn shell__notif-btn"
+                  [attr.aria-label]="notificationCount > 0 ? notificationCount + ' unread notifications' : 'Notifications'"
+                  title="Notifications">
+            <svg lucideBell [size]="18" [strokeWidth]="2"></svg>
+            @if (notificationCount > 0) {
+              <span class="shell__notif-badge" aria-hidden="true"></span>
+            }
           </button>
           <div class="shell__view-toggle" role="group" aria-label="View mode">
             <button class="shell__icon-btn"
                     [class.shell__icon-btn--active]="viewMode === 'list'"
-                    aria-label="List view"
-                    title="List view"
+                    aria-label="List view" title="List view"
                     (click)="viewMode = 'list'">
-              <i class="pi pi-list"></i>
+              <svg lucideList [size]="16" [strokeWidth]="2"></svg>
             </button>
             <button class="shell__icon-btn"
                     [class.shell__icon-btn--active]="viewMode === 'grid'"
-                    aria-label="Grid view"
-                    title="Grid view"
+                    aria-label="Grid view" title="Grid view"
                     (click)="viewMode = 'grid'">
-              <i class="pi pi-th-large"></i>
+              <svg lucideLayoutGrid [size]="16" [strokeWidth]="2"></svg>
             </button>
           </div>
           <app-theme-toggle />
-          <button class="shell__avatar"
+          <button class="shell__icon-btn shell__user-btn"
                   [attr.aria-label]="'User menu for ' + userName"
+                  title="User menu"
                   (click)="avatarMenu.toggle($event)">
-            {{ userInitial }}
+            <svg lucideUserCog [size]="18" [strokeWidth]="2"></svg>
           </button>
         </div>
       </header>
@@ -81,29 +107,71 @@ interface NavItem {
         <button class="shell__collapse-btn"
                 [attr.aria-label]="collapsed ? 'Expand navigation' : 'Collapse navigation'"
                 (click)="toggleCollapse()">
-          <i [class]="collapsed ? 'pi pi-angle-right' : 'pi pi-angle-left'"></i>
+          @if (collapsed) {
+            <svg lucidePanelLeftOpen [size]="16" [strokeWidth]="2"></svg>
+          } @else {
+            <svg lucidePanelLeftClose [size]="16" [strokeWidth]="2"></svg>
+          }
         </button>
 
         <nav class="shell__nav" aria-label="Main navigation">
           @for (item of navItems; track item.path) {
-            <a class="shell__nav-item"
-               [routerLink]="item.path"
-               routerLinkActive="shell__nav-item--active"
-               [routerLinkActiveOptions]="{ exact: false }"
-               [title]="item.label">
-              <i [class]="'pi ' + item.icon + ' shell__nav-icon'"></i>
-              @if (!collapsed) {
-                <span class="shell__nav-label">{{ item.label }}</span>
-              }
-            </a>
+            @if (item.disabled) {
+              <span class="shell__nav-item shell__nav-item--disabled" [title]="item.label">
+                <span class="shell__nav-icon">
+                  @switch (item.iconKey) {
+                    @case ('dashboard')   { <svg lucideLayoutDashboard [size]="18" [strokeWidth]="2"></svg> }
+                    @case ('item-master') { <svg lucidePackage         [size]="18" [strokeWidth]="2"></svg> }
+                    @case ('bom')         { <svg lucideListTree        [size]="18" [strokeWidth]="2"></svg> }
+                    @case ('eco')         { <svg lucidePencilRuler     [size]="18" [strokeWidth]="2"></svg> }
+                    @case ('work-orders') { <svg lucideBlocks          [size]="18" [strokeWidth]="2"></svg> }
+                    @case ('settings')    { <svg lucideSettings        [size]="18" [strokeWidth]="2"></svg> }
+                    @case ('help')        { <svg lucideLifeBuoy        [size]="18" [strokeWidth]="2"></svg> }
+                  }
+                </span>
+                @if (!collapsed) {
+                  <span class="shell__nav-label">{{ item.label }}</span>
+                }
+              </span>
+            } @else {
+              <a class="shell__nav-item"
+                 [routerLink]="item.path"
+                 routerLinkActive="shell__nav-item--active"
+                 [routerLinkActiveOptions]="{ exact: false }"
+                 [title]="item.label">
+                <span class="shell__nav-icon">
+                  @switch (item.iconKey) {
+                    @case ('dashboard')   { <svg lucideLayoutDashboard [size]="18" [strokeWidth]="2"></svg> }
+                    @case ('item-master') { <svg lucidePackage         [size]="18" [strokeWidth]="2"></svg> }
+                    @case ('bom')         { <svg lucideListTree        [size]="18" [strokeWidth]="2"></svg> }
+                    @case ('eco')         { <svg lucidePencilRuler     [size]="18" [strokeWidth]="2"></svg> }
+                    @case ('work-orders') { <svg lucideBlocks          [size]="18" [strokeWidth]="2"></svg> }
+                    @case ('settings')    { <svg lucideSettings        [size]="18" [strokeWidth]="2"></svg> }
+                    @case ('help')        { <svg lucideLifeBuoy        [size]="18" [strokeWidth]="2"></svg> }
+                  }
+                </span>
+                @if (!collapsed) {
+                  <span class="shell__nav-label">{{ item.label }}</span>
+                }
+              </a>
+            }
           }
         </nav>
 
         <nav class="shell__nav shell__nav--bottom" aria-label="Settings and help">
           @for (item of navItemsBottom; track item.label) {
-            <span class="shell__nav-item shell__nav-item--disabled"
-                  [title]="item.label">
-              <i [class]="'pi ' + item.icon + ' shell__nav-icon'"></i>
+            <span class="shell__nav-item shell__nav-item--disabled" [title]="item.label">
+              <span class="shell__nav-icon">
+                @switch (item.iconKey) {
+                  @case ('dashboard')   { <svg lucideLayoutDashboard [size]="18" [strokeWidth]="2"></svg> }
+                  @case ('item-master') { <svg lucidePackage         [size]="18" [strokeWidth]="2"></svg> }
+                  @case ('bom')         { <svg lucideListTree        [size]="18" [strokeWidth]="2"></svg> }
+                  @case ('eco')         { <svg lucidePencilRuler     [size]="18" [strokeWidth]="2"></svg> }
+                  @case ('work-orders') { <svg lucideBlocks          [size]="18" [strokeWidth]="2"></svg> }
+                  @case ('settings')    { <svg lucideSettings        [size]="18" [strokeWidth]="2"></svg> }
+                  @case ('help')        { <svg lucideLifeBuoy        [size]="18" [strokeWidth]="2"></svg> }
+                }
+              </span>
               @if (!collapsed) {
                 <span class="shell__nav-label">{{ item.label }}</span>
               }
@@ -118,6 +186,7 @@ interface NavItem {
       </main>
 
     </div>
+
   `,
   styleUrl: './app-shell.component.scss',
 })
@@ -130,20 +199,22 @@ export class AppShellComponent implements OnInit, OnDestroy {
 
   collapsed = true;
   viewMode: 'grid' | 'list' = 'list';
+  notificationCount = 0;
   currentPageLabel = 'Dashboard';
 
   private routerSub?: Subscription;
 
   readonly navItems: NavItem[] = [
-    { label: 'Dashboard',   icon: 'pi-home',        path: '/dashboard' },
-    { label: 'Item Master', icon: 'pi-box',         path: '/item-master' },
-    { label: 'BOM',         icon: 'pi-sitemap',     path: '/bom' },
-    { label: 'ECO',         icon: 'pi-file-check',  path: '/ecos' },
+    { label: 'Dashboard',   iconKey: 'dashboard',   path: '/dashboard' },
+    { label: 'Item Master', iconKey: 'item-master', path: '/item-master' },
+    { label: 'BOM',         iconKey: 'bom',         path: '/bom' },
+    { label: 'ECO',         iconKey: 'eco',         path: '/ecos' },
+    { label: 'Work Orders', iconKey: 'work-orders', path: '/work-orders', disabled: true },
   ];
 
   readonly navItemsBottom: NavItem[] = [
-    { label: 'Settings', icon: 'pi-cog',             path: '/settings' },
-    { label: 'Help',     icon: 'pi-question-circle', path: '/help' },
+    { label: 'Settings', iconKey: 'settings', path: '/settings' },
+    { label: 'Help',     iconKey: 'help',     path: '/help' },
   ];
 
   private readonly allNavItems: NavItem[] = [...this.navItems, ...this.navItemsBottom];
