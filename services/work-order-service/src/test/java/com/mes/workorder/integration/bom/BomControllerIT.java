@@ -144,6 +144,93 @@ class BomControllerIT extends BaseIntegrationTest {
     }
 
     @Test
+    void listBomsForItemReturnsAllRevisions() {
+        String token = engineerToken();
+        String parentId = createItem(token, "BOM-LISTITEM-PARENT-001", "A");
+        createBom(token, parentId, "REV-A");
+        createBom(token, parentId, "REV-B");
+
+        ResponseEntity<List> response = restTemplate.exchange(
+                BOM_BASE + "?parentItemId=" + parentId,
+                HttpMethod.GET, bearerRequest(token), List.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).hasSize(2);
+    }
+
+    @Test
+    void deleteLineReturns204AndLineIsGone() {
+        String token = engineerToken();
+        String parentId = createItem(token, "BOM-DEL-PARENT-001", "A");
+        String compId = createItem(token, "BOM-DEL-COMP-001", "A");
+        String bomId = createBom(token, parentId, "REV-A");
+        String lineId = addLineAndGetId(token, bomId, compId, "010");
+
+        ResponseEntity<Void> deleteResponse = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/lines/" + lineId,
+                HttpMethod.DELETE, bearerRequest(token), Void.class);
+
+        assertThat(deleteResponse.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        ResponseEntity<List> linesResponse = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/lines", HttpMethod.GET, bearerRequest(token), List.class);
+        assertThat(linesResponse.getBody()).isEmpty();
+    }
+
+    @Test
+    void patchHeaderReturns200WithUpdatedDescription() {
+        String token = engineerToken();
+        String parentId = createItem(token, "BOM-PHDR-PARENT-001", "A");
+        String bomId = createBom(token, parentId, "REV-A");
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BOM_BASE + "/" + bomId,
+                HttpMethod.PATCH,
+                jsonRequest(token, Map.of(
+                        "description", "Updated description",
+                        "reasonForRevision", "Design change",
+                        "productionLine", "LINE-1",
+                        "bomType", "MANUFACTURING",
+                        "effectivityType", "DATE")),
+                Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).extractingByKey("description").isEqualTo("Updated description");
+        assertThat(response.getBody()).extractingByKey("reasonForRevision").isEqualTo("Design change");
+        assertThat(response.getBody()).extractingByKey("bomType").isEqualTo("MANUFACTURING");
+    }
+
+    @Test
+    void downloadCsvReturns200WithCsvContentType() {
+        String token = engineerToken();
+        String parentId = createItem(token, "BOM-CSV-PARENT-001", "A");
+        String bomId = createBom(token, parentId, "REV-A");
+
+        ResponseEntity<byte[]> response = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/explosion/download?format=flat&download=csv",
+                HttpMethod.GET, bearerRequest(token), byte[].class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getHeaders().getContentType().toString()).contains("text/csv");
+        assertThat(new String(response.getBody())).contains("Find #");
+    }
+
+    @Test
+    void downloadPdfReturns200WithPdfContentType() {
+        String token = engineerToken();
+        String parentId = createItem(token, "BOM-PDF-PARENT-001", "A");
+        String bomId = createBom(token, parentId, "REV-A");
+
+        ResponseEntity<byte[]> response = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/explosion/download?format=flat&download=pdf",
+                HttpMethod.GET, bearerRequest(token), byte[].class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getHeaders().getContentType().toString()).contains("application/pdf");
+        assertThat(response.getBody()).startsWith(new byte[]{'%', 'P', 'D', 'F'});
+    }
+
+    @Test
     void addLineWithNonExistentComponentReturns422() {
         String token = engineerToken();
         String parentId = createItem(token, "BOM-NF-PARENT-001", "A");
