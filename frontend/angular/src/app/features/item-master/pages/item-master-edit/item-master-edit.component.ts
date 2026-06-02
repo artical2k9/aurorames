@@ -15,7 +15,7 @@ import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-
 import { ItemMasterApiService } from '../../services/item-master-api.service';
 import { UdfApiService, UdfFieldDefinition } from '../../services/udf-api.service';
 import {
-  ItemMasterDto, Classification, CounterfeitRiskLevel, MakeBuyCode,
+  ItemMasterDto, Classification, CounterfeitRiskLevel, MakeBuyCode, TraceabilityMethod,
 } from '../../models/item-master.model';
 
 @Component({

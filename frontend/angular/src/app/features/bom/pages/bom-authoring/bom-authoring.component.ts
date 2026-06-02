@@ -14,6 +14,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { SelectModule } from 'primeng/select';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { MessageService, ConfirmationService } from 'primeng/api';
+import { LucideColumnsSettings } from '@lucide/angular';
 import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
 import { BomApiService } from '../../services/bom-api.service';
 import { AddBomLineFormComponent } from '../../components/add-bom-line-form/add-bom-line-form.component';
@@ -33,7 +34,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     CommonModule, AsyncPipe, FormsModule, RouterLink,
     TableModule, ButtonModule, TagModule, DialogModule, MessageModule,
     ToastModule, ConfirmDialogModule, PopoverModule, SelectModule, InputNumberModule,
-    StatusBadgeComponent,
+    StatusBadgeComponent, LucideColumnsSettings,
     AddBomLineFormComponent, BomHeaderEditDialogComponent, ColumnPickerComponent,
   ],
   providers: [
@@ -96,9 +97,11 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
                       [loading]="saving" (onClick)="saveDraft()" />
             <p-button label="Submit for Review" severity="success" size="small"
                       [loading]="releasing" (onClick)="confirmRelease()" />
-            <p-button icon="pi pi-sliders-h" [rounded]="true" [text]="true"
+            <p-button [rounded]="true" [text]="true"
                       aria-label="Customise columns"
-                      (onClick)="colPickerPanel.toggle($event)" />
+                      (onClick)="colPickerPanel.toggle($event)">
+              <svg lucideColumnsSettings [size]="16" [strokeWidth]="1.75"></svg>
+            </p-button>
           </div>
         } @else {
           <div class="ba__toolbar">

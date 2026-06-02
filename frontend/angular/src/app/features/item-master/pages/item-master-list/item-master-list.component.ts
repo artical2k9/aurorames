@@ -14,6 +14,7 @@ import { MenuModule } from 'primeng/menu';
 import { ToastModule } from 'primeng/toast';
 import { Menu } from 'primeng/menu';
 import { MenuItem, MessageService } from 'primeng/api';
+import { LucideColumnsSettings } from '@lucide/angular';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { StatusBadgeComponent, BreadcrumbService } from '../../../../shared/ui';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
@@ -31,7 +32,7 @@ import {
     TableModule, InputTextModule, SelectModule,
     ButtonModule, PopoverModule, TagModule, MenuModule, ToastModule,
     ColumnPickerComponent, StatusBadgeComponent,
-    ClassificationLabelPipe,
+    ClassificationLabelPipe, LucideColumnsSettings,
   ],
   providers: [
     MessageService,
@@ -75,8 +76,10 @@ import {
 
         <p-button label="Clear" severity="secondary" size="small" (onClick)="clearFilters()" />
 
-        <p-button icon="pi pi-sliders-h" [rounded]="true" [text]="true"
-                  aria-label="Customize columns" (onClick)="colPickerPanel.toggle($event)" />
+        <p-button [rounded]="true" [text]="true"
+                  aria-label="Customise columns" (onClick)="colPickerPanel.toggle($event)">
+          <svg lucideColumnsSettings [size]="16" [strokeWidth]="1.75"></svg>
+        </p-button>
       </div>
 
       <!-- Selection action bar -->
