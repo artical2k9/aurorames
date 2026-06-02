@@ -110,22 +110,42 @@ import {
           <div class="imcr__section">
             <h3 class="imcr__section-title">Traceability & Compliance</h3>
 
+            <!-- Traceability method multi-select (FR-033b) -->
             <div class="imcr__field">
               <label class="imcr__label">Traceability Method <span class="imcr__req">*</span></label>
-              <p-select formControlName="traceabilityMethod" [options]="traceabilityOptions"
-                        optionLabel="label" optionValue="value" placeholder="Select…" />
+              <div class="imcr__trace-btns">
+                @for (opt of traceOptions; track opt.value) {
+                  <p-button [label]="opt.label" size="small" type="button"
+                            [severity]="traceHas(opt.value) ? 'primary' : 'secondary'"
+                            [disabled]="!traceEnabled(opt.value)"
+                            [title]="opt.hint ?? opt.label"
+                            (onClick)="toggleTrace(opt.value)" />
+                }
+              </div>
+              @if (traceabilityTouched && selectedTraceability.size === 0) {
+                <small class="imcr__error-text">Select at least one traceability method</small>
+              }
             </div>
 
+            <!-- Shelf Life Controlled (T-3) -->
             <div class="imcr__field">
               <div class="imcr__toggle-row">
                 <p-toggleswitch formControlName="shelfLifeControlled" />
                 <label class="imcr__label">Shelf Life Controlled</label>
               </div>
-              @if (form.get('shelfLifeControlled')?.value) {
+              @if (!shelfLifeAllowed) {
+                <small class="imcr__hint-text">Requires Serial or Lot traceability</small>
+              }
+              <!-- T-4: days shown when shelf-life=true AND make active -->
+              @if (form.get('shelfLifeControlled')?.value && shelfLifeDaysActive) {
                 <div class="imcr__field" style="margin-top:0.5rem">
                   <label class="imcr__label">Shelf Life Days <span class="imcr__req">*</span></label>
                   <p-inputnumber formControlName="shelfLifeDays" [min]="1" placeholder="Days" />
                 </div>
+              }
+              <!-- T-5: buy-only hint -->
+              @if (form.get('shelfLifeControlled')?.value && !shelfLifeDaysActive && buyActive && !makeActive) {
+                <small class="imcr__hint-text">Shelf Life Days not applicable for Buy-only items</small>
               }
             </div>
 
@@ -220,9 +240,11 @@ import {
     .imcr__label { font-size: 0.8125rem; font-weight: 500; color: var(--p-text-muted-color); }
     .imcr__req { color: #EF4444; }
     .imcr__error-text { font-size: 0.75rem; color: #EF4444; margin-top: 0.25rem; }
+    .imcr__hint-text { font-size: 0.75rem; color: var(--p-text-muted-color); margin-top: 0.2rem; }
 
     .imcr__toggle-row { display: flex; align-items: center; gap: 0.5rem; }
     .imcr__makebuy { display: flex; gap: 0.5rem; }
+    .imcr__trace-btns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
     .imcr__udf-section {
       border: 1px solid var(--p-surface-border); border-radius: 8px; padding: 1.25rem;
@@ -257,12 +279,12 @@ export class ItemMasterCreateComponent implements OnInit {
     { label: 'Service',        value: 'SERVICE' },
   ];
 
-  readonly traceabilityOptions = [
+  readonly traceOptions: { label: string; value: TraceabilityMethod; hint?: string }[] = [
+    { label: 'None',      value: 'NONE' },
     { label: 'Serial',    value: 'SERIAL' },
     { label: 'Lot',       value: 'LOT' },
-    { label: 'Heat Code', value: 'HEAT_CODE' },
-    { label: 'Date Code', value: 'DATE_CODE' },
-    { label: 'None',      value: 'NONE' },
+    { label: 'Heat Code', value: 'HEAT_CODE', hint: 'Requires Lot control' },
+    { label: 'Date Code', value: 'DATE_CODE', hint: 'Requires Lot control' },
   ];
 
   readonly riskOptions = [
@@ -278,7 +300,6 @@ export class ItemMasterCreateComponent implements OnInit {
     description:          ['', Validators.required],
     unitOfMeasure:        ['EA', Validators.required],
     classification:       [null as Classification | null, Validators.required],
-    traceabilityMethod:   [null as TraceabilityMethod | null, Validators.required],
     cageCode:             [''],
     shelfLifeControlled:  [false],
     shelfLifeDays:        [null as number | null],
@@ -297,6 +318,11 @@ export class ItemMasterCreateComponent implements OnInit {
   buyActive = false;
   makeBuyTouched = false;
 
+  selectedTraceability = new Set<TraceabilityMethod>();
+  traceabilityTouched = false;
+
+  // ── Make/Buy ─────────────────────────────────────────────────────────────────
+
   get derivedMakeBuyCode(): MakeBuyCode | null {
     if (this.makeActive && this.buyActive) return 'EITHER';
     if (this.makeActive) return 'MAKE';
@@ -305,18 +331,103 @@ export class ItemMasterCreateComponent implements OnInit {
   }
 
   canSave(): boolean {
-    return this.form.valid && this.derivedMakeBuyCode !== null;
+    return this.form.valid
+      && this.derivedMakeBuyCode !== null
+      && this.selectedTraceability.size > 0;
   }
 
   toggleMake(): void {
     this.makeActive = !this.makeActive;
     this.makeBuyTouched = true;
+    this.updateShelfLifeDaysValidity();
   }
 
   toggleBuy(): void {
     this.buyActive = !this.buyActive;
     this.makeBuyTouched = true;
+    this.updateShelfLifeDaysValidity();
   }
+
+  // ── Traceability helpers (FR-033b) ───────────────────────────────────────────
+
+  traceHas(m: TraceabilityMethod): boolean {
+    return this.selectedTraceability.has(m);
+  }
+
+  traceEnabled(m: TraceabilityMethod): boolean {
+    if (m === 'HEAT_CODE' || m === 'DATE_CODE') return this.selectedTraceability.has('LOT');
+    return true;
+  }
+
+  toggleTrace(m: TraceabilityMethod): void {
+    this.traceabilityTouched = true;
+    if (m === 'NONE') {
+      this.selectedTraceability.clear();
+      this.selectedTraceability.add('NONE');
+    } else {
+      this.selectedTraceability.delete('NONE');
+      if (this.selectedTraceability.has(m)) {
+        this.selectedTraceability.delete(m);
+        if (m === 'LOT') {
+          this.selectedTraceability.delete('HEAT_CODE'); // T-1
+          this.selectedTraceability.delete('DATE_CODE'); // T-1
+        }
+      } else {
+        this.selectedTraceability.add(m);
+      }
+    }
+    if (!this.shelfLifeAllowed) {
+      this.form.get('shelfLifeControlled')?.setValue(false); // T-6
+    }
+    this.updateShelfLifeDaysValidity();
+  }
+
+  get shelfLifeAllowed(): boolean {
+    // T-3: enabled only with Serial/Lot/HeatCode/DateCode
+    const s = this.selectedTraceability;
+    if (s.size === 0 || s.has('NONE')) return false;
+    return s.has('SERIAL') || s.has('LOT') || s.has('HEAT_CODE') || s.has('DATE_CODE');
+  }
+
+  get shelfLifeDaysActive(): boolean {
+    // T-4/T-5: days shown only when shelf-life=true AND make is active (not buy-only)
+    return !!this.form.get('shelfLifeControlled')?.value && this.makeActive;
+  }
+
+  get derivedTraceabilityMethod(): TraceabilityMethod {
+    const s = this.selectedTraceability;
+    if (s.has('HEAT_CODE')) return 'HEAT_CODE';
+    if (s.has('DATE_CODE')) return 'DATE_CODE';
+    if (s.has('LOT'))       return 'LOT';
+    if (s.has('SERIAL'))    return 'SERIAL';
+    return 'NONE';
+  }
+
+  private updateShelfLifeDaysValidity(): void {
+    const ctrl = this.form.get('shelfLifeDays')!;
+    if (this.shelfLifeDaysActive) {
+      ctrl.addValidators(Validators.required);
+    } else {
+      ctrl.clearValidators();
+      ctrl.setValue(null);
+    }
+    ctrl.updateValueAndValidity();
+  }
+
+  private initTraceability(method: TraceabilityMethod): void {
+    this.selectedTraceability.clear();
+    if (method === 'HEAT_CODE') {
+      this.selectedTraceability.add('LOT');
+      this.selectedTraceability.add('HEAT_CODE');
+    } else if (method === 'DATE_CODE') {
+      this.selectedTraceability.add('LOT');
+      this.selectedTraceability.add('DATE_CODE');
+    } else {
+      this.selectedTraceability.add(method);
+    }
+  }
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
     this.breadcrumbSvc.set([
@@ -325,15 +436,8 @@ export class ItemMasterCreateComponent implements OnInit {
       { label: 'New Item' },
     ]);
 
-    this.form.get('shelfLifeControlled')!.valueChanges.subscribe(on => {
-      const ctrl = this.form.get('shelfLifeDays')!;
-      if (on) {
-        ctrl.addValidators(Validators.required);
-      } else {
-        ctrl.clearValidators();
-        ctrl.setValue(null);
-      }
-      ctrl.updateValueAndValidity();
+    this.form.get('shelfLifeControlled')!.valueChanges.subscribe(() => {
+      this.updateShelfLifeDaysValidity();
     });
 
     this.udfApi.listFields('ITEM_MASTER').subscribe(fields => {
@@ -357,7 +461,6 @@ export class ItemMasterCreateComponent implements OnInit {
             description:          item.description,
             unitOfMeasure:        item.unitOfMeasure,
             classification:       item.classification,
-            traceabilityMethod:   item.traceabilityMethod,
             cageCode:             item.cageCode ?? '',
             shelfLifeControlled:  item.shelfLifeControlled,
             shelfLifeDays:        item.shelfLifeDays ?? null,
@@ -367,6 +470,8 @@ export class ItemMasterCreateComponent implements OnInit {
           });
           this.makeActive = item.makeBuyCode === 'MAKE' || item.makeBuyCode === 'EITHER';
           this.buyActive  = item.makeBuyCode === 'BUY'  || item.makeBuyCode === 'EITHER';
+          this.initTraceability(item.traceabilityMethod);
+          this.updateShelfLifeDaysValidity();
         },
         error: () => { this.cloneLoading = false; },
       });
@@ -379,7 +484,8 @@ export class ItemMasterCreateComponent implements OnInit {
 
   save(): void {
     this.makeBuyTouched = true;
-    if (this.form.invalid || !this.derivedMakeBuyCode) return;
+    this.traceabilityTouched = true;
+    if (this.form.invalid || !this.derivedMakeBuyCode || this.selectedTraceability.size === 0) return;
 
     this.saving = true;
     this.serverErrors = [];
@@ -392,10 +498,10 @@ export class ItemMasterCreateComponent implements OnInit {
       unitOfMeasure:        v.unitOfMeasure!,
       classification:       v.classification as Classification,
       makeBuyCode:          this.derivedMakeBuyCode,
-      traceabilityMethod:   v.traceabilityMethod as TraceabilityMethod,
+      traceabilityMethod:   this.derivedTraceabilityMethod,
       cageCode:             v.cageCode || undefined,
       shelfLifeControlled:  v.shelfLifeControlled ?? undefined,
-      shelfLifeDays:        v.shelfLifeDays ?? undefined,
+      shelfLifeDays:        this.shelfLifeDaysActive ? (v.shelfLifeDays ?? undefined) : undefined,
       counterfeitRiskLevel: (v.counterfeitRiskLevel as CounterfeitRiskLevel) ?? undefined,
       verificationRequired: v.verificationRequired ?? undefined,
       stepPartRef:          v.stepPartRef || undefined,
