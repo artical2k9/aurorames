@@ -18,6 +18,7 @@ import {
   LucideList,
   LucideLayoutGrid,
   LucideBell,
+  LucideLogOut,
 } from '@lucide/angular';
 import { ThemeToggleComponent } from '../../shared/theme';
 import { ThemeService } from '../../shared/theme';
@@ -43,7 +44,7 @@ interface NavItem {
     LucideLayoutDashboard, LucidePackage, LucideListTree,
     LucidePencilRuler, LucideBlocks, LucideSettings, LucideLifeBuoy,
     LucidePanelLeftOpen, LucidePanelLeftClose,
-    LucideUserCog, LucideList, LucideLayoutGrid, LucideBell,
+    LucideUserCog, LucideList, LucideLayoutGrid, LucideBell, LucideLogOut,
     ThemeToggleComponent,
   ],
   template: `
@@ -94,7 +95,13 @@ interface NavItem {
           <div class="shell__user-name">{{ userName }}</div>
           <div class="shell__user-email">{{ userEmail }}</div>
           <hr class="shell__user-divider" />
+          <button class="shell__user-menu-item" (click)="avatarMenu.hide()">
+            <svg lucideLifeBuoy [size]="15" [strokeWidth]="1.75"></svg>
+            Help
+          </button>
+          <hr class="shell__user-divider" />
           <button class="shell__user-logout" (click)="logout(); avatarMenu.hide()">
+            <svg lucideLogOut [size]="15" [strokeWidth]="1.75"></svg>
             Logout
           </button>
         </div>
@@ -210,7 +217,6 @@ export class AppShellComponent implements OnInit {
 
   readonly navItemsBottom: NavItem[] = [
     { label: 'Settings', iconKey: 'settings', path: '/settings' },
-    { label: 'Help',     iconKey: 'help',     path: '/help' },
   ];
 
   ngOnInit(): void {

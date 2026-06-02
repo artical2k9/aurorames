@@ -156,7 +156,26 @@ $transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
   border-top: 1px solid var(--aurora-border-subtle);
 }
 
+.shell__user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--p-text-color);
+
+  &:hover { background: var(--aurora-bg-surface, var(--p-surface-100)); }
+}
+
 .shell__user-logout {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   width: 100%;
   text-align: left;
   padding: 0.5rem 1rem;
