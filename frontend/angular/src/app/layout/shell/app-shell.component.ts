@@ -52,7 +52,7 @@ interface NavItem {
       <!-- ── Top bar ─────────────────────────────────────────── -->
       <header class="shell__topbar">
         <div class="shell__topbar-start">
-          <div class="shell__logo" aria-hidden="true">A</div>
+          <img class="shell__logo" src="favicon.ico" alt="Aurora MES" />
           <app-breadcrumb class="shell__breadcrumb" [crumbs]="breadcrumbSvc.crumbs()" />
         </div>
         <div class="shell__topbar-end">
