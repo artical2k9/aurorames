@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, ViewChild } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { ButtonModule } from 'primeng/button';
 import { PopoverModule } from 'primeng/popover';
@@ -192,6 +192,7 @@ export class AppShellComponent implements OnInit {
   @ViewChild('avatarMenu') avatarMenu!: Popover;
 
   private readonly oauthService = inject(OAuthService);
+  private readonly router = inject(Router);
   readonly theme = inject(ThemeService);
   readonly breadcrumbSvc = inject(BreadcrumbService);
 
@@ -241,6 +242,7 @@ export class AppShellComponent implements OnInit {
   }
 
   logout(): void {
-    this.oauthService.logOut();
+    this.oauthService.logOut(true);
+    this.router.navigateByUrl('/login');
   }
 }
