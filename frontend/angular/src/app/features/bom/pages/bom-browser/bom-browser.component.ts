@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { TableModule } from 'primeng/table';
+import { TableModule, TableLazyLoadEvent } from 'primeng/table';
 import { MessageModule } from 'primeng/message';
 import { BreadcrumbComponent } from '../../../../shared/ui';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
@@ -156,9 +156,11 @@ export class BomBrowserComponent implements OnInit {
     this.load(0);
   }
 
-  onLazyLoad(event: { first: number; rows: number }): void {
-    const page = Math.floor(event.first / event.rows);
-    this.pageSize = event.rows;
+  onLazyLoad(event: TableLazyLoadEvent): void {
+    const first = event.first ?? 0;
+    const rows = event.rows ?? this.pageSize;
+    const page = Math.floor(first / rows);
+    this.pageSize = rows;
     this.load(page);
   }
 
