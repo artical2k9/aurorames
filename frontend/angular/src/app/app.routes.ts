@@ -16,6 +16,12 @@ export const routes: Routes = [
             .then(m => m.BomBrowserComponent),
       },
       {
+        path: 'bom/:itemId',
+        loadComponent: () =>
+          import('./features/bom/pages/bom-list/bom-list.component')
+            .then(m => m.BomListComponent),
+      },
+      {
         path: 'dashboard',
         loadComponent: () => import('./dashboard/dashboard').then(m => m.Dashboard),
       },

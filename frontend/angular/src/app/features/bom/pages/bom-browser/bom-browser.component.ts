@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -68,7 +68,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
               <p-button label="View BOMs"
                         severity="secondary"
                         size="small"
-                        (onClick)="openBoms(item); $event.stopPropagation()" />
+                        (click)="$event.stopPropagation(); openBoms(item)" />
             </td>
           </tr>
         </ng-template>
@@ -138,7 +138,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     }
   `],
 })
-export class BomBrowserComponent implements OnInit {
+export class BomBrowserComponent {
   private readonly itemApi = inject(ItemMasterApiService);
   private readonly router = inject(Router);
 
@@ -149,12 +149,7 @@ export class BomBrowserComponent implements OnInit {
   pageSize = 20;
   totalRecords = 0;
 
-  private currentPage = 0;
   private searchDebounce?: ReturnType<typeof setTimeout>;
-
-  ngOnInit(): void {
-    this.load(0);
-  }
 
   onLazyLoad(event: TableLazyLoadEvent): void {
     const first = event.first ?? 0;
@@ -170,11 +165,10 @@ export class BomBrowserComponent implements OnInit {
   }
 
   openBoms(item: ItemMasterDto): void {
-    this.router.navigate(['/item-master', item.id, 'boms']);
+    this.router.navigate(['/bom', item.id]);
   }
 
   private load(page: number): void {
-    this.currentPage = page;
     this.loading = true;
     this.error = '';
     this.itemApi.list({ page, size: this.pageSize, search: this.searchTerm || undefined })
