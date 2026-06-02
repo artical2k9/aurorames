@@ -2,6 +2,8 @@ import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, of, switchMap } from 'rxjs';
+import { LucideFileDown } from '@lucide/angular';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { SelectButtonModule } from 'primeng/selectbutton';
@@ -23,7 +25,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     CommonModule, FormsModule, RouterLink,
     ButtonModule, TagModule, SelectButtonModule, SelectModule, DatePickerModule,
     MessageModule, TreeTableModule,
-    StatusBadgeComponent,
+    StatusBadgeComponent, LucideFileDown,
   ],
   template: `
     <div class="be">
@@ -79,8 +81,14 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
 
         <span class="be__spacer"></span>
 
-        <p-button label="⬇ CSV" severity="secondary" size="small"
-                  [disabled]="loading" (onClick)="downloadCsv()" />
+        <p-button severity="secondary" size="small"
+                  [disabled]="loading" (onClick)="downloadCsv()">
+          <svg lucideFileDown [size]="14" [strokeWidth]="1.75"></svg>&nbsp;CSV
+        </p-button>
+        <p-button severity="secondary" size="small"
+                  [disabled]="loading" (onClick)="downloadPdf()">
+          <svg lucideFileDown [size]="14" [strokeWidth]="1.75"></svg>&nbsp;PDF
+        </p-button>
       </div>
 
       <!-- Tree table -->
@@ -193,6 +201,9 @@ export class BomExplosionComponent implements OnInit {
   treeNodes: TreeNode[] = [];
   loading = false;
   explosionError = '';
+  flatCount = 0;
+  topLevelCount = 0;
+  maxDepthSeen = 0;
 
   revisionOptions: { label: string; value: string }[] = [];
   selectedRevisionId = '';
@@ -215,18 +226,6 @@ export class BomExplosionComponent implements OnInit {
   ];
 
 
-  get flatCount(): number {
-    return this.flattenNodes(this.nodes).length;
-  }
-
-  get topLevelCount(): number {
-    return this.nodes.length;
-  }
-
-  get maxDepthSeen(): number {
-    return Math.max(0, ...this.flattenNodes(this.nodes).map(n => n.depth));
-  }
-
   get asOfDateStr(): string {
     return this.asOfDate ? this.asOfDate.toISOString().substring(0, 10) : '';
   }
@@ -239,15 +238,18 @@ export class BomExplosionComponent implements OnInit {
       { label: 'BOMs' },
       { label: 'Explosion' },
     ]);
-    this.bomApi.getById(this.bomId).subscribe(bom => {
-      this.bom = bom;
-      this.selectedRevisionId = bom.id;
-      this.bomApi.listForItem(bom.parentItemId).subscribe(revisions => {
-        this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.bomRevision, value: r.id }));
-        this.cdr.detectChanges();
-      });
-      this.itemApi.getById(bom.parentItemId).subscribe(item => {
+    this.bomApi.getById(this.bomId).pipe(
+      switchMap(bom => forkJoin({
+        bom: of(bom),
+        item: this.itemApi.getById(bom.parentItemId),
+        revisions: this.bomApi.listForItem(bom.parentItemId),
+      })),
+    ).subscribe({
+      next: ({ bom, item, revisions }) => {
+        this.bom = bom;
+        this.selectedRevisionId = bom.id;
         this.parentItem = item;
+        this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.bomRevision, value: r.id }));
         this.breadcrumbSvc.set([
           { label: 'Materials' },
           { label: 'Item Master', route: ['/item-master'] },
@@ -256,7 +258,7 @@ export class BomExplosionComponent implements OnInit {
           { label: 'Explosion' },
         ]);
         this.cdr.detectChanges();
-      });
+      },
     });
     this.load();
   }
@@ -265,10 +267,15 @@ export class BomExplosionComponent implements OnInit {
     this.loading = true;
     this.explosionError = '';
     const asOfDateStr = this.asOfDate ? this.asOfDate.toISOString().substring(0, 10) : undefined;
-    this.bomApi.explode(this.bomId, this.selectedFormat, asOfDateStr).subscribe({
+    const depth = this.maxDepth > 0 ? this.maxDepth : undefined;
+    this.bomApi.explode(this.bomId, this.selectedFormat, asOfDateStr, undefined, depth).subscribe({
       next: nodes => {
         this.nodes = nodes;
         this.treeNodes = this.toTreeNodes(nodes);
+        const flat = this.flattenNodes(nodes);
+        this.flatCount = flat.length;
+        this.topLevelCount = nodes.length;
+        this.maxDepthSeen = flat.reduce((m, n) => Math.max(m, n.depth), 0);
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -340,9 +347,9 @@ export class BomExplosionComponent implements OnInit {
     const result: BomExplosionNode[] = [];
     const stack = [...nodes];
     while (stack.length) {
-      const node = stack.shift()!;
+      const node = stack.pop()!;
       result.push(node);
-      if (node.children?.length) stack.unshift(...node.children);
+      if (node.children?.length) stack.push(...node.children);
     }
     return result;
   }

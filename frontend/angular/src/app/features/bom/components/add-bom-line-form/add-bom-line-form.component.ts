@@ -1,4 +1,5 @@
-import { Component, EventEmitter, inject, Input, OnInit, Output } from '@angular/core';
+import { Component, DestroyRef, EventEmitter, inject, Input, OnInit, Output } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -44,7 +45,15 @@ import { debounceTime, distinctUntilChanged, Subject, switchMap } from 'rxjs';
               (completeMethod)="onSearch($event)"
               (onSelect)="onItemSelect($event)"
               [minLength]="1"
-            />
+            >
+              <ng-template #item let-item>
+                <div class="ablf__suggestion">
+                  <span class="ablf__suggestion-pn">{{ item.partNumber }}</span>
+                  <span class="ablf__suggestion-rev">Rev {{ item.revision }}</span>
+                  <span class="ablf__suggestion-desc">{{ item.description }}</span>
+                </div>
+              </ng-template>
+            </p-autocomplete>
           </div>
 
           <div class="ablf__field">
@@ -117,6 +126,10 @@ import { debounceTime, distinctUntilChanged, Subject, switchMap } from 'rxjs';
     .ablf__field--wide { min-width: 220px; flex: 1; }
     .ablf__req { color: #EF4444; }
     .ablf__actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .ablf__suggestion { display: flex; align-items: baseline; gap: 0.5rem; }
+    .ablf__suggestion-pn { font-weight: 600; font-size: 0.875rem; }
+    .ablf__suggestion-rev { font-size: 0.75rem; color: var(--p-text-muted-color); }
+    .ablf__suggestion-desc { font-size: 0.75rem; color: var(--p-text-muted-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
   `],
 })
 export class AddBomLineFormComponent implements OnInit {
@@ -127,6 +140,7 @@ export class AddBomLineFormComponent implements OnInit {
   private readonly bomApi = inject(BomApiService);
   private readonly itemApi = inject(ItemMasterApiService);
   private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
 
   suggestions: ItemMasterDto[] = [];
   serverError = '';
@@ -163,6 +177,7 @@ export class AddBomLineFormComponent implements OnInit {
       debounceTime(250),
       distinctUntilChanged(),
       switchMap(q => this.itemApi.list({ search: q, page: 0, size: 10 })),
+      takeUntilDestroyed(this.destroyRef),
     ).subscribe(page => { this.suggestions = page.content; });
   }
 

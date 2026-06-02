@@ -4,6 +4,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, of, switchMap } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
@@ -50,6 +51,9 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     <p-confirmDialog />
 
     <div class="ba">
+      @if (loadError) {
+        <p-message severity="error" text="Failed to load BOM. Please refresh the page." />
+      }
       @if (bom) {
         <!-- Header card -->
         <div class="ba__header-card">
@@ -93,8 +97,6 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             <span class="ba__spacer"></span>
             <p-button label="+ Add Line" severity="primary" size="small"
                       (onClick)="addingLine = !addingLine" />
-            <p-button label="Save Draft" severity="secondary" size="small"
-                      [loading]="saving" (onClick)="saveDraft()" />
             <p-button label="Submit for Review" severity="success" size="small"
                       [loading]="releasing" (onClick)="confirmRelease()" />
             <p-button [rounded]="true" [text]="true"
@@ -199,11 +201,8 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
         </p-table>
 
         <!-- Status bar -->
-        <div class="ba__statusbar" [class.ba__statusbar--dirty]="isDirty">
+        <div class="ba__statusbar">
           <span>{{ lines.length }} component{{ lines.length !== 1 ? 's' : '' }}</span>
-          @if (isDirty) {
-            <span class="ba__dirty-msg">· Unsaved changes — click Save Draft to retain</span>
-          }
         </div>
       }
 
@@ -251,8 +250,6 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
       margin-top: 0.5rem; padding: 0.4rem 0.75rem; font-size: 0.8125rem;
       color: var(--p-text-muted-color); border-top: 1px solid var(--p-surface-border);
     }
-    .ba__statusbar--dirty { color: #F59E0B; }
-    .ba__dirty-msg { margin-left: 0.25rem; }
     .ba__rev-label { font-size: 0.8125rem; color: var(--p-text-muted-color); }
     :host ::ng-deep .ba__rev-select { min-width: 110px; font-size: 0.8125rem; }
     .ba__lines-count { font-size: 0.8125rem; font-weight: 600; }
@@ -276,12 +273,11 @@ export class BomAuthoringComponent implements OnInit {
   parentItem: ItemMasterDto | null = null;
   lines: BomLineDto[] = [];
   loading = false;
-  saving = false;
+  loadError = false;
   releasing = false;
   savingLine = false;
   addingLine = false;
   showHeaderEdit = false;
-  isDirty = false;
 
   revisionOptions: { label: string; value: string }[] = [];
   selectedRevisionId = '';
@@ -303,12 +299,22 @@ export class BomAuthoringComponent implements OnInit {
 
   loadBom(): void {
     this.loading = true;
-    this.bomApi.getById(this.bomId).subscribe(bom => {
-      this.bom = bom;
-      this.selectedRevisionId = bom.id;
-      this.loading = false;
-      this.itemApi.getById(bom.parentItemId).subscribe(item => {
+    this.loadError = false;
+    this.bomApi.getById(this.bomId).pipe(
+      switchMap(bom => forkJoin({
+        bom: of(bom),
+        item: this.itemApi.getById(bom.parentItemId),
+        revisions: this.bomApi.listForItem(bom.parentItemId),
+        lines: this.bomApi.getLines(this.bomId),
+      })),
+    ).subscribe({
+      next: ({ bom, item, revisions, lines }) => {
+        this.bom = bom;
+        this.selectedRevisionId = bom.id;
         this.parentItem = item;
+        this.lines = lines;
+        this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.bomRevision, value: r.id }));
+        this.loading = false;
         this.breadcrumbSvc.set([
           { label: 'Materials' },
           { label: 'Item Master', route: ['/item-master'] },
@@ -316,12 +322,12 @@ export class BomAuthoringComponent implements OnInit {
           { label: 'Rev ' + bom.bomRevision },
         ]);
         this.cdr.detectChanges();
-      });
-      this.bomApi.listForItem(bom.parentItemId).subscribe(revisions => {
-        this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.bomRevision, value: r.id }));
+      },
+      error: () => {
+        this.loading = false;
+        this.loadError = true;
         this.cdr.detectChanges();
-      });
-      this.loadLines();
+      },
     });
   }
 
@@ -331,17 +337,8 @@ export class BomAuthoringComponent implements OnInit {
     }
   }
 
-  loadLines(): void {
-    this.bomApi.getLines(this.bomId).subscribe(lines => {
-      this.lines = lines;
-      this.isDirty = false;
-      this.cdr.detectChanges();
-    });
-  }
-
   onLineSaved(line: BomLineDto): void {
     this.lines = [...this.lines, line];
-    this.isDirty = true;
     this.addingLine = false;
     this.cdr.detectChanges();
   }
@@ -350,27 +347,10 @@ export class BomAuthoringComponent implements OnInit {
     this.bomApi.removeLine(this.bomId, line.id).subscribe({
       next: () => {
         this.lines = this.lines.filter(l => l.id !== line.id);
-        this.isDirty = true;
         this.cdr.detectChanges();
       },
       error: () => {
         this.messageService.add({ severity: 'error', summary: 'Failed to remove line' });
-      },
-    });
-  }
-
-  saveDraft(): void {
-    this.saving = true;
-    this.bomApi.patchHeader(this.bomId, {}).subscribe({
-      next: () => {
-        this.saving = false;
-        this.isDirty = false;
-        this.messageService.add({ severity: 'success', summary: 'Draft saved' });
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.saving = false;
-        this.messageService.add({ severity: 'error', summary: 'Save failed' });
       },
     });
   }
@@ -388,7 +368,6 @@ export class BomAuthoringComponent implements OnInit {
       next: bom => {
         this.bom = bom;
         this.releasing = false;
-        this.isDirty = false;
         this.messageService.add({ severity: 'success', summary: 'BOM released' });
         this.cdr.detectChanges();
       },
@@ -420,7 +399,6 @@ export class BomAuthoringComponent implements OnInit {
         this.editingLineId = null;
         this.editQty = null;
         this.savingLine = false;
-        this.isDirty = true;
         this.cdr.detectChanges();
       },
       error: () => {

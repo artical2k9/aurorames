@@ -130,7 +130,10 @@ export class BomListComponent implements OnInit {
       { label: 'Item Master', route: ['/item-master'] },
       { label: 'BOMs' },
     ]);
-    this.itemApi.getById(this.itemId).subscribe(item => { this.parentItem = item; });
+    this.itemApi.getById(this.itemId).subscribe({
+      next: item => { this.parentItem = item; },
+      error: () => { /* parent item not found — BOM list still shows without heading */ },
+    });
     this.loadBoms();
   }
 

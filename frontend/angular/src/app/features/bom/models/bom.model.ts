@@ -22,6 +22,10 @@ export interface BomLineDto {
   id: string;
   bomId: string;
   componentItemId: string;
+  partNumber: string;
+  revision: string;
+  description: string;
+  makeBuyCode?: string;
   quantity?: number;
   unitOfMeasure?: string;
   findNumber?: string;

@@ -53,10 +53,12 @@ export class BomApiService {
     format: 'flat' | 'indented' = 'indented',
     asOfDate?: string,
     asOfUnit?: string,
+    maxDepth?: number,
   ): Observable<BomExplosionNode[]> {
     let params = new HttpParams().set('format', format);
     if (asOfDate) params = params.set('asOfDate', asOfDate);
     if (asOfUnit) params = params.set('asOfUnit', asOfUnit);
+    if (maxDepth) params = params.set('maxDepth', maxDepth);
     return this.http.get<BomExplosionNode[]>(`${this.base}/${bomId}/explosion`, { params });
   }
 

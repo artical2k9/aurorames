@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -33,7 +34,7 @@ public class BomExplosionService {
     }
 
     public List<BomExplosionNode> explode(UUID orgId, UUID bomId, String format,
-                                           LocalDate asOfDate, String asOfUnit) {
+                                           LocalDate asOfDate, String asOfUnit, int requestMaxDepth) {
         BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException("BOM not found: " + bomId));
 
@@ -45,6 +46,12 @@ public class BomExplosionService {
                 throw new BomValidationException(
                         "BOM depth exceeds maximum allowed depth of " + maxDepth);
             }
+        }
+
+        if (requestMaxDepth > 0 && requestMaxDepth < maxDepth) {
+            rows = rows.stream()
+                    .filter(row -> ((Number) row[2]).intValue() <= requestMaxDepth)
+                    .collect(Collectors.toList());
         }
 
         List<Object[]> effectiveRows = filterByEffectivity(rows, asOfDate, asOfUnit);

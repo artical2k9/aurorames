@@ -87,10 +87,7 @@ public class BomController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID bomId) {
 
-        var orgId = JwtClaimsExtractor.orgId(jwt);
-        return bomService.listLines(orgId, bomId).stream()
-                .map(BomMapper::toLineDto)
-                .toList();
+        return bomService.listEnrichedLines(JwtClaimsExtractor.orgId(jwt), bomId);
     }
 
     @PostMapping("/{bomId}/lines")
@@ -104,7 +101,7 @@ public class BomController {
         var line = bomService.addLine(orgId, bomId, request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}").buildAndExpand(line.getId()).toUri();
-        return ResponseEntity.created(location).body(BomMapper.toLineDto(line));
+        return ResponseEntity.created(location).body(bomService.enrichLine(line));
     }
 
     @PatchMapping("/{bomId}/lines/{lineId}")
@@ -116,7 +113,7 @@ public class BomController {
             @Valid @RequestBody UpdateBomLineRequest request) {
 
         var orgId = JwtClaimsExtractor.orgId(jwt);
-        return BomMapper.toLineDto(bomService.updateLine(orgId, bomId, lineId, request));
+        return bomService.enrichLine(bomService.updateLine(orgId, bomId, lineId, request));
     }
 
     @GetMapping
@@ -157,9 +154,10 @@ public class BomController {
             @PathVariable UUID bomId,
             @RequestParam(defaultValue = "flat") String format,
             @RequestParam(required = false) LocalDate asOfDate,
-            @RequestParam(required = false) String asOfUnit) {
+            @RequestParam(required = false) String asOfUnit,
+            @RequestParam(required = false, defaultValue = "0") int maxDepth) {
 
-        return explosionService.explode(JwtClaimsExtractor.orgId(jwt), bomId, format, asOfDate, asOfUnit);
+        return explosionService.explode(JwtClaimsExtractor.orgId(jwt), bomId, format, asOfDate, asOfUnit, maxDepth);
     }
 
     @GetMapping("/{bomId}/explosion/download")
@@ -174,7 +172,7 @@ public class BomController {
             @RequestParam(required = false, defaultValue = "0") int maxDepth) {
 
         var orgId = JwtClaimsExtractor.orgId(jwt);
-        var nodes = explosionService.explode(orgId, bomId, format, asOfDate, asOfUnit);
+        var nodes = explosionService.explode(orgId, bomId, format, asOfDate, asOfUnit, maxDepth);
         var bom = bomService.getBom(orgId, bomId);
 
         if ("pdf".equalsIgnoreCase(download)) {
