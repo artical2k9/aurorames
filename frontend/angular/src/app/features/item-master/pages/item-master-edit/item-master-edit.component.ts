@@ -66,10 +66,6 @@ import {
             <span class="imed__readonly-label">Revision</span>
             <span class="imed__readonly-value">{{ item.revision }}</span>
           </div>
-          <div class="imed__readonly-row">
-            <span class="imed__readonly-label">Traceability Method</span>
-            <span class="imed__readonly-value">{{ item.traceabilityMethod }}</span>
-          </div>
         </div>
 
         @if (serverErrors.length) {
@@ -126,16 +122,45 @@ import {
             <div class="imed__section">
               <h3 class="imed__section-title">Traceability & Compliance</h3>
 
+              <!-- Traceability method multi-select (FR-033b) -->
+              <div class="imed__field">
+                <label class="imed__label">Traceability Method</label>
+                <div class="imed__trace-btns">
+                  @for (opt of traceOptions; track opt.value) {
+                    <p-button [label]="opt.label" size="small" type="button"
+                              [severity]="traceHas(opt.value) ? 'primary' : 'secondary'"
+                              [disabled]="!traceEnabled(opt.value)"
+                              [title]="opt.hint ?? opt.label"
+                              (onClick)="toggleTrace(opt.value)" />
+                  }
+                </div>
+                @if (traceabilityTouched && selectedTraceability.size === 0) {
+                  <small class="imed__error-text">Select at least one traceability method</small>
+                }
+                @if (!traceHas('LOT') && (traceHas('HEAT_CODE') || traceHas('DATE_CODE'))) {
+                  <small class="imed__hint-text">Heat Code and Date Code require Lot control</small>
+                }
+              </div>
+
+              <!-- Shelf Life Controlled (T-3: disabled with no/NONE trace) -->
               <div class="imed__field">
                 <div class="imed__toggle-row">
                   <p-toggleswitch formControlName="shelfLifeControlled" />
                   <label class="imed__label">Shelf Life Controlled</label>
                 </div>
-                @if (form.get('shelfLifeControlled')?.value) {
+                @if (!shelfLifeAllowed) {
+                  <small class="imed__hint-text">Requires Serial or Lot traceability</small>
+                }
+                <!-- T-4: days active when shelf-life=true AND make is active -->
+                @if (form.get('shelfLifeControlled')?.value && shelfLifeDaysActive) {
                   <div class="imed__field" style="margin-top:0.5rem">
                     <label class="imed__label">Shelf Life Days <span class="imed__req">*</span></label>
                     <p-inputnumber formControlName="shelfLifeDays" [min]="1" placeholder="Days" />
                   </div>
+                }
+                <!-- T-5: buy-only hint -->
+                @if (form.get('shelfLifeControlled')?.value && !shelfLifeDaysActive && buyActive && !makeActive) {
+                  <small class="imed__hint-text">Shelf Life Days not applicable for Buy-only items</small>
                 }
               </div>
 
@@ -245,6 +270,8 @@ import {
 
     .imed__toggle-row { display: flex; align-items: center; gap: 0.5rem; }
     .imed__makebuy { display: flex; gap: 0.5rem; }
+    .imed__trace-btns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .imed__hint-text { font-size: 0.75rem; color: var(--p-text-muted-color); margin-top: 0.2rem; }
 
     .imed__udf-section {
       border: 1px solid var(--p-surface-border); border-radius: 8px; padding: 1.25rem;
@@ -274,6 +301,17 @@ export class ItemMasterEditComponent implements OnInit {
   makeActive = false;
   buyActive = false;
   makeBuyTouched = false;
+
+  selectedTraceability = new Set<TraceabilityMethod>();
+  traceabilityTouched = false;
+
+  readonly traceOptions: { label: string; value: TraceabilityMethod; hint?: string }[] = [
+    { label: 'None',      value: 'NONE' },
+    { label: 'Serial',    value: 'SERIAL' },
+    { label: 'Lot',       value: 'LOT' },
+    { label: 'Heat Code', value: 'HEAT_CODE', hint: 'Requires Lot control' },
+    { label: 'Date Code', value: 'DATE_CODE', hint: 'Requires Lot control' },
+  ];
 
   readonly uomOptions = [
     { label: 'Each (EA)',      value: 'EA' },
@@ -320,18 +358,103 @@ export class ItemMasterEditComponent implements OnInit {
     return null;
   }
 
+  // ── Traceability helpers (FR-033b) ──────────────────────────────────────────
+
+  traceHas(m: TraceabilityMethod): boolean {
+    return this.selectedTraceability.has(m);
+  }
+
+  traceEnabled(m: TraceabilityMethod): boolean {
+    if (m === 'HEAT_CODE' || m === 'DATE_CODE') return this.selectedTraceability.has('LOT');
+    return true;
+  }
+
+  toggleTrace(m: TraceabilityMethod): void {
+    this.traceabilityTouched = true;
+    if (m === 'NONE') {
+      this.selectedTraceability.clear();
+      this.selectedTraceability.add('NONE');
+    } else {
+      this.selectedTraceability.delete('NONE');
+      if (this.selectedTraceability.has(m)) {
+        this.selectedTraceability.delete(m);
+        if (m === 'LOT') {
+          this.selectedTraceability.delete('HEAT_CODE'); // T-1
+          this.selectedTraceability.delete('DATE_CODE'); // T-1
+        }
+      } else {
+        this.selectedTraceability.add(m);
+      }
+    }
+    if (!this.shelfLifeAllowed) {
+      this.form.get('shelfLifeControlled')?.setValue(false); // T-6
+    }
+    this.updateShelfLifeDaysValidity();
+  }
+
+  get shelfLifeAllowed(): boolean {
+    // T-3: enabled only with Serial/Lot/HeatCode/DateCode
+    const s = this.selectedTraceability;
+    if (s.size === 0 || s.has('NONE')) return false;
+    return s.has('SERIAL') || s.has('LOT') || s.has('HEAT_CODE') || s.has('DATE_CODE');
+  }
+
+  get shelfLifeDaysActive(): boolean {
+    // T-4/T-5: days shown only when shelf-life=true AND make is active (not buy-only)
+    return !!this.form.get('shelfLifeControlled')?.value && this.makeActive;
+  }
+
+  get derivedTraceabilityMethod(): TraceabilityMethod {
+    const s = this.selectedTraceability;
+    if (s.has('HEAT_CODE')) return 'HEAT_CODE';
+    if (s.has('DATE_CODE')) return 'DATE_CODE';
+    if (s.has('LOT'))       return 'LOT';
+    if (s.has('SERIAL'))    return 'SERIAL';
+    return 'NONE';
+  }
+
+  private updateShelfLifeDaysValidity(): void {
+    const ctrl = this.form.get('shelfLifeDays')!;
+    if (this.shelfLifeDaysActive) {
+      ctrl.addValidators(Validators.required);
+    } else {
+      ctrl.clearValidators();
+      ctrl.setValue(null);
+    }
+    ctrl.updateValueAndValidity();
+  }
+
+  private initTraceability(method: TraceabilityMethod): void {
+    this.selectedTraceability.clear();
+    if (method === 'HEAT_CODE') {
+      this.selectedTraceability.add('LOT');
+      this.selectedTraceability.add('HEAT_CODE');
+    } else if (method === 'DATE_CODE') {
+      this.selectedTraceability.add('LOT');
+      this.selectedTraceability.add('DATE_CODE');
+    } else {
+      this.selectedTraceability.add(method);
+    }
+  }
+
+  // ── Make/Buy ─────────────────────────────────────────────────────────────────
+
   canSave(): boolean {
-    return this.form.valid && this.derivedMakeBuyCode !== null;
+    return this.form.valid
+      && this.derivedMakeBuyCode !== null
+      && this.selectedTraceability.size > 0;
   }
 
   toggleMake(): void {
     this.makeActive = !this.makeActive;
     this.makeBuyTouched = true;
+    this.updateShelfLifeDaysValidity();
   }
 
   toggleBuy(): void {
     this.buyActive = !this.buyActive;
     this.makeBuyTouched = true;
+    this.updateShelfLifeDaysValidity();
   }
 
   ngOnInit(): void {
@@ -342,15 +465,8 @@ export class ItemMasterEditComponent implements OnInit {
       { label: 'Edit' },
     ]);
 
-    this.form.get('shelfLifeControlled')!.valueChanges.subscribe(on => {
-      const ctrl = this.form.get('shelfLifeDays')!;
-      if (on) {
-        ctrl.addValidators(Validators.required);
-      } else {
-        ctrl.clearValidators();
-        ctrl.setValue(null);
-      }
-      ctrl.updateValueAndValidity();
+    this.form.get('shelfLifeControlled')!.valueChanges.subscribe(() => {
+      this.updateShelfLifeDaysValidity();
     });
 
     this.udfApi.listFields('ITEM_MASTER').subscribe(fields => {
@@ -401,6 +517,8 @@ export class ItemMasterEditComponent implements OnInit {
     });
     this.makeActive = item.makeBuyCode === 'MAKE' || item.makeBuyCode === 'EITHER';
     this.buyActive  = item.makeBuyCode === 'BUY'  || item.makeBuyCode === 'EITHER';
+    this.initTraceability(item.traceabilityMethod);
+    this.updateShelfLifeDaysValidity();
   }
 
   cancel(): void {
@@ -431,6 +549,7 @@ export class ItemMasterEditComponent implements OnInit {
       unitOfMeasure:        v.unitOfMeasure ?? undefined,
       classification:       (v.classification as Classification) ?? undefined,
       makeBuyCode:          this.derivedMakeBuyCode,
+      traceabilityMethod:   this.derivedTraceabilityMethod,
       cageCode:             v.cageCode ?? undefined,
       shelfLifeControlled:  v.shelfLifeControlled ?? undefined,
       shelfLifeDays:        v.shelfLifeDays ?? null,
