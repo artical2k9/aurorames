@@ -1,5 +1,5 @@
-import { Component, inject, OnInit, OnDestroy, ViewChild } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
+import { Component, inject, OnInit, ViewChild } from '@angular/core';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { ButtonModule } from 'primeng/button';
 import { PopoverModule } from 'primeng/popover';
@@ -21,7 +21,7 @@ import {
 } from '@lucide/angular';
 import { ThemeToggleComponent } from '../../shared/theme';
 import { ThemeService } from '../../shared/theme';
-import { filter, Subscription } from 'rxjs';
+import { BreadcrumbComponent, BreadcrumbService } from '../../shared/ui';
 
 const NAV_COLLAPSED_KEY = 'aurora-mes-nav-collapsed';
 
@@ -39,7 +39,7 @@ interface NavItem {
   standalone: true,
   imports: [
     RouterOutlet, RouterLink, RouterLinkActive,
-    ButtonModule, PopoverModule,
+    ButtonModule, PopoverModule, BreadcrumbComponent,
     LucideLayoutDashboard, LucidePackage, LucideListTree,
     LucidePencilRuler, LucideBlocks, LucideSettings, LucideLifeBuoy,
     LucidePanelLeftOpen, LucidePanelLeftClose,
@@ -53,9 +53,7 @@ interface NavItem {
       <header class="shell__topbar">
         <div class="shell__topbar-start">
           <div class="shell__logo" aria-hidden="true">A</div>
-          <nav class="shell__breadcrumb" aria-label="breadcrumb">
-            <span class="shell__breadcrumb-text">{{ currentPageLabel }}</span>
-          </nav>
+          <app-breadcrumb class="shell__breadcrumb" [crumbs]="breadcrumbSvc.crumbs()" />
         </div>
         <div class="shell__topbar-end">
           <button class="shell__icon-btn shell__notif-btn"
@@ -190,19 +188,16 @@ interface NavItem {
   `,
   styleUrl: './app-shell.component.scss',
 })
-export class AppShellComponent implements OnInit, OnDestroy {
+export class AppShellComponent implements OnInit {
   @ViewChild('avatarMenu') avatarMenu!: Popover;
 
   private readonly oauthService = inject(OAuthService);
-  private readonly router = inject(Router);
   readonly theme = inject(ThemeService);
+  readonly breadcrumbSvc = inject(BreadcrumbService);
 
   collapsed = true;
   viewMode: 'grid' | 'list' = 'list';
   notificationCount = 0;
-  currentPageLabel = 'Dashboard';
-
-  private routerSub?: Subscription;
 
   readonly navItems: NavItem[] = [
     { label: 'Dashboard',   iconKey: 'dashboard',   path: '/dashboard' },
@@ -217,26 +212,9 @@ export class AppShellComponent implements OnInit, OnDestroy {
     { label: 'Help',     iconKey: 'help',     path: '/help' },
   ];
 
-  private readonly allNavItems: NavItem[] = [...this.navItems, ...this.navItemsBottom];
-
   ngOnInit(): void {
     const saved = localStorage.getItem(NAV_COLLAPSED_KEY);
     this.collapsed = saved !== null ? saved === 'true' : true;
-
-    this.updatePageLabel(this.router.url);
-    this.routerSub = this.router.events
-      .pipe(filter(e => e instanceof NavigationEnd))
-      .subscribe(e => this.updatePageLabel((e as NavigationEnd).urlAfterRedirects));
-  }
-
-  ngOnDestroy(): void {
-    this.routerSub?.unsubscribe();
-  }
-
-  private updatePageLabel(url: string): void {
-    const segment = '/' + url.split('/').filter(Boolean)[0];
-    const match = this.allNavItems.find(i => i.path === segment);
-    this.currentPageLabel = match?.label ?? 'Aurora MES';
   }
 
   toggleCollapse(): void {

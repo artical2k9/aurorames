@@ -10,7 +10,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { TextareaModule } from 'primeng/textarea';
 import { MessageModule } from 'primeng/message';
 import { SkeletonModule } from 'primeng/skeleton';
-import { BreadcrumbComponent } from '../../../../shared/ui/breadcrumb/breadcrumb.component';
+import { BreadcrumbService } from '../../../../shared/ui';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
 import { UdfApiService, UdfFieldDefinition } from '../../services/udf-api.service';
 import {
@@ -24,12 +24,9 @@ import {
     CommonModule, ReactiveFormsModule,
     ButtonModule, InputTextModule, SelectModule,
     ToggleSwitchModule, InputNumberModule, TextareaModule, MessageModule, SkeletonModule,
-    BreadcrumbComponent,
   ],
   template: `
     <div class="imcr">
-
-      <app-breadcrumb [crumbs]="breadcrumbs" />
 
       <div class="imcr__header">
         <div>
@@ -240,12 +237,7 @@ export class ItemMasterCreateComponent implements OnInit {
   private readonly udfApi = inject(UdfApiService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-
-  readonly breadcrumbs = [
-    { label: 'Materials' },
-    { label: 'Item Master', route: ['/item-master'] },
-    { label: 'New Item' },
-  ];
+  private readonly breadcrumbSvc = inject(BreadcrumbService);
 
   readonly uomOptions = [
     { label: 'Each (EA)',      value: 'EA' },
@@ -327,6 +319,12 @@ export class ItemMasterCreateComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.breadcrumbSvc.set([
+      { label: 'Materials' },
+      { label: 'Item Master', route: ['/item-master'] },
+      { label: 'New Item' },
+    ]);
+
     this.form.get('shelfLifeControlled')!.valueChanges.subscribe(on => {
       const ctrl = this.form.get('shelfLifeDays')!;
       if (on) {

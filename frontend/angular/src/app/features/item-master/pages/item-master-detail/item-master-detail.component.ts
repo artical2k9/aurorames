@@ -8,7 +8,7 @@ import { SkeletonModule } from 'primeng/skeleton';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
 import { UdfApiService, UdfFieldDefinition } from '../../services/udf-api.service';
 import { ItemMasterDto, Classification } from '../../models/item-master.model';
-import { StatusBadgeComponent, BreadcrumbComponent } from '../../../../shared/ui';
+import { StatusBadgeComponent, BreadcrumbService } from '../../../../shared/ui';
 
 @Component({
   selector: 'app-item-master-detail',
@@ -16,13 +16,11 @@ import { StatusBadgeComponent, BreadcrumbComponent } from '../../../../shared/ui
   imports: [
     CommonModule,
     CardModule, ButtonModule, TagModule, SkeletonModule,
-    StatusBadgeComponent, BreadcrumbComponent,
+    StatusBadgeComponent,
   ],
   template: `
 
     <div class="imd">
-
-      <app-breadcrumb [crumbs]="breadcrumbs" />
 
       <!-- Back + actions bar -->
       <div class="imd__topbar">
@@ -250,19 +248,19 @@ export class ItemMasterDetailComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly api = inject(ItemMasterApiService);
   private readonly udfApi = inject(UdfApiService);
+  private readonly breadcrumbSvc = inject(BreadcrumbService);
   item: ItemMasterDto | null = null;
   udfFields: UdfFieldDefinition[] = [];
   loading = true;
   itemId!: string;
 
-  breadcrumbs: { label: string; route?: string[] }[] = [
-    { label: 'Materials' },
-    { label: 'Item Master', route: ['/item-master'] },
-    { label: 'Detail' },
-  ];
-
   ngOnInit(): void {
     this.itemId = this.route.snapshot.paramMap.get('id')!;
+    this.breadcrumbSvc.set([
+      { label: 'Materials' },
+      { label: 'Item Master', route: ['/item-master'] },
+      { label: 'Detail' },
+    ]);
     this.loadItem();
     this.udfApi.listFields('ITEM_MASTER').subscribe(fields => {
       this.udfFields = fields;
@@ -274,11 +272,11 @@ export class ItemMasterDetailComponent implements OnInit {
     this.api.getById(this.itemId).subscribe({
       next: item => {
         this.item = item;
-        this.breadcrumbs = [
+        this.breadcrumbSvc.set([
           { label: 'Materials' },
           { label: 'Item Master', route: ['/item-master'] },
           { label: `${item.partNumber} Rev ${item.revision}` },
-        ];
+        ]);
         this.loading = false;
       },
       error: () => { this.item = null; this.loading = false; },

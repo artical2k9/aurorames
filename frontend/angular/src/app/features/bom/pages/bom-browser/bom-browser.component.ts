@@ -5,7 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule, TableLazyLoadEvent } from 'primeng/table';
 import { MessageModule } from 'primeng/message';
-import { BreadcrumbComponent } from '../../../../shared/ui';
+import { BreadcrumbService } from '../../../../shared/ui';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
 import { ItemMasterDto } from '../../../item-master/models/item-master.model';
 
@@ -15,11 +15,9 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
   imports: [
     FormsModule,
     TableModule, ButtonModule, InputTextModule, MessageModule,
-    BreadcrumbComponent,
   ],
   template: `
     <div class="bb">
-      <app-breadcrumb [crumbs]="[{ label: 'BOMs' }]" />
 
       <div class="bb__heading">
         <h2 class="bb__title">Bills of Materials</h2>
@@ -142,11 +140,18 @@ export class BomBrowserComponent {
   private readonly itemApi = inject(ItemMasterApiService);
   private readonly router = inject(Router);
 
+  constructor() {
+    inject(BreadcrumbService).set([{ label: 'BOMs' }]);
+  }
+
   items: ItemMasterDto[] = [];
-  loading = false;
+  // Start as true so the spinner renders immediately and the value doesn't
+  // change when onLazyLoad fires synchronously inside Angular's CD pass,
+  // which would otherwise trigger NG0100.
+  loading = true;
   error = '';
   searchTerm = '';
-  pageSize = 20;
+  pageSize = 10;
   totalRecords = 0;
 
   private searchDebounce?: ReturnType<typeof setTimeout>;
@@ -156,10 +161,7 @@ export class BomBrowserComponent {
     const rows = event.rows ?? this.pageSize;
     const page = Math.floor(first / rows);
     this.pageSize = rows;
-    // Defer outside the current CD pass — PrimeNG fires onLazyLoad during its
-    // own ngOnInit (still inside Angular's detectChanges), so synchronous state
-    // mutations here trigger NG0100.
-    setTimeout(() => this.load(page));
+    this.load(page);
   }
 
   onSearch(): void {

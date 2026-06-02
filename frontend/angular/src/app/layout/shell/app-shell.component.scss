@@ -63,20 +63,12 @@ $transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
 }
 
-// ── Breadcrumb ────────────────────────────────────────────────────────────────
+// ── Breadcrumb (in topbar) ────────────────────────────────────────────────────
 .shell__breadcrumb {
   display: flex;
   align-items: center;
   min-width: 0;
-}
-
-.shell__breadcrumb-text {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--aurora-text-primary);
-  white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 // ── Icon buttons (notification bell, view toggle) ─────────────────────────────

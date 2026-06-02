@@ -7,7 +7,7 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import { FormsModule } from '@angular/forms';
-import { BreadcrumbComponent, StatusBadgeComponent } from '../../../../shared/ui';
+import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
 import { BomApiService } from '../../services/bom-api.service';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
 import { BomDto, CreateBomRequest } from '../../models/bom.model';
@@ -19,12 +19,10 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
   imports: [
     CommonModule, FormsModule,
     TableModule, ButtonModule, DialogModule, InputTextModule, MessageModule,
-    BreadcrumbComponent, StatusBadgeComponent,
+    StatusBadgeComponent,
   ],
   template: `
     <div class="bl">
-      <app-breadcrumb [crumbs]="breadcrumbs" />
-
       <div class="bl__heading">
         <div>
           <h2 class="bl__title">
@@ -112,6 +110,7 @@ export class BomListComponent implements OnInit {
   private readonly itemApi = inject(ItemMasterApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly breadcrumbSvc = inject(BreadcrumbService);
 
   itemId = '';
   parentItem: ItemMasterDto | null = null;
@@ -124,14 +123,13 @@ export class BomListComponent implements OnInit {
   newRevision = '';
   newDescription = '';
 
-  readonly breadcrumbs = [
-    { label: 'Materials' },
-    { label: 'Item Master', route: ['/item-master'] },
-    { label: 'BOMs' },
-  ];
-
   ngOnInit(): void {
     this.itemId = this.route.snapshot.paramMap.get('itemId') ?? '';
+    this.breadcrumbSvc.set([
+      { label: 'Materials' },
+      { label: 'Item Master', route: ['/item-master'] },
+      { label: 'BOMs' },
+    ]);
     this.itemApi.getById(this.itemId).subscribe(item => { this.parentItem = item; });
     this.loadBoms();
   }

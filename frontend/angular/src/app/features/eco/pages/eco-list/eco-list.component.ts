@@ -8,7 +8,7 @@ import { SelectModule } from 'primeng/select';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { MessageService, ConfirmationService } from 'primeng/api';
-import { BreadcrumbComponent, StatusBadgeComponent } from '../../../../shared/ui';
+import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
 import { EcoApiService } from '../../services/eco-api.service';
 import { EcoFormComponent } from '../../components/eco-form/eco-form.component';
 import { EcoDto } from '../../models/eco.model';
@@ -19,7 +19,7 @@ import { EcoDto } from '../../models/eco.model';
   imports: [
     CommonModule, FormsModule,
     TableModule, ButtonModule, SelectModule, ToastModule, ConfirmDialogModule,
-    BreadcrumbComponent, StatusBadgeComponent, EcoFormComponent,
+    StatusBadgeComponent, EcoFormComponent,
   ],
   providers: [MessageService, ConfirmationService],
   template: `
@@ -27,8 +27,6 @@ import { EcoDto } from '../../models/eco.model';
     <p-confirmDialog />
 
     <div class="el">
-      <app-breadcrumb [crumbs]="breadcrumbs" />
-
       <div class="el__heading">
         <h2 class="el__title">Engineering Change Orders</h2>
         <div class="el__heading-actions">
@@ -105,6 +103,7 @@ export class EcoListComponent implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly messageService = inject(MessageService);
   private readonly confirmationService = inject(ConfirmationService);
+  private readonly breadcrumbSvc = inject(BreadcrumbService);
 
   rows: EcoDto[] = [];
   totalRecords = 0;
@@ -114,11 +113,6 @@ export class EcoListComponent implements OnInit {
   showCreate = false;
   selectedStatus: string | null = null;
 
-  readonly breadcrumbs = [
-    { label: 'Home' },
-    { label: 'Engineering Change Orders' },
-  ];
-
   readonly statusOptions = [
     { label: 'Draft',       value: 'DRAFT' },
     { label: 'Approved',    value: 'APPROVED' },
@@ -126,6 +120,10 @@ export class EcoListComponent implements OnInit {
   ];
 
   ngOnInit(): void {
+    this.breadcrumbSvc.set([
+      { label: 'Home' },
+      { label: 'Engineering Change Orders' },
+    ]);
     this.fetchRows();
   }
 

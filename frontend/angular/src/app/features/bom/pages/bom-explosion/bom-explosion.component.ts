@@ -10,7 +10,7 @@ import { DatePickerModule } from 'primeng/datepicker';
 import { MessageModule } from 'primeng/message';
 import { TreeTableModule } from 'primeng/treetable';
 import { TreeNode } from 'primeng/api';
-import { BreadcrumbComponent, StatusBadgeComponent } from '../../../../shared/ui';
+import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
 import { BomApiService } from '../../services/bom-api.service';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
 import { BomDto, BomExplosionNode } from '../../models/bom.model';
@@ -23,12 +23,10 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     CommonModule, FormsModule, RouterLink,
     ButtonModule, TagModule, SelectButtonModule, SelectModule, DatePickerModule,
     MessageModule, TreeTableModule,
-    BreadcrumbComponent, StatusBadgeComponent,
+    StatusBadgeComponent,
   ],
   template: `
     <div class="be">
-      <app-breadcrumb [crumbs]="breadcrumbs" />
-
       <!-- Header card -->
       @if (bom && parentItem) {
         <div class="be__header-card">
@@ -186,6 +184,7 @@ export class BomExplosionComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly breadcrumbSvc = inject(BreadcrumbService);
 
   bomId = '';
   bom: BomDto | null = null;
@@ -215,12 +214,6 @@ export class BomExplosionComponent implements OnInit {
     { label: '10',   value: 10 },
   ];
 
-  breadcrumbs = [
-    { label: 'Materials' },
-    { label: 'Item Master', route: ['/item-master'] },
-    { label: 'BOMs' },
-    { label: 'Explosion' },
-  ];
 
   get flatCount(): number {
     return this.flattenNodes(this.nodes).length;
@@ -240,6 +233,12 @@ export class BomExplosionComponent implements OnInit {
 
   ngOnInit(): void {
     this.bomId = this.route.snapshot.paramMap.get('bomId') ?? '';
+    this.breadcrumbSvc.set([
+      { label: 'Materials' },
+      { label: 'Item Master', route: ['/item-master'] },
+      { label: 'BOMs' },
+      { label: 'Explosion' },
+    ]);
     this.bomApi.getById(this.bomId).subscribe(bom => {
       this.bom = bom;
       this.selectedRevisionId = bom.id;
@@ -249,13 +248,13 @@ export class BomExplosionComponent implements OnInit {
       });
       this.itemApi.getById(bom.parentItemId).subscribe(item => {
         this.parentItem = item;
-        this.breadcrumbs = [
+        this.breadcrumbSvc.set([
           { label: 'Materials' },
           { label: 'Item Master', route: ['/item-master'] },
           { label: item.partNumber, route: ['/item-master', bom.parentItemId, 'boms'] },
           { label: 'Rev ' + bom.bomRevision, route: ['/boms', this.bomId] },
           { label: 'Explosion' },
-        ];
+        ]);
         this.cdr.detectChanges();
       });
     });

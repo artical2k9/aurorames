@@ -10,7 +10,7 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { TextareaModule } from 'primeng/textarea';
 import { MessageModule } from 'primeng/message';
 import { SkeletonModule } from 'primeng/skeleton';
-import { BreadcrumbComponent } from '../../../../shared/ui/breadcrumb/breadcrumb.component';
+import { BreadcrumbService } from '../../../../shared/ui';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
 import { UdfApiService, UdfFieldDefinition } from '../../services/udf-api.service';
@@ -25,12 +25,10 @@ import {
     CommonModule, ReactiveFormsModule,
     ButtonModule, InputTextModule, SelectModule,
     ToggleSwitchModule, InputNumberModule, TextareaModule, MessageModule, SkeletonModule,
-    BreadcrumbComponent, StatusBadgeComponent,
+    StatusBadgeComponent,
   ],
   template: `
     <div class="imed">
-
-      <app-breadcrumb [crumbs]="breadcrumbs" />
 
       <div class="imed__header">
         <div class="imed__title-row">
@@ -263,6 +261,7 @@ export class ItemMasterEditComponent implements OnInit {
   private readonly udfApi = inject(UdfApiService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly breadcrumbSvc = inject(BreadcrumbService);
 
   item: ItemMasterDto | null = null;
   itemId!: string;
@@ -275,12 +274,6 @@ export class ItemMasterEditComponent implements OnInit {
   makeActive = false;
   buyActive = false;
   makeBuyTouched = false;
-
-  breadcrumbs: { label: string; route?: string[] }[] = [
-    { label: 'Materials' },
-    { label: 'Item Master', route: ['/item-master'] },
-    { label: 'Edit' },
-  ];
 
   readonly uomOptions = [
     { label: 'Each (EA)',      value: 'EA' },
@@ -343,6 +336,11 @@ export class ItemMasterEditComponent implements OnInit {
 
   ngOnInit(): void {
     this.itemId = this.route.snapshot.paramMap.get('id')!;
+    this.breadcrumbSvc.set([
+      { label: 'Materials' },
+      { label: 'Item Master', route: ['/item-master'] },
+      { label: 'Edit' },
+    ]);
 
     this.form.get('shelfLifeControlled')!.valueChanges.subscribe(on => {
       const ctrl = this.form.get('shelfLifeDays')!;
@@ -385,11 +383,11 @@ export class ItemMasterEditComponent implements OnInit {
   }
 
   private populateForm(item: ItemMasterDto): void {
-    this.breadcrumbs = [
+    this.breadcrumbSvc.set([
       { label: 'Materials' },
       { label: 'Item Master', route: ['/item-master'] },
       { label: `${item.partNumber} Rev ${item.revision}` },
-    ];
+    ]);
     this.form.patchValue({
       description:          item.description,
       unitOfMeasure:        item.unitOfMeasure,

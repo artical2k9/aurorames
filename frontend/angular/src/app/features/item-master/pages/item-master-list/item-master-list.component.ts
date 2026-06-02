@@ -15,7 +15,7 @@ import { ToastModule } from 'primeng/toast';
 import { Menu } from 'primeng/menu';
 import { MenuItem, MessageService } from 'primeng/api';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
-import { StatusBadgeComponent, BreadcrumbComponent } from '../../../../shared/ui';
+import { StatusBadgeComponent, BreadcrumbService } from '../../../../shared/ui';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
 import { ClassificationLabelPipe } from '../../pipes/classification-label.pipe';
 import { DEFAULT_ITEM_MASTER_COLUMNS } from '../../constants/default-columns';
@@ -30,7 +30,7 @@ import {
     CommonModule, AsyncPipe, FormsModule,
     TableModule, InputTextModule, SelectModule,
     ButtonModule, PopoverModule, TagModule, MenuModule, ToastModule,
-    ColumnPickerComponent, StatusBadgeComponent, BreadcrumbComponent,
+    ColumnPickerComponent, StatusBadgeComponent,
     ClassificationLabelPipe,
   ],
   providers: [
@@ -44,8 +44,6 @@ import {
     <p-toast />
 
     <div class="iml">
-
-      <app-breadcrumb [crumbs]="breadcrumbs" />
 
       <!-- Heading row -->
       <div class="iml__heading">
@@ -235,6 +233,7 @@ export class ItemMasterListComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly messageService = inject(MessageService);
   readonly gridPreference = inject(GridPreferenceService);
+  private readonly breadcrumbSvc = inject(BreadcrumbService);
 
   @ViewChild('rowMenu') rowMenu!: Menu;
 
@@ -252,12 +251,6 @@ export class ItemMasterListComponent implements OnInit {
   selectedClassification: Classification | null = null;
   selectedStatus: ItemStatus | null = null;
   selectedMakeBuy: MakeBuyCode | null = null;
-
-  readonly breadcrumbs = [
-    { label: 'Home' },
-    { label: 'Materials' },
-    { label: 'Item Master' },
-  ];
 
   readonly classificationOptions = [
     { label: 'Assembly',       value: 'ASSEMBLY' },
@@ -289,6 +282,11 @@ export class ItemMasterListComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.breadcrumbSvc.set([
+      { label: 'Home' },
+      { label: 'Materials' },
+      { label: 'Item Master' },
+    ]);
     this.gridPreference.load();
   }
 

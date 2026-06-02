@@ -14,7 +14,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { SelectModule } from 'primeng/select';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { MessageService, ConfirmationService } from 'primeng/api';
-import { BreadcrumbComponent, StatusBadgeComponent } from '../../../../shared/ui';
+import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
 import { BomApiService } from '../../services/bom-api.service';
 import { AddBomLineFormComponent } from '../../components/add-bom-line-form/add-bom-line-form.component';
 import { BomHeaderEditDialogComponent } from '../../components/bom-header-edit-dialog/bom-header-edit-dialog.component';
@@ -33,7 +33,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     CommonModule, AsyncPipe, FormsModule, RouterLink,
     TableModule, ButtonModule, TagModule, DialogModule, MessageModule,
     ToastModule, ConfirmDialogModule, PopoverModule, SelectModule, InputNumberModule,
-    BreadcrumbComponent, StatusBadgeComponent,
+    StatusBadgeComponent,
     AddBomLineFormComponent, BomHeaderEditDialogComponent, ColumnPickerComponent,
   ],
   providers: [
@@ -49,8 +49,6 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     <p-confirmDialog />
 
     <div class="ba">
-      <app-breadcrumb [crumbs]="breadcrumbs" />
-
       @if (bom) {
         <!-- Header card -->
         <div class="ba__header-card">
@@ -267,6 +265,7 @@ export class BomAuthoringComponent implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly messageService = inject(MessageService);
   private readonly confirmationService = inject(ConfirmationService);
+  private readonly breadcrumbSvc = inject(BreadcrumbService);
   readonly gridPreference = inject(GridPreferenceService);
 
   bomId = '';
@@ -287,15 +286,14 @@ export class BomAuthoringComponent implements OnInit {
   editingLineId: string | null = null;
   editQty: number | null = null;
 
-  breadcrumbs = [
-    { label: 'Materials' },
-    { label: 'Item Master', route: ['/item-master'] },
-    { label: 'BOMs' },
-    { label: 'Authoring' },
-  ];
-
   ngOnInit(): void {
     this.bomId = this.route.snapshot.paramMap.get('bomId') ?? '';
+    this.breadcrumbSvc.set([
+      { label: 'Materials' },
+      { label: 'Item Master', route: ['/item-master'] },
+      { label: 'BOMs' },
+      { label: 'Authoring' },
+    ]);
     this.gridPreference.load();
     this.loadBom();
   }
@@ -308,12 +306,12 @@ export class BomAuthoringComponent implements OnInit {
       this.loading = false;
       this.itemApi.getById(bom.parentItemId).subscribe(item => {
         this.parentItem = item;
-        this.breadcrumbs = [
+        this.breadcrumbSvc.set([
           { label: 'Materials' },
           { label: 'Item Master', route: ['/item-master'] },
           { label: item.partNumber, route: ['/item-master', bom.parentItemId, 'boms'] },
           { label: 'Rev ' + bom.bomRevision },
-        ];
+        ]);
         this.cdr.detectChanges();
       });
       this.bomApi.listForItem(bom.parentItemId).subscribe(revisions => {
