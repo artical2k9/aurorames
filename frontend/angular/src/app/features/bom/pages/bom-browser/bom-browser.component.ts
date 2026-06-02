@@ -156,7 +156,10 @@ export class BomBrowserComponent {
     const rows = event.rows ?? this.pageSize;
     const page = Math.floor(first / rows);
     this.pageSize = rows;
-    this.load(page);
+    // Defer outside the current CD pass — PrimeNG fires onLazyLoad during its
+    // own ngOnInit (still inside Angular's detectChanges), so synchronous state
+    // mutations here trigger NG0100.
+    setTimeout(() => this.load(page));
   }
 
   onSearch(): void {
