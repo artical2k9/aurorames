@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { AfterViewInit, Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -136,7 +136,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     }
   `],
 })
-export class BomBrowserComponent {
+export class BomBrowserComponent implements AfterViewInit {
   private readonly itemApi = inject(ItemMasterApiService);
   private readonly router = inject(Router);
 
@@ -145,9 +145,6 @@ export class BomBrowserComponent {
   }
 
   items: ItemMasterDto[] = [];
-  // Start as true so the spinner renders immediately and the value doesn't
-  // change when onLazyLoad fires synchronously inside Angular's CD pass,
-  // which would otherwise trigger NG0100.
   loading = true;
   error = '';
   searchTerm = '';
@@ -155,8 +152,22 @@ export class BomBrowserComponent {
   totalRecords = 0;
 
   private searchDebounce?: ReturnType<typeof setTimeout>;
+  // p-table fires onLazyLoad synchronously from its own ngOnInit, which runs
+  // inside Angular's CD pass. Mutations there cause NG0100 (items and loading
+  // both change after the evaluation snapshot). Skip that first auto-fire and
+  // let ngAfterViewInit start the real load via setTimeout (a new macrotask,
+  // guaranteed outside any CD cycle).
+  private skipNextLazyLoad = true;
+
+  ngAfterViewInit(): void {
+    setTimeout(() => this.load(0));
+  }
 
   onLazyLoad(event: TableLazyLoadEvent): void {
+    if (this.skipNextLazyLoad) {
+      this.skipNextLazyLoad = false;
+      return;
+    }
     const first = event.first ?? 0;
     const rows = event.rows ?? this.pageSize;
     const page = Math.floor(first / rows);
