@@ -1,5 +1,11 @@
 import { ApplicationConfig, APP_INITIALIZER, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter, withRouterConfig } from '@angular/router';
+import {
+  ActivatedRouteSnapshot,
+  BaseRouteReuseStrategy,
+  provideRouter,
+  RouteReuseStrategy,
+  withRouterConfig,
+} from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideOAuthClient, OAuthService } from 'angular-oauth2-oidc';
@@ -32,6 +38,24 @@ const AuroraPreset = definePreset(Aura, {
   },
 });
 
+// Leaf-level route components (pages) are never reused so that:
+// - Same-URL nav clicks (onSameUrlNavigation: 'reload') actually recreate the
+//   component and re-run ngOnInit / ngAfterViewInit, triggering a fresh data load.
+// - takeUntilDestroyed correctly cancels in-flight requests when navigating away.
+// Parent routes (AppShellComponent — has firstChild) are still reused so the
+// shell/nav-rail does not flicker on every navigation.
+class LeafComponentReloadStrategy extends BaseRouteReuseStrategy {
+  override shouldReuseRoute(
+    future: ActivatedRouteSnapshot,
+    curr: ActivatedRouteSnapshot,
+  ): boolean {
+    if (!future.firstChild) {
+      return false;
+    }
+    return super.shouldReuseRoute(future, curr);
+  }
+}
+
 function initializeOAuth(oauthService: OAuthService) {
   return () => {
     oauthService.configure(authConfig);
@@ -49,6 +73,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideAnimationsAsync(),
     provideRouter(routes, withRouterConfig({ onSameUrlNavigation: 'reload' })),
+    { provide: RouteReuseStrategy, useClass: LeafComponentReloadStrategy },
     provideHttpClient(withInterceptors([authInterceptor])),
     provideOAuthClient(),
     providePrimeNG({
