@@ -19,6 +19,9 @@ import {
   LucideLayoutGrid,
   LucideBell,
   LucideLogOut,
+  LucideDatabase,
+  LucideSlidersHorizontal,
+  LucideChevronDown,
 } from '@lucide/angular';
 import { ThemeToggleComponent } from '../../shared/theme';
 import { ThemeService } from '../../shared/theme';
@@ -26,13 +29,20 @@ import { BreadcrumbComponent, BreadcrumbService } from '../../shared/ui';
 
 const NAV_COLLAPSED_KEY = 'aurora-mes-nav-collapsed';
 
-type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help';
+type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf';
+
+interface ChildNavItem {
+  label: string;
+  iconKey: NavIconKey;
+  path: string;
+}
 
 interface NavItem {
   label: string;
   iconKey: NavIconKey;
   path: string;
   disabled?: boolean;
+  children?: ChildNavItem[];
 }
 
 @Component({
@@ -45,6 +55,7 @@ interface NavItem {
     LucidePencilRuler, LucideBlocks, LucideSettings, LucideLifeBuoy,
     LucidePanelLeftOpen, LucidePanelLeftClose,
     LucideUserCog, LucideList, LucideLayoutGrid, LucideBell, LucideLogOut,
+    LucideDatabase, LucideSlidersHorizontal, LucideChevronDown,
     ThemeToggleComponent,
   ],
   template: `
@@ -120,8 +131,49 @@ interface NavItem {
         </button>
 
         <nav class="shell__nav" aria-label="Main navigation">
-          @for (item of navItems; track item.path) {
-            @if (item.disabled) {
+          @for (item of navItems; track item.label) {
+
+            @if (item.children) {
+              <!-- ── Nav group (expandable) ── -->
+              <div class="shell__nav-group">
+                <button class="shell__nav-item shell__nav-group-hdr"
+                        [class.shell__nav-group-hdr--open]="isGroupExpanded(item.label)"
+                        [title]="item.label"
+                        (click)="toggleGroup(item.label)">
+                  <span class="shell__nav-icon">
+                    @switch (item.iconKey) {
+                      @case ('master-data') { <svg lucideDatabase [size]="18" [strokeWidth]="2"></svg> }
+                    }
+                  </span>
+                  @if (!collapsed) {
+                    <span class="shell__nav-label">{{ item.label }}</span>
+                    <svg lucideChevronDown [size]="14" [strokeWidth]="2"
+                         class="shell__nav-chevron"
+                         [class.shell__nav-chevron--open]="isGroupExpanded(item.label)"></svg>
+                  }
+                </button>
+                @if (!collapsed && isGroupExpanded(item.label)) {
+                  <div class="shell__nav-children">
+                    @for (child of item.children; track child.label) {
+                      <a class="shell__nav-item shell__nav-item--child"
+                         [routerLink]="child.path"
+                         routerLinkActive="shell__nav-item--active"
+                         [routerLinkActiveOptions]="{ exact: false }"
+                         [title]="child.label">
+                        <span class="shell__nav-icon">
+                          @switch (child.iconKey) {
+                            @case ('udf') { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                          }
+                        </span>
+                        <span class="shell__nav-label">{{ child.label }}</span>
+                      </a>
+                    }
+                  </div>
+                }
+              </div>
+
+            } @else if (item.disabled) {
+              <!-- ── Disabled flat item ── -->
               <span class="shell__nav-item shell__nav-item--disabled" [title]="item.label">
                 <span class="shell__nav-icon">
                   @switch (item.iconKey) {
@@ -138,7 +190,9 @@ interface NavItem {
                   <span class="shell__nav-label">{{ item.label }}</span>
                 }
               </span>
+
             } @else {
+              <!-- ── Active flat item ── -->
               <a class="shell__nav-item"
                  [routerLink]="item.path"
                  routerLinkActive="shell__nav-item--active"
@@ -160,6 +214,7 @@ interface NavItem {
                 }
               </a>
             }
+
           }
         </nav>
 
@@ -213,7 +268,30 @@ export class AppShellComponent implements OnInit {
     { label: 'BOM',         iconKey: 'bom',         path: '/bom' },
     { label: 'ECO',         iconKey: 'eco',         path: '/ecos' },
     { label: 'Work Orders', iconKey: 'work-orders', path: '/work-orders', disabled: true },
+    {
+      label:    'Master Data',
+      iconKey:  'master-data',
+      path:     '',
+      children: [
+        { label: 'User-Defined Fields', iconKey: 'udf', path: '/master-data/udf' },
+      ],
+    },
   ];
+
+  expandedGroups = new Set<string>(['Master Data']);
+
+  isGroupExpanded(label: string): boolean {
+    return this.expandedGroups.has(label);
+  }
+
+  toggleGroup(label: string): void {
+    if (this.collapsed) return;
+    if (this.expandedGroups.has(label)) {
+      this.expandedGroups.delete(label);
+    } else {
+      this.expandedGroups.add(label);
+    }
+  }
 
   readonly navItemsBottom: NavItem[] = [
     { label: 'Settings', iconKey: 'settings', path: '/settings' },

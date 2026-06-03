@@ -310,6 +310,44 @@ $transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
   line-height: 1.4;
 }
 
+// ── Nav group (expandable section) ────────────────────────────────────────────
+.shell__nav-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.shell__nav-group-hdr {
+  border: none;
+  background: none;
+  text-align: left;
+  width: 100%;
+}
+
+.shell__nav-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  color: inherit;
+
+  &--open {
+    transform: rotate(180deg);
+  }
+}
+
+.shell__nav-children {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 2px 0 2px 0.875rem;
+  padding-left: 0.625rem;
+  border-left: 2px solid var(--aurora-border-subtle);
+}
+
+.shell__nav-item--child {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+}
+
 // ── Collapsed state ────────────────────────────────────────────────────────────
 // Layout of nav items does NOT change — only the rail width and label visibility change.
 // This keeps every icon anchored at the same left position in both states.
@@ -380,4 +418,8 @@ $transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .shell__content { background: var(--aurora-bg-base); }
+
+  .shell__nav-children {
+    border-left-color: var(--aurora-border-subtle);
+  }
 }

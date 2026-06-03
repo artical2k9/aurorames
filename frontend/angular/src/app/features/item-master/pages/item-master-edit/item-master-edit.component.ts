@@ -1,6 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -12,8 +12,8 @@ import { MessageModule } from 'primeng/message';
 import { SkeletonModule } from 'primeng/skeleton';
 import { BreadcrumbService } from '../../../../shared/ui';
 import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
+import { UdfFieldsComponent } from '../../../../shared/udf/udf-fields.component';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
-import { UdfApiService, UdfFieldDefinition } from '../../services/udf-api.service';
 import {
   ItemMasterDto, Classification, CounterfeitRiskLevel, MakeBuyCode, TraceabilityMethod,
 } from '../../models/item-master.model';
@@ -25,7 +25,7 @@ import {
     CommonModule, ReactiveFormsModule,
     ButtonModule, InputTextModule, SelectModule,
     ToggleSwitchModule, InputNumberModule, TextareaModule, MessageModule, SkeletonModule,
-    StatusBadgeComponent,
+    StatusBadgeComponent, UdfFieldsComponent,
   ],
   template: `
     <div class="imed">
@@ -190,34 +190,12 @@ import {
             </div>
           </div>
 
-          <!-- UDF Section (full width) -->
-          @if (udfFields.length > 0) {
-            <div class="imed__udf-section">
-              <h3 class="imed__section-title">User-Defined Fields</h3>
-              <p class="imed__udf-subtitle">
-                {{ udfFields.length }} field{{ udfFields.length !== 1 ? 's' : '' }} configured for ITEM_MASTER module
-              </p>
-              <div class="imed__udf-grid" formGroupName="udfValues">
-                @for (field of udfFields; track field.fieldKey) {
-                  <div class="imed__field">
-                    <label class="imed__label">
-                      {{ field.label }}
-                      @if (field.required) { <span class="imed__req">*</span> }
-                    </label>
-                    @switch (field.fieldType) {
-                      @case ('NUMBER') { <p-inputnumber [formControlName]="field.fieldKey" /> }
-                      @case ('BOOLEAN') { <p-toggleswitch [formControlName]="field.fieldKey" /> }
-                      @case ('LIST') {
-                        <p-select [formControlName]="field.fieldKey"
-                                  [options]="field.listOptions ?? []" placeholder="Select…" />
-                      }
-                      @default { <input pInputText [formControlName]="field.fieldKey" /> }
-                    }
-                  </div>
-                }
-              </div>
-            </div>
-          }
+          <!-- UDF Section — placed inside @else if (item) so initialValues are ready on mount -->
+          <app-udf-fields
+            moduleKey="ITEM_MASTER"
+            [udfGroup]="udfGroup"
+            [initialValues]="item.customFields ?? {}"
+          />
         </form>
 
       } @else {
@@ -273,26 +251,18 @@ import {
     .imed__trace-btns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
     .imed__hint-text { font-size: 0.75rem; color: var(--p-text-muted-color); margin-top: 0.2rem; }
 
-    .imed__udf-section {
-      border: 1px solid var(--p-surface-border); border-radius: 8px; padding: 1.25rem;
-    }
-    .imed__udf-subtitle { font-size: 0.8125rem; color: var(--p-text-muted-color); margin: 0.25rem 0 1rem; }
-    .imed__udf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.875rem; }
-
     .imed__not-found { padding: 2rem; text-align: center; color: var(--p-text-muted-color); }
   `],
 })
 export class ItemMasterEditComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(ItemMasterApiService);
-  private readonly udfApi = inject(UdfApiService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
 
   item: ItemMasterDto | null = null;
   itemId!: string;
-  udfFields: UdfFieldDefinition[] = [];
   serverErrors: string[] = [];
   loading = true;
   saving = false;
@@ -337,6 +307,10 @@ export class ItemMasterEditComponent implements OnInit {
     { label: 'High',     value: 'HIGH' },
     { label: 'Critical', value: 'CRITICAL' },
   ];
+
+  get udfGroup(): FormGroup {
+    return this.form.get('udfValues') as FormGroup;
+  }
 
   form = this.fb.group({
     description:          ['', Validators.required],
@@ -469,20 +443,6 @@ export class ItemMasterEditComponent implements OnInit {
       this.updateShelfLifeDaysValidity();
     });
 
-    this.udfApi.listFields('ITEM_MASTER').subscribe(fields => {
-      this.udfFields = fields;
-      const udfGroup = this.form.get('udfValues') as ReturnType<typeof this.fb.group>;
-      fields.forEach(f => {
-        udfGroup.addControl(
-          f.fieldKey,
-          this.fb.control(
-            this.item?.customFields?.[f.fieldKey] ?? f.defaultValue ?? null,
-            f.required ? Validators.required : [],
-          ),
-        );
-      });
-    });
-
     this.loadItem();
   }
 
@@ -572,14 +532,12 @@ export class ItemMasterEditComponent implements OnInit {
   }
 
   private buildCustomFields(): Record<string, unknown> | undefined {
-    const udfGroup = this.form.get('udfValues');
-    if (!udfGroup || !this.udfFields.length) return undefined;
+    const keys = Object.keys(this.udfGroup.controls);
+    if (keys.length === 0) return undefined;
     const result: Record<string, unknown> = {};
-    this.udfFields.forEach(f => {
-      const val = udfGroup.get(f.fieldKey)?.value;
-      if (val !== null && val !== undefined && val !== '') {
-        result[f.fieldKey] = val;
-      }
+    keys.forEach(key => {
+      const val = this.udfGroup.get(key)?.value;
+      if (val !== null && val !== undefined && val !== '') result[key] = val;
     });
     return Object.keys(result).length ? result : undefined;
   }

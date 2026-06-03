@@ -1,13 +1,13 @@
 import { Component, EventEmitter, inject, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { MessageModule } from 'primeng/message';
+import { UdfFieldsComponent } from '../../../../shared/udf/udf-fields.component';
 import { BomApiService } from '../../services/bom-api.service';
-import { UdfApiService, UdfFieldDefinition } from '../../../item-master/services/udf-api.service';
 import { BomDto, PatchBomHeaderRequest } from '../../models/bom.model';
 
 @Component({
@@ -16,6 +16,7 @@ import { BomDto, PatchBomHeaderRequest } from '../../models/bom.model';
   imports: [
     CommonModule, ReactiveFormsModule,
     DialogModule, ButtonModule, InputTextModule, SelectModule, MessageModule,
+    UdfFieldsComponent,
   ],
   template: `
     <p-dialog header="Edit BOM Header" [(visible)]="visible" [modal]="true"
@@ -65,17 +66,11 @@ import { BomDto, PatchBomHeaderRequest } from '../../models/bom.model';
                       placeholder="Select…" [showClear]="true" />
           </div>
 
-          @if (udfFields.length > 0) {
-            <h4 class="bhd__udf-title">BOM Header UDFs</h4>
-            <div formGroupName="udfValues">
-              @for (field of udfFields; track field.fieldKey) {
-                <div class="bhd__field">
-                  <label>{{ field.label }}</label>
-                  <input pInputText [formControlName]="field.fieldKey" />
-                </div>
-              }
-            </div>
-          }
+          <app-udf-fields
+            moduleKey="BOM_HEADER"
+            [udfGroup]="udfGroup"
+            [initialValues]="bom?.customFields ?? {}"
+          />
 
         </form>
       }
@@ -107,12 +102,14 @@ export class BomHeaderEditDialogComponent implements OnChanges {
   @Output() saved = new EventEmitter<BomDto>();
 
   private readonly bomApi = inject(BomApiService);
-  private readonly udfApi = inject(UdfApiService);
   private readonly fb = inject(FormBuilder);
 
-  udfFields: UdfFieldDefinition[] = [];
   saving = false;
   serverError = '';
+
+  get udfGroup(): FormGroup {
+    return this.form.get('udfValues') as FormGroup;
+  }
 
   readonly bomTypeOptions = [
     { label: 'Manufacturing BOM', value: 'MANUFACTURING' },
@@ -145,22 +142,7 @@ export class BomHeaderEditDialogComponent implements OnChanges {
         effectivityType:   this.bom.effectivityType ?? '',
       });
       this.serverError = '';
-      this.loadUdfs();
     }
-  }
-
-  private loadUdfs(): void {
-    this.udfApi.listFields('BOM_HEADER').subscribe(fields => {
-      this.udfFields = fields;
-      const udfGroup = this.form.get('udfValues') as ReturnType<typeof this.fb.group>;
-      fields.forEach(f => {
-        if (!udfGroup.contains(f.fieldKey)) {
-          udfGroup.addControl(f.fieldKey, this.fb.control(
-            (this.bom?.customFields?.[f.fieldKey] as string) ?? '',
-          ));
-        }
-      });
-    });
   }
 
   close(): void {
@@ -171,13 +153,10 @@ export class BomHeaderEditDialogComponent implements OnChanges {
     this.saving = true;
     this.serverError = '';
     const v = this.form.value;
-    const udfGroup = this.form.get('udfValues');
     const customFields: Record<string, unknown> = {};
-    this.udfFields.forEach(f => {
-      const val = udfGroup?.get(f.fieldKey)?.value;
-      if (val !== null && val !== undefined && val !== '') {
-        customFields[f.fieldKey] = val;
-      }
+    Object.keys(this.udfGroup.controls).forEach(key => {
+      const val = this.udfGroup.get(key)?.value;
+      if (val !== null && val !== undefined && val !== '') customFields[key] = val;
     });
     const req: PatchBomHeaderRequest = {
       description:       v.description || undefined,

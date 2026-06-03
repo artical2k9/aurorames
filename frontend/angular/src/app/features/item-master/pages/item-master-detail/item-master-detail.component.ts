@@ -6,7 +6,7 @@ import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { SkeletonModule } from 'primeng/skeleton';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
-import { UdfApiService, UdfFieldDefinition } from '../../services/udf-api.service';
+import { UdfApiService, UdfFieldDefinition } from '../../../../shared/udf/udf-api.service';
 import { ItemMasterDto, Classification } from '../../models/item-master.model';
 import { StatusBadgeComponent, BreadcrumbService } from '../../../../shared/ui';
 

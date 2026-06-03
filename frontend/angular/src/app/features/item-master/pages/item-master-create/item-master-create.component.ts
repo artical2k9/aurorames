@@ -1,6 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -11,8 +11,8 @@ import { TextareaModule } from 'primeng/textarea';
 import { MessageModule } from 'primeng/message';
 import { SkeletonModule } from 'primeng/skeleton';
 import { BreadcrumbService } from '../../../../shared/ui';
+import { UdfFieldsComponent } from '../../../../shared/udf/udf-fields.component';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
-import { UdfApiService, UdfFieldDefinition } from '../../services/udf-api.service';
 import {
   Classification, TraceabilityMethod, CounterfeitRiskLevel, MakeBuyCode,
 } from '../../models/item-master.model';
@@ -24,6 +24,7 @@ import {
     CommonModule, ReactiveFormsModule,
     ButtonModule, InputTextModule, SelectModule,
     ToggleSwitchModule, InputNumberModule, TextareaModule, MessageModule, SkeletonModule,
+    UdfFieldsComponent,
   ],
   template: `
     <div class="imcr">
@@ -175,34 +176,7 @@ import {
           </div>
         </div>
 
-        <!-- UDF Section (full width) -->
-        @if (udfFields.length > 0) {
-          <div class="imcr__udf-section">
-            <h3 class="imcr__section-title">User-Defined Fields</h3>
-            <p class="imcr__udf-subtitle">
-              {{ udfFields.length }} field{{ udfFields.length !== 1 ? 's' : '' }} configured for ITEM_MASTER module
-            </p>
-            <div class="imcr__udf-grid" formGroupName="udfValues">
-              @for (field of udfFields; track field.fieldKey) {
-                <div class="imcr__field">
-                  <label class="imcr__label">
-                    {{ field.label }}
-                    @if (field.required) { <span class="imcr__req">*</span> }
-                  </label>
-                  @switch (field.fieldType) {
-                    @case ('NUMBER') { <p-inputnumber [formControlName]="field.fieldKey" /> }
-                    @case ('BOOLEAN') { <p-toggleswitch [formControlName]="field.fieldKey" /> }
-                    @case ('LIST') {
-                      <p-select [formControlName]="field.fieldKey"
-                                [options]="field.listOptions ?? []" placeholder="Select…" />
-                    }
-                    @default { <input pInputText [formControlName]="field.fieldKey" /> }
-                  }
-                </div>
-              }
-            </div>
-          </div>
-        }
+        <app-udf-fields moduleKey="ITEM_MASTER" [udfGroup]="udfGroup" />
       </form>
 
     </div>
@@ -246,17 +220,11 @@ import {
     .imcr__makebuy { display: flex; gap: 0.5rem; }
     .imcr__trace-btns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
-    .imcr__udf-section {
-      border: 1px solid var(--p-surface-border); border-radius: 8px; padding: 1.25rem;
-    }
-    .imcr__udf-subtitle { font-size: 0.8125rem; color: var(--p-text-muted-color); margin: 0.25rem 0 1rem; }
-    .imcr__udf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.875rem; }
   `],
 })
 export class ItemMasterCreateComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(ItemMasterApiService);
-  private readonly udfApi = inject(UdfApiService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
@@ -309,7 +277,6 @@ export class ItemMasterCreateComponent implements OnInit {
     udfValues:            this.fb.group({}),
   });
 
-  udfFields: UdfFieldDefinition[] = [];
   serverErrors: string[] = [];
   saving = false;
   cloneLoading = false;
@@ -427,6 +394,10 @@ export class ItemMasterCreateComponent implements OnInit {
     }
   }
 
+  get udfGroup(): FormGroup {
+    return this.form.get('udfValues') as FormGroup;
+  }
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
@@ -438,17 +409,6 @@ export class ItemMasterCreateComponent implements OnInit {
 
     this.form.get('shelfLifeControlled')!.valueChanges.subscribe(() => {
       this.updateShelfLifeDaysValidity();
-    });
-
-    this.udfApi.listFields('ITEM_MASTER').subscribe(fields => {
-      this.udfFields = fields;
-      const udfGroup = this.form.get('udfValues') as ReturnType<typeof this.fb.group>;
-      fields.forEach(f => {
-        udfGroup.addControl(
-          f.fieldKey,
-          this.fb.control(f.defaultValue ?? null, f.required ? Validators.required : []),
-        );
-      });
     });
 
     const cloneFrom = this.route.snapshot.queryParamMap.get('cloneFrom');
@@ -521,14 +481,12 @@ export class ItemMasterCreateComponent implements OnInit {
   }
 
   private buildCustomFields(): Record<string, unknown> | undefined {
-    const udfGroup = this.form.get('udfValues');
-    if (!udfGroup || !this.udfFields.length) return undefined;
+    const keys = Object.keys(this.udfGroup.controls);
+    if (keys.length === 0) return undefined;
     const result: Record<string, unknown> = {};
-    this.udfFields.forEach(f => {
-      const val = udfGroup.get(f.fieldKey)?.value;
-      if (val !== null && val !== undefined && val !== '') {
-        result[f.fieldKey] = val;
-      }
+    keys.forEach(key => {
+      const val = this.udfGroup.get(key)?.value;
+      if (val !== null && val !== undefined && val !== '') result[key] = val;
     });
     return Object.keys(result).length ? result : undefined;
   }

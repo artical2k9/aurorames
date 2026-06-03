@@ -83,6 +83,12 @@ export const routes: Routes = [
           import('./features/eco/pages/eco-list/eco-list.component')
             .then(m => m.EcoListComponent),
       },
+      {
+        path: 'master-data/udf',
+        loadComponent: () =>
+          import('./features/master-data/pages/udf-admin/udf-admin.component')
+            .then(m => m.UdfAdminComponent),
+      },
     ],
   },
 ];
