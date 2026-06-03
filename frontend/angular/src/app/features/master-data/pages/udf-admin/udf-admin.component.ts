@@ -496,7 +496,9 @@ export class UdfAdminComponent implements OnInit {
       },
       error: (err: { status: number; error?: { violations?: { field: string; message: string }[] } }) => {
         this.saving = false;
-        if (err.status === 422 && err.error?.violations) {
+        if (err.status === 403) {
+          this.serverErrors = ['Permission denied. The item-master:udf:manage privilege is required. Ensure your account has the SYSTEM_ADMIN role.'];
+        } else if (err.status === 422 && err.error?.violations) {
           this.serverErrors = err.error.violations.map(vi => `${vi.field}: ${vi.message}`);
         } else if (err.status === 409) {
           this.serverErrors = [`Field key "${v.fieldKey}" already exists for ${this.selectedModuleLabel}.`];
