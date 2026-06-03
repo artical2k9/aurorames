@@ -441,7 +441,7 @@
         {
           "type": "password",
           "value": "admin123",
-          "temporary": true
+          "temporary": false
         }
       ],
       "realmRoles": ["SYSTEM_ADMIN"]
