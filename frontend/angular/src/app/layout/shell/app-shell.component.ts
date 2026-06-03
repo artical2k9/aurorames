@@ -162,7 +162,8 @@ interface NavItem {
                          [title]="child.label">
                         <span class="shell__nav-icon">
                           @switch (child.iconKey) {
-                            @case ('udf') { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                            @case ('item-master') { <svg lucidePackage          [size]="15" [strokeWidth]="2"></svg> }
+                            @case ('udf')         { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
                           }
                         </span>
                         <span class="shell__nav-label">{{ child.label }}</span>
@@ -264,7 +265,6 @@ export class AppShellComponent implements OnInit {
 
   readonly navItems: NavItem[] = [
     { label: 'Dashboard',   iconKey: 'dashboard',   path: '/dashboard' },
-    { label: 'Item Master', iconKey: 'item-master', path: '/item-master' },
     { label: 'BOM',         iconKey: 'bom',         path: '/bom' },
     { label: 'ECO',         iconKey: 'eco',         path: '/ecos' },
     { label: 'Work Orders', iconKey: 'work-orders', path: '/work-orders', disabled: true },
@@ -273,7 +273,8 @@ export class AppShellComponent implements OnInit {
       iconKey:  'master-data',
       path:     '',
       children: [
-        { label: 'User-Defined Fields', iconKey: 'udf', path: '/master-data/udf' },
+        { label: 'Item Master',         iconKey: 'item-master', path: '/item-master' },
+        { label: 'User-Defined Fields', iconKey: 'udf',         path: '/master-data/udf' },
       ],
     },
   ];
