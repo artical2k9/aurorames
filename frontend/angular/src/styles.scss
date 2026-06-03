@@ -1,5 +1,13 @@
 /* You can add global styles to this file, and also import other style files */
 
+@font-face {
+  font-family: 'Nasalization';
+  src: url('/fonts/Nasalization-Rg.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ── Aurora MES dark mode tokens ───────────────────────────────────────────── */
 /* Values from Penpot token set aurora/dark (verified 2026-05-29) */
 .aurora-dark {

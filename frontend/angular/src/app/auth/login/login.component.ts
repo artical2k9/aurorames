@@ -147,9 +147,10 @@ import { LucideUser, LucideLock, LucideEye, LucideEyeOff, LucideShieldCheck, Luc
 
     .login-title {
       margin: 0 0 0.5rem;
+      font-family: 'Nasalization', sans-serif;
       font-size: 2rem;
-      font-weight: 800;
-      letter-spacing: 0.06em;
+      font-weight: normal;
+      letter-spacing: 0.08em;
       color: #FFFFFF;
       line-height: 1.1;
     }
