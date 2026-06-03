@@ -66,7 +66,7 @@
   "roles": {
     "realm": [
       {
-        "name": "ADMIN",
+        "name": "SYSTEM_ADMIN",
         "description": "Full system administration: manage users, roles, and all privileges",
         "composite": false,
         "clientRole": false
@@ -444,7 +444,7 @@
           "temporary": true
         }
       ],
-      "realmRoles": ["ADMIN"]
+      "realmRoles": ["SYSTEM_ADMIN"]
     }
   ],
 
