@@ -174,7 +174,9 @@ export class BomBrowserComponent implements AfterViewInit {
     const rows = event.rows ?? this.pageSize;
     const page = Math.floor(first / rows);
     this.pageSize = rows;
-    this.load(page);
+    // Defer to a new macrotask so any CD verification pass that PrimeNG may
+    // trigger by firing onLazyLoad from a child lifecycle hook completes first.
+    setTimeout(() => this.load(page));
   }
 
   onSearch(): void {
