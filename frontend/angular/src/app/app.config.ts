@@ -35,7 +35,12 @@ const AuroraPreset = definePreset(Aura, {
 function initializeOAuth(oauthService: OAuthService) {
   return () => {
     oauthService.configure(authConfig);
-    return oauthService.loadDiscoveryDocumentAndTryLogin().catch(() => false);
+    // loadDiscoveryDocument only — the app uses the password-grant flow, so
+    // there is no PKCE redirect callback to complete.  Calling tryLogin() here
+    // would attempt id_token nonce validation without a stored nonce, causing
+    // a silent "invalid_nonce_in_state" rejection that makes getAccessToken()
+    // return null on every subsequent request.
+    return oauthService.loadDiscoveryDocument().catch(() => false);
   };
 }
 
