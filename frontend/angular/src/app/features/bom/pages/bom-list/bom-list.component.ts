@@ -1,4 +1,5 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -106,11 +107,12 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
   `],
 })
 export class BomListComponent implements OnInit {
-  private readonly bomApi = inject(BomApiService);
-  private readonly itemApi = inject(ItemMasterApiService);
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
+  private readonly bomApi        = inject(BomApiService);
+  private readonly itemApi       = inject(ItemMasterApiService);
+  private readonly route         = inject(ActivatedRoute);
+  private readonly router        = inject(Router);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
+  private readonly destroyRef    = inject(DestroyRef);
 
   itemId = '';
   parentItem: ItemMasterDto | null = null;
@@ -130,7 +132,7 @@ export class BomListComponent implements OnInit {
       { label: 'Item Master', route: ['/item-master'] },
       { label: 'BOMs' },
     ]);
-    this.itemApi.getById(this.itemId).subscribe({
+    this.itemApi.getById(this.itemId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: item => { this.parentItem = item; },
       error: () => { /* parent item not found — BOM list still shows without heading */ },
     });
@@ -139,7 +141,7 @@ export class BomListComponent implements OnInit {
 
   loadBoms(): void {
     this.loading = true;
-    this.bomApi.listForItem(this.itemId).subscribe({
+    this.bomApi.listForItem(this.itemId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: boms => { this.boms = boms; this.loading = false; },
       error: () => { this.loading = false; },
     });
@@ -169,7 +171,7 @@ export class BomListComponent implements OnInit {
       bomRevision: this.newRevision.trim(),
       description: this.newDescription.trim() || undefined,
     };
-    this.bomApi.create(req).subscribe({
+    this.bomApi.create(req).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: bom => {
         this.creating = false;
         this.closeCreate();

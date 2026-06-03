@@ -1,6 +1,7 @@
 import {
-  ChangeDetectorRef, Component, inject, OnInit, ViewChild,
+  ChangeDetectorRef, Component, DestroyRef, inject, OnInit, ViewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -231,12 +232,13 @@ import {
   `],
 })
 export class ItemMasterListComponent implements OnInit {
-  private readonly api = inject(ItemMasterApiService);
-  private readonly cdr = inject(ChangeDetectorRef);
-  private readonly router = inject(Router);
+  private readonly api            = inject(ItemMasterApiService);
+  private readonly cdr            = inject(ChangeDetectorRef);
+  private readonly router         = inject(Router);
   private readonly messageService = inject(MessageService);
-  readonly gridPreference = inject(GridPreferenceService);
-  private readonly breadcrumbSvc = inject(BreadcrumbService);
+  private readonly destroyRef     = inject(DestroyRef);
+  readonly gridPreference         = inject(GridPreferenceService);
+  private readonly breadcrumbSvc  = inject(BreadcrumbService);
 
   @ViewChild('rowMenu') rowMenu!: Menu;
 
@@ -395,7 +397,7 @@ export class ItemMasterListComponent implements OnInit {
   }
 
   obsoleteItem(id: string): void {
-    this.api.obsolete(id).subscribe({
+    this.api.obsolete(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.messageService.add({ severity: 'success', summary: 'Item obsoleted' });
         this.reload();
@@ -408,7 +410,7 @@ export class ItemMasterListComponent implements OnInit {
     const ids = this.selectedItems.map(i => i.id);
     let done = 0;
     ids.forEach(id => {
-      this.api.obsolete(id).subscribe({
+      this.api.obsolete(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           done++;
           if (done === ids.length) {
@@ -438,7 +440,7 @@ export class ItemMasterListComponent implements OnInit {
       classification: this.selectedClassification ?? undefined,
       status: this.selectedStatus ?? undefined,
       makeBuyCode: this.selectedMakeBuy ?? undefined,
-    }).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: page => {
         this.rows = page.content;
         this.totalRecords = page.totalElements;

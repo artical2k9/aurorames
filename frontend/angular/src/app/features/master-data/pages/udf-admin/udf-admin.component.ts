@@ -1,4 +1,5 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -361,10 +362,11 @@ interface FieldTypeOption { label: string; value: UdfFieldType; }
   `],
 })
 export class UdfAdminComponent implements OnInit {
-  private readonly fb           = inject(FormBuilder);
-  private readonly api          = inject(UdfAdminApiService);
-  private readonly toast        = inject(MessageService);
+  private readonly fb            = inject(FormBuilder);
+  private readonly api           = inject(UdfAdminApiService);
+  private readonly toast         = inject(MessageService);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
+  private readonly destroyRef    = inject(DestroyRef);
 
   selectedModule  = 'ITEM_MASTER';
   fields: UdfFieldDefinition[] = [];
@@ -434,7 +436,7 @@ export class UdfAdminComponent implements OnInit {
 
   private loadFields(): void {
     this.loading = true;
-    this.api.listFields(this.selectedModule).subscribe({
+    this.api.listFields(this.selectedModule).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: fields => { this.fields = fields; this.loading = false; },
       error: ()     => {
         this.fields  = [];
@@ -483,7 +485,7 @@ export class UdfAdminComponent implements OnInit {
         ? (v.listOptions ?? '').split('\n').map((s: string) => s.trim()).filter(Boolean)
         : undefined,
       validationRules: this.buildValidationRules(),
-    }).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.saving = false;
         this.showCreateDialog = false;
@@ -536,7 +538,7 @@ export class UdfAdminComponent implements OnInit {
     if (!this.pendingDeleteId) return;
     this.deleting = true;
 
-    this.api.deleteField(this.pendingDeleteId, force).subscribe({
+    this.api.deleteField(this.pendingDeleteId, force).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.deleting = false;
         this.pendingDeleteId = null;

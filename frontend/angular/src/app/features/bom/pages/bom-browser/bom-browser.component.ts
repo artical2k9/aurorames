@@ -1,4 +1,5 @@
-import { AfterViewInit, Component, inject } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -137,8 +138,9 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
   `],
 })
 export class BomBrowserComponent implements AfterViewInit {
-  private readonly itemApi = inject(ItemMasterApiService);
-  private readonly router = inject(Router);
+  private readonly itemApi    = inject(ItemMasterApiService);
+  private readonly router     = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
     inject(BreadcrumbService).set([{ label: 'BOMs' }]);
@@ -188,6 +190,7 @@ export class BomBrowserComponent implements AfterViewInit {
     this.loading = true;
     this.error = '';
     this.itemApi.list({ page, size: this.pageSize, search: this.searchTerm || undefined })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: result => {
           this.items = result.content;
