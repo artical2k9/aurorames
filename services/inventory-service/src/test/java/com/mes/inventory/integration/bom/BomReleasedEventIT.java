@@ -97,9 +97,9 @@ class BomReleasedEventIT extends BaseIntegrationTest {
     private Map<?, ?> findEventForBom(String bomId) throws Exception {
         long deadline = System.currentTimeMillis() + 10_000L;
         while (System.currentTimeMillis() < deadline) {
-            ConsumerRecord<String, String> record = captor.poll(500, TimeUnit.MILLISECONDS);
-            if (record != null) {
-                Map<?, ?> payload = objectMapper.readValue(record.value(), Map.class);
+            ConsumerRecord<String, String> rec = captor.poll(500, TimeUnit.MILLISECONDS);
+            if (rec != null) {
+                Map<?, ?> payload = objectMapper.readValue(rec.value(), Map.class);
                 if (bomId.equals(payload.get("bomId"))) {
                     return payload;
                 }

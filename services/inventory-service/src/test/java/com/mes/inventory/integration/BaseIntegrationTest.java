@@ -97,8 +97,8 @@ public abstract class BaseIntegrationTest {
                 new LinkedBlockingQueue<>();
 
         @KafkaListener(topics = "bom.released", groupId = "test-bom-released-captor")
-        public void capture(ConsumerRecord<String, String> record) {
-            records.add(record);
+        public void capture(ConsumerRecord<String, String> evt) {
+            records.add(evt);
         }
 
         public ConsumerRecord<String, String> poll(long timeout, TimeUnit unit)

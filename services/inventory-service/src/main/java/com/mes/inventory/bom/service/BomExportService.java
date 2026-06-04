@@ -82,18 +82,8 @@ public class BomExportService {
                 cs.setFont(regular, 8);
                 for (BomExplosionNode node : flattenNodes(nodes)) {
                     if (y < margin + lineHeight) {
-                        cs.endText();
-                        PDPage newPage = new PDPage(PDRectangle.A4);
-                        doc.addPage(newPage);
-                        try (PDPageContentStream cs2 = new PDPageContentStream(doc, newPage)) {
-                            cs2.beginText();
-                            cs2.setFont(regular, 8);
-                            cs2.newLineAtOffset(margin, yStart);
-                        }
+                        doc.addPage(new PDPage(PDRectangle.A4));
                         y = yStart;
-                        cs.beginText();
-                        cs.setFont(regular, 8);
-                        cs.newLineAtOffset(margin, y);
                     }
                     String indent = "  ".repeat(node.getDepth() - 1);
                     String risk = node.isCounterfeitRiskAlert() ? "HIGH" : "";
