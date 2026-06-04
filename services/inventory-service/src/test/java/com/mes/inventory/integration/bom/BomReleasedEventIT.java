@@ -72,6 +72,9 @@ class BomReleasedEventIT extends BaseIntegrationTest {
 
         try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProps)) {
             consumer.subscribe(List.of("bom.released"));
+            // Force partition assignment and skip any pre-existing messages from other tests
+            consumer.poll(Duration.ofMillis(100));
+            consumer.seekToEnd(consumer.assignment());
 
             // Release the BOM
             ResponseEntity<Map> releaseResp = restTemplate.exchange(
@@ -119,6 +122,9 @@ class BomReleasedEventIT extends BaseIntegrationTest {
 
         try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProps)) {
             consumer.subscribe(List.of("bom.released"));
+            // Force partition assignment and skip any pre-existing messages from other tests
+            consumer.poll(Duration.ofMillis(100));
+            consumer.seekToEnd(consumer.assignment());
 
             restTemplate.exchange(BOM_BASE + "/" + bomId + "/release",
                     HttpMethod.POST, bearerRequest(token), Map.class);
