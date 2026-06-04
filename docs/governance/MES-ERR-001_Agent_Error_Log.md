@@ -23,6 +23,20 @@
 **Fix applied:** Created V014 migration adding the same five columns to `bill_of_materials_aud`.
 **Rule:** Whenever adding columns to a `@Audited` entity, always include an `ALTER TABLE <entity>_aud ADD COLUMN ...` for each new column in the same migration (or an immediately-following one). Envers schema-validation at startup enforces column parity between the main table and its `_aud` counterpart. Spot-check this via the ERR-MES-023 (Envers) category in the retrospective gate.
 
+## ERR-MES-059 — Spec cited §XI before it existed in the constitution
+**Date:** 2026-06-04  **Category:** Spec-Kit — Constitution  **Status:** Open
+**Symptom:** `/speckit-analyze` flagged CRITICAL: spec.md, plan.md, and the Jira MES-111 issue all cite "Constitution §XI (Service Boundary Integrity)" as the governing principle for the decomposition. The constitution file `.specify/memory/constitution.md` only defined §I–§X at time of writing; §XI was absent.
+**Root cause:** The spec was written with a forward reference to a principle that seemed obvious from the problem description but had never been formally ratified. The speckit workflow (specify → plan → tasks) does not validate citation correctness against the constitution file.
+**Fix applied:** Added §XI Service Boundary Integrity to the constitution (v1.2.1 → v1.3.0) in the `/speckit-analyze` remediation pass.
+**Rule:** Before citing any constitution principle (§N) in a spec or plan, verify it appears in `.specify/memory/constitution.md` by searching for the section heading. If the principle is implied but absent, propose the constitution amendment first (separate commit) before writing the spec that depends on it.
+
+## ERR-MES-060 — Flyway comment migration used a version number already taken
+**Date:** 2026-06-04  **Category:** Backend — Flyway  **Status:** Open
+**Symptom:** `/speckit-analyze` flagged HIGH: tasks.md T082 instructed creating `V002__note_domains_migrated.sql` in `work-order-service` as a comment migration. `work-order-service` already has `V002__create_item_master.sql`. Applying V002 a second time would cause a Flyway `FoundMigrationWithDuplicateVersion` or checksum error at service startup.
+**Root cause:** The task was written without checking the existing Flyway migration history of the target service. The correct next version is V015 (after the existing V014).
+**Fix applied:** T082 updated to `V015__note_domains_migrated.sql`.
+**Rule:** Before specifying a Flyway migration version number for an existing service, always check the current highest V-number in `services/<service>/src/main/resources/db/migration/`. New migrations must use `max(existing) + 1`. For new services, start at V001.
+
 ## ERR-MES-058 — Pre-PR retrospective spot-check skipped; Envers gap not caught until CI
 **Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
 **Symptom:** PR #20 failed CI on the first run due to the V014 miss (ERR-MES-057). The CLAUDE.md pre-PR checklist requires identifying relevant error categories and spot-checking each against code written. This step was not performed before `gh pr create`.
