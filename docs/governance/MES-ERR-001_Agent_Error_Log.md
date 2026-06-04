@@ -72,6 +72,13 @@
 **Fix applied:** Pinned all `@angular/*` packages in `package.json` to the exact same version (`21.2.13`). Removed `--legacy-peer-deps`. Re-ran `npm install` which regenerated a consistent `package-lock.json`.
 **Rule:** Never use `npm install --legacy-peer-deps` for Angular workspace packages. Angular packages have exact cross-peer deps (`@angular/animations@X.Y.Z` requires `@angular/core@"X.Y.Z"` exactly). All `@angular/*` runtime packages must be pinned to the same exact version in `package.json`. When adding a new Angular package, verify `node_modules/primeng/package.json` (or the relevant pkg) shows matching peer dep versions before committing the lockfile.
 
+## ERR-MES-061 — New service scaffold omitted @Audited library entity from Envers migrations
+**Date:** 2026-06-04  **Category:** Backend — Hibernate Envers  **Status:** Open
+**Symptom:** All integration tests in inventory-service failed at Spring context startup on CI with `SchemaManagementException: Schema-validation: missing table [udf_field_definition_aud]`. Local `./gradlew check` passed because Testcontainers is skipped on Windows without Docker socket.
+**Root cause:** `UdfFieldDefinition` from `libs/mes-udf-lib` is `@Audited`. V005 created audit tables only for the three entities defined inside inventory-service (ItemMaster, BillOfMaterials, BomLine). The pre-PR retrospective spot-checked ERR-MES-057 against entities written in the service but did not scan library dependencies for `@Audited` entities. Hibernate Envers validates ALL `@Audited` entities on the classpath, including those from transitively included JARs.
+**Fix applied:** Added V010 migration creating `inventory.udf_field_definition_aud` with all entity columns and revend/revend_tstmp (ValidityAuditStrategy). `BUILD SUCCESSFUL` confirmed locally with Docker.
+**Rule:** When scaffolding a new service, grep ALL library deps for `@Audited` (not just entities defined in the service itself): `grep -rn "@Audited" libs/ --include="*.java"`. Every `@Audited` entity reachable on the classpath needs a corresponding `_aud` table in the service's Flyway migrations. Add this step explicitly to the Envers spot-check in the pre-PR retrospective.
+
 ## ERR-MES-020 — `gradlew` missing execute bit breaks Linux CI
 **Date:** 2026-05-21  **Category:** CI — Permissions  **Status:** Open
 **Symptom:** Both Java and SonarCloud CI jobs failed immediately with `Permission denied` (exit 126) on `./gradlew` on ubuntu-latest runner.
