@@ -5,3 +5,6 @@ services:
   work-order-service:
     image: ghcr.io/artical2k9/mes-work-order-service:local
     pull_policy: never
+  inventory-service:
+    image: ghcr.io/artical2k9/mes-inventory-service:local
+    pull_policy: never
