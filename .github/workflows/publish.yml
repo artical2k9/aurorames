@@ -67,6 +67,8 @@ jobs:
             dockerfile: services/work-order-service/Dockerfile
           - name: mes-inventory-service
             dockerfile: services/inventory-service/Dockerfile
+          - name: mes-engineering-service
+            dockerfile: services/engineering-service/Dockerfile
 
     steps:
       - name: Checkout

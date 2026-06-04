@@ -8,3 +8,6 @@ services:
   inventory-service:
     image: ghcr.io/artical2k9/mes-inventory-service:local
     pull_policy: never
+  engineering-service:
+    image: ghcr.io/artical2k9/mes-engineering-service:local
+    pull_policy: never
