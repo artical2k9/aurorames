@@ -8,6 +8,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,6 +20,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -33,6 +35,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
@@ -78,6 +83,27 @@ public abstract class BaseIntegrationTest {
                         "item-master:bom:manage");
                 default -> Set.of();
             };
+        }
+
+        @Bean
+        BomReleasedCaptor bomReleasedCaptor() {
+            return new BomReleasedCaptor();
+        }
+    }
+
+    public static class BomReleasedCaptor {
+
+        private final BlockingQueue<ConsumerRecord<String, String>> records =
+                new LinkedBlockingQueue<>();
+
+        @KafkaListener(topics = "bom.released", groupId = "test-bom-released-captor")
+        public void capture(ConsumerRecord<String, String> record) {
+            records.add(record);
+        }
+
+        public ConsumerRecord<String, String> poll(long timeout, TimeUnit unit)
+                throws InterruptedException {
+            return records.poll(timeout, unit);
         }
     }
 
