@@ -63,8 +63,9 @@ class BomReleasedEventIT extends BaseIntegrationTest {
         String bomId = bomResp.getBody().get("id").toString();
 
         // Set up Kafka consumer before releasing
-        Properties consumerProps = KafkaTestUtils.consumerProps(
-                "bom-released-test-" + UUID.randomUUID(), "true", embeddedKafkaBroker);
+        Properties consumerProps = new Properties();
+        consumerProps.putAll(KafkaTestUtils.consumerProps(
+                "bom-released-test-" + UUID.randomUUID(), "true", embeddedKafkaBroker));
         consumerProps.put("key.deserializer", StringDeserializer.class.getName());
         consumerProps.put("value.deserializer", StringDeserializer.class.getName());
         consumerProps.put("auto.offset.reset", "earliest");
@@ -109,8 +110,9 @@ class BomReleasedEventIT extends BaseIntegrationTest {
                 Map.class);
         String bomId = bomResp.getBody().get("id").toString();
 
-        Properties consumerProps = KafkaTestUtils.consumerProps(
-                "bom-released-noeco-" + UUID.randomUUID(), "true", embeddedKafkaBroker);
+        Properties consumerProps = new Properties();
+        consumerProps.putAll(KafkaTestUtils.consumerProps(
+                "bom-released-noeco-" + UUID.randomUUID(), "true", embeddedKafkaBroker));
         consumerProps.put("key.deserializer", StringDeserializer.class.getName());
         consumerProps.put("value.deserializer", StringDeserializer.class.getName());
         consumerProps.put("auto.offset.reset", "earliest");
