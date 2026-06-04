@@ -4,6 +4,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, of, switchMap } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
@@ -11,8 +12,11 @@ import { DialogModule } from 'primeng/dialog';
 import { MessageModule } from 'primeng/message';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { SelectModule } from 'primeng/select';
+import { InputNumberModule } from 'primeng/inputnumber';
 import { MessageService, ConfirmationService } from 'primeng/api';
-import { BreadcrumbComponent, StatusBadgeComponent } from '../../../../shared/ui';
+import { LucideColumnsSettings } from '@lucide/angular';
+import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
 import { BomApiService } from '../../services/bom-api.service';
 import { AddBomLineFormComponent } from '../../components/add-bom-line-form/add-bom-line-form.component';
 import { BomHeaderEditDialogComponent } from '../../components/bom-header-edit-dialog/bom-header-edit-dialog.component';
@@ -30,8 +34,8 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
   imports: [
     CommonModule, AsyncPipe, FormsModule, RouterLink,
     TableModule, ButtonModule, TagModule, DialogModule, MessageModule,
-    ToastModule, ConfirmDialogModule, PopoverModule,
-    BreadcrumbComponent, StatusBadgeComponent,
+    ToastModule, ConfirmDialogModule, PopoverModule, SelectModule, InputNumberModule,
+    StatusBadgeComponent, LucideColumnsSettings,
     AddBomLineFormComponent, BomHeaderEditDialogComponent, ColumnPickerComponent,
   ],
   providers: [
@@ -47,8 +51,9 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     <p-confirmDialog />
 
     <div class="ba">
-      <app-breadcrumb [crumbs]="breadcrumbs" />
-
+      @if (loadError) {
+        <p-message severity="error" text="Failed to load BOM. Please refresh the page." />
+      }
       @if (bom) {
         <!-- Header card -->
         <div class="ba__header-card">
@@ -63,7 +68,11 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
                       title="Edit BOM header">✏</button>
             </div>
             <div class="ba__meta">
-              <span class="ba__revision">Rev {{ bom.bomRevision }}</span>
+              <span class="ba__rev-label">BOM Rev:</span>
+              <p-select [options]="revisionOptions" [(ngModel)]="selectedRevisionId"
+                        optionLabel="label" optionValue="value"
+                        styleClass="ba__rev-select"
+                        (onChange)="onRevisionChange($event.value)" />
               <app-status-badge [status]="bom.status" />
               @if (bom.description) {
                 <span class="ba__desc">{{ bom.description }}</span>
@@ -82,23 +91,25 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
         <!-- Toolbar -->
         @if (bom.status === 'DRAFT') {
           <div class="ba__toolbar">
-            <p-button label="+ Add Line" severity="primary" size="small"
-                      (onClick)="addingLine = !addingLine" />
-            <p-button label="Save Draft" severity="secondary" size="small"
-                      [loading]="saving" (onClick)="saveDraft()" />
-            <p-button label="Submit for Review" severity="success" size="small"
-                      [loading]="releasing" (onClick)="confirmRelease()" />
             <p-button label="← Explosion View" [text]="true" size="small"
                       (onClick)="goToExplosion()" />
+            <span class="ba__lines-count">BOM Lines — {{ lines.length }} component{{ lines.length !== 1 ? 's' : '' }}</span>
             <span class="ba__spacer"></span>
-            <p-button icon="pi pi-sliders-h" [rounded]="true" [text]="true"
+            <p-button label="+ Add Line" severity="primary" size="small"
+                      (onClick)="addingLine = !addingLine" />
+            <p-button label="Submit for Review" severity="success" size="small"
+                      [loading]="releasing" (onClick)="confirmRelease()" />
+            <p-button [rounded]="true" [text]="true"
                       aria-label="Customise columns"
-                      (onClick)="colPickerPanel.toggle($event)" />
+                      (onClick)="colPickerPanel.toggle($event)">
+              <svg lucideColumnsSettings [size]="16" [strokeWidth]="1.75"></svg>
+            </p-button>
           </div>
         } @else {
           <div class="ba__toolbar">
             <p-button label="← Explosion View" [text]="true" size="small"
                       (onClick)="goToExplosion()" />
+            <span class="ba__lines-count">BOM Lines — {{ lines.length }} component{{ lines.length !== 1 ? 's' : '' }}</span>
           </div>
         }
 
@@ -130,37 +141,51 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
                 <th>{{ col.label }}</th>
               }
               @if (bom.status === 'DRAFT') {
-                <th style="width:6rem">Actions</th>
+                <th style="width:8rem">Actions</th>
               }
             </tr>
           </ng-template>
 
           <ng-template pTemplate="body" let-line let-ri="rowIndex" let-columns="columns">
-            <tr>
+            <tr [class.ba__row--editing]="editingLineId === line.id">
               @for (col of visibleCols(columns); track col.key) {
                 <td>
-                  @switch (col.key) {
-                    @case ('seq') { {{ ri + 1 }} }
-                    @case ('effectiveFromDate') {
-                      {{ line.effectiveFromDate ?? '—' }}
-                      @if (line.effectivityMethod === 'UNIT') {
-                        <span class="ba__unit-badge">(Unit)</span>
+                  @if (editingLineId === line.id && col.key === 'quantity') {
+                    <p-inputnumber [(ngModel)]="editQty" [min]="0.000001" [maxFractionDigits]="6"
+                                   styleClass="ba__inline-input" />
+                  } @else {
+                    @switch (col.key) {
+                      @case ('seq') { {{ ri + 1 }} }
+                      @case ('effectiveFromDate') {
+                        {{ line.effectiveFromDate ?? '—' }}
+                        @if (line.effectivityMethod === 'UNIT') {
+                          <span class="ba__unit-badge">(Unit)</span>
+                        }
                       }
-                    }
-                    @case ('effectiveToDate') {
-                      {{ line.effectiveToDate ?? '—' }}
-                      @if (line.effectivityMethod === 'UNIT') {
-                        <span class="ba__unit-badge">(Unit)</span>
+                      @case ('effectiveToDate') {
+                        {{ line.effectiveToDate ?? '—' }}
+                        @if (line.effectivityMethod === 'UNIT') {
+                          <span class="ba__unit-badge">(Unit)</span>
+                        }
                       }
+                      @default { {{ lineValue(line, col.key) }} }
                     }
-                    @default { {{ lineValue(line, col.key) }} }
                   }
                 </td>
               }
               @if (bom.status === 'DRAFT') {
                 <td>
-                  <p-button icon="pi pi-trash" [text]="true" severity="danger" size="small"
-                            (onClick)="removeLine(line)" />
+                  @if (editingLineId === line.id) {
+                    <p-button label="Save" severity="primary" size="small"
+                              [loading]="savingLine" (onClick)="saveLineEdit(line)" />
+                    <p-button icon="pi pi-times" [text]="true" size="small"
+                              (onClick)="cancelLineEdit()" />
+                  } @else {
+                    <p-button icon="pi pi-pencil" [text]="true" size="small"
+                              (onClick)="startLineEdit(line)" />
+                    <p-button icon="pi pi-trash" [text]="true" severity="danger" size="small"
+                              (onClick)="removeLine(line)" />
+                  }
                 </td>
               }
             </tr>
@@ -176,11 +201,8 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
         </p-table>
 
         <!-- Status bar -->
-        <div class="ba__statusbar" [class.ba__statusbar--dirty]="isDirty">
+        <div class="ba__statusbar">
           <span>{{ lines.length }} component{{ lines.length !== 1 ? 's' : '' }}</span>
-          @if (isDirty) {
-            <span class="ba__dirty-msg">· Unsaved changes — click Save Draft to retain</span>
-          }
         </div>
       }
 
@@ -228,8 +250,11 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
       margin-top: 0.5rem; padding: 0.4rem 0.75rem; font-size: 0.8125rem;
       color: var(--p-text-muted-color); border-top: 1px solid var(--p-surface-border);
     }
-    .ba__statusbar--dirty { color: #F59E0B; }
-    .ba__dirty-msg { margin-left: 0.25rem; }
+    .ba__rev-label { font-size: 0.8125rem; color: var(--p-text-muted-color); }
+    :host ::ng-deep .ba__rev-select { min-width: 110px; font-size: 0.8125rem; }
+    .ba__lines-count { font-size: 0.8125rem; font-weight: 600; }
+    .ba__row--editing td { background: var(--p-surface-50); }
+    :host ::ng-deep .ba__inline-input input { width: 80px; }
   `],
 })
 export class BomAuthoringComponent implements OnInit {
@@ -240,6 +265,7 @@ export class BomAuthoringComponent implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly messageService = inject(MessageService);
   private readonly confirmationService = inject(ConfirmationService);
+  private readonly breadcrumbSvc = inject(BreadcrumbService);
   readonly gridPreference = inject(GridPreferenceService);
 
   bomId = '';
@@ -247,55 +273,72 @@ export class BomAuthoringComponent implements OnInit {
   parentItem: ItemMasterDto | null = null;
   lines: BomLineDto[] = [];
   loading = false;
-  saving = false;
+  loadError = false;
   releasing = false;
+  savingLine = false;
   addingLine = false;
   showHeaderEdit = false;
-  isDirty = false;
 
-  breadcrumbs = [
-    { label: 'Materials' },
-    { label: 'Item Master', route: ['/item-master'] },
-    { label: 'BOMs' },
-    { label: 'Authoring' },
-  ];
+  revisionOptions: { label: string; value: string }[] = [];
+  selectedRevisionId = '';
+
+  editingLineId: string | null = null;
+  editQty: number | null = null;
 
   ngOnInit(): void {
     this.bomId = this.route.snapshot.paramMap.get('bomId') ?? '';
+    this.breadcrumbSvc.set([
+      { label: 'Materials' },
+      { label: 'Item Master', route: ['/item-master'] },
+      { label: 'BOMs' },
+      { label: 'Authoring' },
+    ]);
     this.gridPreference.load();
     this.loadBom();
   }
 
   loadBom(): void {
     this.loading = true;
-    this.bomApi.getById(this.bomId).subscribe(bom => {
-      this.bom = bom;
-      this.loading = false;
-      this.itemApi.getById(bom.parentItemId).subscribe(item => {
+    this.loadError = false;
+    this.bomApi.getById(this.bomId).pipe(
+      switchMap(bom => forkJoin({
+        bom: of(bom),
+        item: this.itemApi.getById(bom.parentItemId),
+        revisions: this.bomApi.listForItem(bom.parentItemId),
+        lines: this.bomApi.getLines(this.bomId),
+      })),
+    ).subscribe({
+      next: ({ bom, item, revisions, lines }) => {
+        this.bom = bom;
+        this.selectedRevisionId = bom.id;
         this.parentItem = item;
-        this.breadcrumbs = [
+        this.lines = lines;
+        this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.bomRevision, value: r.id }));
+        this.loading = false;
+        this.breadcrumbSvc.set([
           { label: 'Materials' },
           { label: 'Item Master', route: ['/item-master'] },
           { label: item.partNumber, route: ['/item-master', bom.parentItemId, 'boms'] },
           { label: 'Rev ' + bom.bomRevision },
-        ];
+        ]);
         this.cdr.detectChanges();
-      });
-      this.loadLines();
+      },
+      error: () => {
+        this.loading = false;
+        this.loadError = true;
+        this.cdr.detectChanges();
+      },
     });
   }
 
-  loadLines(): void {
-    this.bomApi.getLines(this.bomId).subscribe(lines => {
-      this.lines = lines;
-      this.isDirty = false;
-      this.cdr.detectChanges();
-    });
+  onRevisionChange(bomId: string): void {
+    if (bomId && bomId !== this.bomId) {
+      this.router.navigate(['/boms', bomId]);
+    }
   }
 
   onLineSaved(line: BomLineDto): void {
     this.lines = [...this.lines, line];
-    this.isDirty = true;
     this.addingLine = false;
     this.cdr.detectChanges();
   }
@@ -304,27 +347,10 @@ export class BomAuthoringComponent implements OnInit {
     this.bomApi.removeLine(this.bomId, line.id).subscribe({
       next: () => {
         this.lines = this.lines.filter(l => l.id !== line.id);
-        this.isDirty = true;
         this.cdr.detectChanges();
       },
       error: () => {
         this.messageService.add({ severity: 'error', summary: 'Failed to remove line' });
-      },
-    });
-  }
-
-  saveDraft(): void {
-    this.saving = true;
-    this.bomApi.patchHeader(this.bomId, {}).subscribe({
-      next: () => {
-        this.saving = false;
-        this.isDirty = false;
-        this.messageService.add({ severity: 'success', summary: 'Draft saved' });
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.saving = false;
-        this.messageService.add({ severity: 'error', summary: 'Save failed' });
       },
     });
   }
@@ -342,13 +368,42 @@ export class BomAuthoringComponent implements OnInit {
       next: bom => {
         this.bom = bom;
         this.releasing = false;
-        this.isDirty = false;
         this.messageService.add({ severity: 'success', summary: 'BOM released' });
         this.cdr.detectChanges();
       },
       error: () => {
         this.releasing = false;
         this.messageService.add({ severity: 'error', summary: 'Release failed' });
+      },
+    });
+  }
+
+  startLineEdit(line: BomLineDto): void {
+    this.editingLineId = line.id;
+    this.editQty = line.quantity ?? null;
+  }
+
+  cancelLineEdit(): void {
+    this.editingLineId = null;
+    this.editQty = null;
+  }
+
+  saveLineEdit(line: BomLineDto): void {
+    if (this.editQty == null) {
+      return;
+    }
+    this.savingLine = true;
+    this.bomApi.patchLine(this.bomId, line.id, { quantity: this.editQty }).subscribe({
+      next: updated => {
+        this.lines = this.lines.map(l => l.id === updated.id ? updated : l);
+        this.editingLineId = null;
+        this.editQty = null;
+        this.savingLine = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.savingLine = false;
+        this.messageService.add({ severity: 'error', summary: 'Failed to save line' });
       },
     });
   }

@@ -2,6 +2,8 @@ import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, of, switchMap } from 'rxjs';
+import { LucideFileDown } from '@lucide/angular';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { SelectButtonModule } from 'primeng/selectbutton';
@@ -10,7 +12,7 @@ import { DatePickerModule } from 'primeng/datepicker';
 import { MessageModule } from 'primeng/message';
 import { TreeTableModule } from 'primeng/treetable';
 import { TreeNode } from 'primeng/api';
-import { BreadcrumbComponent, StatusBadgeComponent } from '../../../../shared/ui';
+import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
 import { BomApiService } from '../../services/bom-api.service';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
 import { BomDto, BomExplosionNode } from '../../models/bom.model';
@@ -23,12 +25,10 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     CommonModule, FormsModule, RouterLink,
     ButtonModule, TagModule, SelectButtonModule, SelectModule, DatePickerModule,
     MessageModule, TreeTableModule,
-    BreadcrumbComponent, StatusBadgeComponent,
+    StatusBadgeComponent, LucideFileDown,
   ],
   template: `
     <div class="be">
-      <app-breadcrumb [crumbs]="breadcrumbs" />
-
       <!-- Header card -->
       @if (bom && parentItem) {
         <div class="be__header-card">
@@ -40,7 +40,10 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
           </div>
           <div class="be__header-mid">
             <div class="be__label">BOM REVISION</div>
-            <div class="be__revision">Rev {{ bom.bomRevision }}</div>
+            <p-select [options]="revisionOptions" [(ngModel)]="selectedRevisionId"
+                      optionLabel="label" optionValue="value"
+                      styleClass="be__rev-select"
+                      (onChange)="onRevisionChange($event.value)" />
             <app-status-badge [status]="bom.status" />
           </div>
           <div class="be__header-right">
@@ -78,10 +81,14 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
 
         <span class="be__spacer"></span>
 
-        <p-button label="⬇ CSV" severity="secondary" size="small"
-                  [disabled]="loading" (onClick)="downloadCsv()" />
-        <p-button label="⬇ PDF" severity="secondary" size="small"
-                  [disabled]="loading" (onClick)="downloadPdf()" />
+        <p-button severity="secondary" size="small"
+                  [disabled]="loading" (onClick)="downloadCsv()">
+          <svg lucideFileDown [size]="14" [strokeWidth]="1.75"></svg>&nbsp;CSV
+        </p-button>
+        <p-button severity="secondary" size="small"
+                  [disabled]="loading" (onClick)="downloadPdf()">
+          <svg lucideFileDown [size]="14" [strokeWidth]="1.75"></svg>&nbsp;PDF
+        </p-button>
       </div>
 
       <!-- Tree table -->
@@ -110,8 +117,8 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             </td>
             <td>{{ rowData['revision'] }}</td>
             <td>{{ rowData['description'] }}</td>
-            <td></td>
-            <td></td>
+            <td>{{ rowData['quantity'] ?? '—' }}</td>
+            <td>{{ rowData['makeBuyCode'] ?? '—' }}</td>
             <td>
               @if (rowData['counterfeitRiskAlert']) {
                 <span class="be__risk-badge">⚠ HIGH</span>
@@ -170,6 +177,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     .be__risk-badge {
       font-size: 0.8125rem; color: #B91C1C; font-weight: 600;
     }
+    :host ::ng-deep .be__rev-select { min-width: 110px; font-size: 0.8125rem; }
 
     .be__statusbar {
       margin-top: 0.5rem; padding: 0.4rem 0;
@@ -184,6 +192,7 @@ export class BomExplosionComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly breadcrumbSvc = inject(BreadcrumbService);
 
   bomId = '';
   bom: BomDto | null = null;
@@ -192,6 +201,12 @@ export class BomExplosionComponent implements OnInit {
   treeNodes: TreeNode[] = [];
   loading = false;
   explosionError = '';
+  flatCount = 0;
+  topLevelCount = 0;
+  maxDepthSeen = 0;
+
+  revisionOptions: { label: string; value: string }[] = [];
+  selectedRevisionId = '';
 
   selectedFormat: 'flat' | 'indented' = 'indented';
   asOfDate: Date | null = null;
@@ -210,24 +225,6 @@ export class BomExplosionComponent implements OnInit {
     { label: '10',   value: 10 },
   ];
 
-  breadcrumbs = [
-    { label: 'Materials' },
-    { label: 'Item Master', route: ['/item-master'] },
-    { label: 'BOMs' },
-    { label: 'Explosion' },
-  ];
-
-  get flatCount(): number {
-    return this.flattenNodes(this.nodes).length;
-  }
-
-  get topLevelCount(): number {
-    return this.nodes.length;
-  }
-
-  get maxDepthSeen(): number {
-    return Math.max(0, ...this.flattenNodes(this.nodes).map(n => n.depth));
-  }
 
   get asOfDateStr(): string {
     return this.asOfDate ? this.asOfDate.toISOString().substring(0, 10) : '';
@@ -235,19 +232,33 @@ export class BomExplosionComponent implements OnInit {
 
   ngOnInit(): void {
     this.bomId = this.route.snapshot.paramMap.get('bomId') ?? '';
-    this.bomApi.getById(this.bomId).subscribe(bom => {
-      this.bom = bom;
-      this.itemApi.getById(bom.parentItemId).subscribe(item => {
+    this.breadcrumbSvc.set([
+      { label: 'Materials' },
+      { label: 'Item Master', route: ['/item-master'] },
+      { label: 'BOMs' },
+      { label: 'Explosion' },
+    ]);
+    this.bomApi.getById(this.bomId).pipe(
+      switchMap(bom => forkJoin({
+        bom: of(bom),
+        item: this.itemApi.getById(bom.parentItemId),
+        revisions: this.bomApi.listForItem(bom.parentItemId),
+      })),
+    ).subscribe({
+      next: ({ bom, item, revisions }) => {
+        this.bom = bom;
+        this.selectedRevisionId = bom.id;
         this.parentItem = item;
-        this.breadcrumbs = [
+        this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.bomRevision, value: r.id }));
+        this.breadcrumbSvc.set([
           { label: 'Materials' },
           { label: 'Item Master', route: ['/item-master'] },
           { label: item.partNumber, route: ['/item-master', bom.parentItemId, 'boms'] },
           { label: 'Rev ' + bom.bomRevision, route: ['/boms', this.bomId] },
           { label: 'Explosion' },
-        ];
+        ]);
         this.cdr.detectChanges();
-      });
+      },
     });
     this.load();
   }
@@ -256,10 +267,15 @@ export class BomExplosionComponent implements OnInit {
     this.loading = true;
     this.explosionError = '';
     const asOfDateStr = this.asOfDate ? this.asOfDate.toISOString().substring(0, 10) : undefined;
-    this.bomApi.explode(this.bomId, this.selectedFormat, asOfDateStr).subscribe({
+    const depth = this.maxDepth > 0 ? this.maxDepth : undefined;
+    this.bomApi.explode(this.bomId, this.selectedFormat, asOfDateStr, undefined, depth).subscribe({
       next: nodes => {
         this.nodes = nodes;
         this.treeNodes = this.toTreeNodes(nodes);
+        const flat = this.flattenNodes(nodes);
+        this.flatCount = flat.length;
+        this.topLevelCount = nodes.length;
+        this.maxDepthSeen = flat.reduce((m, n) => Math.max(m, n.depth), 0);
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -269,6 +285,12 @@ export class BomExplosionComponent implements OnInit {
         this.cdr.detectChanges();
       },
     });
+  }
+
+  onRevisionChange(bomId: string): void {
+    if (bomId && bomId !== this.bomId) {
+      this.router.navigate(['/boms', bomId, 'explosion']);
+    }
   }
 
   expandAll(): void {
@@ -297,13 +319,15 @@ export class BomExplosionComponent implements OnInit {
     return nodes.map(n => ({
       data: {
         componentItemId: n.componentItemId,
+        findNumber: n.findNumber ?? '—',
         partNumber: n.partNumber,
         revision: n.revision,
         description: n.description,
+        quantity: n.quantity,
+        makeBuyCode: n.makeBuyCode,
         unitOfMeasure: n.unitOfMeasure,
         counterfeitRiskAlert: n.counterfeitRiskAlert,
         componentObsoleted: n.componentObsoleted,
-        findNumber: '',
         status: n.componentObsoleted ? 'OBSOLETE' : 'ACTIVE',
       },
       children: n.children?.length ? this.toTreeNodes(n.children) : undefined,
@@ -323,9 +347,9 @@ export class BomExplosionComponent implements OnInit {
     const result: BomExplosionNode[] = [];
     const stack = [...nodes];
     while (stack.length) {
-      const node = stack.shift()!;
+      const node = stack.pop()!;
       result.push(node);
-      if (node.children?.length) stack.unshift(...node.children);
+      if (node.children?.length) stack.push(...node.children);
     }
     return result;
   }

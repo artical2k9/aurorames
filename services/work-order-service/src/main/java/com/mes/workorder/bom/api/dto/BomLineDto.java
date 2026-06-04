@@ -21,6 +21,10 @@ public class BomLineDto {
     private String effectiveToUnit;
     private boolean counterfeitRiskAlert;
     private boolean componentObsoleted;
+    private String partNumber;
+    private String revision;
+    private String description;
+    private String makeBuyCode;
     private String createdBy;
     private Instant createdAt;
 
@@ -134,6 +138,38 @@ public class BomLineDto {
 
     public void setComponentObsoleted(boolean componentObsoleted) {
         this.componentObsoleted = componentObsoleted;
+    }
+
+    public String getPartNumber() {
+        return partNumber;
+    }
+
+    public void setPartNumber(String partNumber) {
+        this.partNumber = partNumber;
+    }
+
+    public String getRevision() {
+        return revision;
+    }
+
+    public void setRevision(String revision) {
+        this.revision = revision;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getMakeBuyCode() {
+        return makeBuyCode;
+    }
+
+    public void setMakeBuyCode(String makeBuyCode) {
+        this.makeBuyCode = makeBuyCode;
     }
 
     public String getCreatedBy() {

@@ -26,6 +26,7 @@ out/
 
 # ── Secrets — never commit ────────────────────────────────────────────────────
 .env
+docker/.env
 *.secret
 *.key
 *.pem

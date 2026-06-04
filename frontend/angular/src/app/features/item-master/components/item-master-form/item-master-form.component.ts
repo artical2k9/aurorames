@@ -3,7 +3,7 @@ import {
   OnInit, Output, SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -14,8 +14,8 @@ import { TextareaModule } from 'primeng/textarea';
 import { PanelModule } from 'primeng/panel';
 import { MessageModule } from 'primeng/message';
 import { CheckboxModule } from 'primeng/checkbox';
+import { UdfFieldsComponent } from '../../../../shared/udf/udf-fields.component';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
-import { UdfApiService, UdfFieldDefinition } from '../../services/udf-api.service';
 import { ItemMasterDto, Classification, MakeBuyCode, TraceabilityMethod, CounterfeitRiskLevel } from '../../models/item-master.model';
 
 @Component({
@@ -25,7 +25,7 @@ import { ItemMasterDto, Classification, MakeBuyCode, TraceabilityMethod, Counter
     CommonModule, ReactiveFormsModule,
     DialogModule, ButtonModule, InputTextModule, SelectModule,
     ToggleSwitchModule, InputNumberModule, TextareaModule,
-    PanelModule, MessageModule, CheckboxModule,
+    PanelModule, MessageModule, CheckboxModule, UdfFieldsComponent,
   ],
   template: `
     <p-dialog
@@ -146,36 +146,11 @@ import { ItemMasterDto, Classification, MakeBuyCode, TraceabilityMethod, Counter
         </p-panel>
 
         <!-- ── UDF Fields ─────────────────────────────────────── -->
-        @if (udfFields.length > 0) {
-          <p-panel header="Custom Fields" [toggleable]="true" styleClass="imf__panel">
-            <div class="imf__grid" formGroupName="udfValues">
-              @for (field of udfFields; track field.fieldKey) {
-                <div class="imf__field" [class.imf__field--full]="field.fieldType === 'TEXT'">
-                  <label>
-                    {{ field.label }}
-                    @if (field.required) { <span class="imf__req">*</span> }
-                  </label>
-                  @switch (field.fieldType) {
-                    @case ('NUMBER') {
-                      <p-inputnumber [formControlName]="field.fieldKey" />
-                    }
-                    @case ('BOOLEAN') {
-                      <p-toggleswitch [formControlName]="field.fieldKey" />
-                    }
-                    @case ('LIST') {
-                      <p-select [formControlName]="field.fieldKey"
-                                [options]="field.listOptions ?? []"
-                                placeholder="Select…" />
-                    }
-                    @default {
-                      <input pInputText [formControlName]="field.fieldKey" />
-                    }
-                  }
-                </div>
-              }
-            </div>
-          </p-panel>
-        }
+        <app-udf-fields
+          moduleKey="ITEM_MASTER"
+          [udfGroup]="udfGroup"
+          [initialValues]="loadedItem?.customFields ?? {}"
+        />
 
       </form>
 
@@ -215,7 +190,6 @@ export class ItemMasterFormComponent implements OnInit, OnChanges {
 
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(ItemMasterApiService);
-  private readonly udfApi = inject(UdfApiService);
 
   form = this.fb.group({
     partNumber: ['', Validators.required],
@@ -234,9 +208,13 @@ export class ItemMasterFormComponent implements OnInit, OnChanges {
     udfValues: this.fb.group({}),
   });
 
-  udfFields: UdfFieldDefinition[] = [];
+  loadedItem: ItemMasterDto | null = null;
   serverErrors: string[] = [];
   saving = false;
+
+  get udfGroup(): FormGroup {
+    return this.form.get('udfValues') as FormGroup;
+  }
 
   get editMode(): boolean { return !!this.itemId; }
 
@@ -281,24 +259,26 @@ export class ItemMasterFormComponent implements OnInit, OnChanges {
       }
       ctrl.updateValueAndValidity();
     });
+  }
 
-    this.udfApi.listFields('ITEM_MASTER').subscribe(fields => {
-      this.udfFields = fields;
-      const udfGroup = this.form.get('udfValues') as ReturnType<typeof this.fb.group>;
-      fields.forEach(f => {
-        udfGroup.addControl(
-          f.fieldKey,
-          this.fb.control(f.defaultValue ?? null, f.required ? Validators.required : []),
-        );
-      });
+  private buildCustomFields(): Record<string, unknown> | undefined {
+    const keys = Object.keys(this.udfGroup.controls);
+    if (keys.length === 0) return undefined;
+    const result: Record<string, unknown> = {};
+    keys.forEach(key => {
+      const val = this.udfGroup.get(key)?.value;
+      if (val !== null && val !== undefined && val !== '') result[key] = val;
     });
+    return Object.keys(result).length ? result : undefined;
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible']?.currentValue && this.itemId) {
+      this.loadedItem = null;
       this.loadItem(this.itemId);
     }
     if (changes['visible']?.currentValue && !this.itemId) {
+      this.loadedItem = null;
       this.form.reset({ shelfLifeControlled: false, verificationRequired: false });
       this.serverErrors = [];
     }
@@ -306,20 +286,21 @@ export class ItemMasterFormComponent implements OnInit, OnChanges {
 
   private loadItem(id: string): void {
     this.api.getById(id).subscribe(item => {
+      this.loadedItem = item;
       this.form.patchValue({
-        partNumber: item.partNumber,
-        revision: item.revision,
-        description: item.description,
-        classification: item.classification,
-        makeBuyCode: item.makeBuyCode,
-        traceabilityMethod: item.traceabilityMethod,
-        unitOfMeasure: item.unitOfMeasure,
-        cageCode: item.cageCode ?? '',
+        partNumber:          item.partNumber,
+        revision:            item.revision,
+        description:         item.description,
+        classification:      item.classification,
+        makeBuyCode:         item.makeBuyCode,
+        traceabilityMethod:  item.traceabilityMethod,
+        unitOfMeasure:       item.unitOfMeasure,
+        cageCode:            item.cageCode ?? '',
         shelfLifeControlled: item.shelfLifeControlled,
-        shelfLifeDays: item.shelfLifeDays ?? null,
+        shelfLifeDays:       item.shelfLifeDays ?? null,
         counterfeitRiskLevel: item.counterfeitRiskLevel ?? null,
         verificationRequired: item.verificationRequired,
-        approvedSuppliers: (item.approvedSuppliers ?? []).join('\n'),
+        approvedSuppliers:   (item.approvedSuppliers ?? []).join('\n'),
       });
     });
   }
@@ -332,18 +313,19 @@ export class ItemMasterFormComponent implements OnInit, OnChanges {
 
     const obs = this.editMode
       ? this.api.patch(this.itemId!, {
-          description: v.description ?? undefined,
-          unitOfMeasure: v.unitOfMeasure ?? undefined,
-          cageCode: v.cageCode ?? undefined,
-          classification: (v.classification as Classification) ?? undefined,
-          makeBuyCode: (v.makeBuyCode as MakeBuyCode) ?? undefined,
-          shelfLifeControlled: v.shelfLifeControlled ?? undefined,
-          shelfLifeDays: v.shelfLifeDays ?? null,
+          description:          v.description ?? undefined,
+          unitOfMeasure:        v.unitOfMeasure ?? undefined,
+          cageCode:             v.cageCode ?? undefined,
+          classification:       (v.classification as Classification) ?? undefined,
+          makeBuyCode:          (v.makeBuyCode as MakeBuyCode) ?? undefined,
+          shelfLifeControlled:  v.shelfLifeControlled ?? undefined,
+          shelfLifeDays:        v.shelfLifeDays ?? null,
           counterfeitRiskLevel: (v.counterfeitRiskLevel as CounterfeitRiskLevel) ?? null,
           verificationRequired: v.verificationRequired ?? undefined,
-          approvedSuppliers: v.approvedSuppliers
+          approvedSuppliers:    v.approvedSuppliers
             ? v.approvedSuppliers.split('\n').map((s: string) => s.trim()).filter(Boolean)
             : [],
+          customFields: this.buildCustomFields(),
         })
       : this.api.create({
           partNumber: v.partNumber!,

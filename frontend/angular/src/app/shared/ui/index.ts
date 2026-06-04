@@ -1,2 +1,4 @@
 export { StatusBadgeComponent } from './status-badge/status-badge.component';
 export { BreadcrumbComponent } from './breadcrumb/breadcrumb.component';
+export { BreadcrumbService } from './breadcrumb/breadcrumb.service';
+export type { Crumb } from './breadcrumb/breadcrumb.service';

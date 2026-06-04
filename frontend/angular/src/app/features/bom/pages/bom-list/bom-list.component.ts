@@ -1,4 +1,5 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -7,7 +8,7 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import { FormsModule } from '@angular/forms';
-import { BreadcrumbComponent, StatusBadgeComponent } from '../../../../shared/ui';
+import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
 import { BomApiService } from '../../services/bom-api.service';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
 import { BomDto, CreateBomRequest } from '../../models/bom.model';
@@ -19,12 +20,10 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
   imports: [
     CommonModule, FormsModule,
     TableModule, ButtonModule, DialogModule, InputTextModule, MessageModule,
-    BreadcrumbComponent, StatusBadgeComponent,
+    StatusBadgeComponent,
   ],
   template: `
     <div class="bl">
-      <app-breadcrumb [crumbs]="breadcrumbs" />
-
       <div class="bl__heading">
         <div>
           <h2 class="bl__title">
@@ -108,10 +107,12 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
   `],
 })
 export class BomListComponent implements OnInit {
-  private readonly bomApi = inject(BomApiService);
-  private readonly itemApi = inject(ItemMasterApiService);
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
+  private readonly bomApi        = inject(BomApiService);
+  private readonly itemApi       = inject(ItemMasterApiService);
+  private readonly route         = inject(ActivatedRoute);
+  private readonly router        = inject(Router);
+  private readonly breadcrumbSvc = inject(BreadcrumbService);
+  private readonly destroyRef    = inject(DestroyRef);
 
   itemId = '';
   parentItem: ItemMasterDto | null = null;
@@ -124,21 +125,23 @@ export class BomListComponent implements OnInit {
   newRevision = '';
   newDescription = '';
 
-  readonly breadcrumbs = [
-    { label: 'Materials' },
-    { label: 'Item Master', route: ['/item-master'] },
-    { label: 'BOMs' },
-  ];
-
   ngOnInit(): void {
     this.itemId = this.route.snapshot.paramMap.get('itemId') ?? '';
-    this.itemApi.getById(this.itemId).subscribe(item => { this.parentItem = item; });
+    this.breadcrumbSvc.set([
+      { label: 'Materials' },
+      { label: 'Item Master', route: ['/item-master'] },
+      { label: 'BOMs' },
+    ]);
+    this.itemApi.getById(this.itemId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: item => { this.parentItem = item; },
+      error: () => { /* parent item not found — BOM list still shows without heading */ },
+    });
     this.loadBoms();
   }
 
   loadBoms(): void {
     this.loading = true;
-    this.bomApi.listForItem(this.itemId).subscribe({
+    this.bomApi.listForItem(this.itemId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: boms => { this.boms = boms; this.loading = false; },
       error: () => { this.loading = false; },
     });
@@ -168,7 +171,7 @@ export class BomListComponent implements OnInit {
       bomRevision: this.newRevision.trim(),
       description: this.newDescription.trim() || undefined,
     };
-    this.bomApi.create(req).subscribe({
+    this.bomApi.create(req).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: bom => {
         this.creating = false;
         this.closeCreate();

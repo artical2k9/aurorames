@@ -10,5 +10,6 @@ export const DEFAULT_BOM_LINE_COLUMNS: ColumnDef[] = [
   { key: 'unitOfMeasure', label: 'Unit',    visible: true,  order: 6 },
   { key: 'effectiveFromDate', label: 'Eff From', visible: true, order: 7 },
   { key: 'effectiveToDate',   label: 'Eff To',   visible: true, order: 8 },
-  { key: 'referenceDesignators', label: 'Ref Designators', visible: false, order: 9 },
+  { key: 'referenceDesignators', label: 'Reference Designator', visible: false, order: 9 },
+  { key: 'makeBuyCode',          label: 'Make / Buy',           visible: false, order: 10 },
 ];

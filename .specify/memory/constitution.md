@@ -23,6 +23,22 @@ Templates requiring updates:
      list §XI alongside ISA-95 for service-decomposition-type features
   ⚠  .specify/templates/plan-template.md — Constitution Check gate for §XI
      should be added for service-type features
+Amendment 2026-06-02:
+  - §XI Service Boundary Integrity: new principle requiring one service per
+    ISA-95 functional domain, prohibiting catch-all gateway predicates, and
+    mandating service decomposition for any service hosting APIs outside its
+    declared domain.
+  - Rationale: live incident 2026-06-02 — Kafka consumer churn in
+    work-order-service starved HTTP threads, taking down Item Master and BOM
+    screens with no logical dependency on work-order processing. Root cause:
+    work-order-service hosts ItemMasterController, BomController,
+    EcoController, and UserGridPreferenceController behind a single
+    Path=/api/v1/** gateway predicate — a constitutional violation.
+    Jira Epic MES-111 tracks the decomposition work.
+  - Approved by project owner (session 2026-06-02).
+
+Templates updated:
+  ✅ .specify/memory/constitution.md — this file
 
 ---
 Version change: 1.2.0 → 1.2.1 (PATCH — §IV 21 CFR Part 11 scope clarification)
@@ -264,6 +280,41 @@ a feature.
   elevation — standard roles cannot access other organisations' data.
 - Organisation provisioning and deprovisioning MUST be atomic operations with
   full audit records.
+
+### XI. Service Boundary Integrity
+
+Each backend microservice MUST own exactly the API routes that correspond to
+its declared ISA-95 functional domain (Technology Stack table). No service may
+expose endpoints that belong to another domain.
+
+- **One domain, one service**: the mapping between URL path prefix and service
+  name MUST be 1-to-1. For example, `/api/v1/item-master/**` routes exclusively
+  to `inventory-service`; `/api/v1/work-orders/**` routes exclusively to
+  `work-order-service`.
+- **No catch-all gateway predicates**: a gateway route with `Path=/api/v1/**`
+  pointing to a single service is a constitutional violation. Every gateway
+  predicate MUST name a specific path prefix that corresponds to one domain.
+- **Decomposition is mandatory**: any service discovered to host controllers
+  outside its declared domain MUST have a Jira Epic raised for decomposition
+  before the next release. The violation MUST be documented in
+  `MES-ERR-001_Agent_Error_Log.md`.
+- **Failure isolation**: a service's internal failures (e.g., Kafka consumer
+  churn, OOM, database contention) MUST NOT impact the availability of screens
+  or APIs owned by a different ISA-95 domain. Catch-all services violate this
+  guarantee by construction.
+- **New routes**: any new API endpoint MUST be placed in the service that owns
+  the corresponding ISA-95 domain. Placing it elsewhere requires explicit
+  written owner approval and an accompanying decomposition ticket.
+- **Integration tests span boundaries**: the test plan for any service
+  decomposition MUST verify: (a) all existing integration tests pass against
+  the new service; (b) gateway routes correctly isolate traffic per domain;
+  (c) no cross-service schema queries are introduced.
+
+> **Current violation — MES-111**: `work-order-service` hosts
+> `ItemMasterController`, `BomController`, `EcoController`, and
+> `UserGridPreferenceController` behind a single `Path=/api/v1/**` gateway
+> predicate. Decomposition into `inventory-service`, `engineering-service`,
+> and `platform-service` is tracked in Epic MES-111.
 
 ### X. Manufacturing Data Accuracy & Real-Time Fidelity
 

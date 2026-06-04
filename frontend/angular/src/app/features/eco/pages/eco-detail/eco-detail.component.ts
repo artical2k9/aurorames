@@ -8,7 +8,7 @@ import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { SkeletonModule } from 'primeng/skeleton';
 import { MessageService, ConfirmationService } from 'primeng/api';
-import { BreadcrumbComponent, StatusBadgeComponent } from '../../../../shared/ui';
+import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
 import { EcoApiService } from '../../services/eco-api.service';
 import { EcoDto } from '../../models/eco.model';
 
@@ -18,7 +18,7 @@ import { EcoDto } from '../../models/eco.model';
   imports: [
     CommonModule, RouterLink,
     ButtonModule, CardModule, TagModule, ToastModule, ConfirmDialogModule, SkeletonModule,
-    BreadcrumbComponent, StatusBadgeComponent,
+    StatusBadgeComponent,
   ],
   providers: [MessageService, ConfirmationService],
   template: `
@@ -26,8 +26,6 @@ import { EcoDto } from '../../models/eco.model';
     <p-confirmDialog />
 
     <div class="ed">
-      <app-breadcrumb [crumbs]="breadcrumbs" />
-
       <div class="ed__topbar">
         <p-button icon="pi pi-arrow-left" label="Back to ECOs" [text]="true"
                   severity="secondary" size="small" (onClick)="goBack()" />
@@ -151,19 +149,19 @@ export class EcoDetailComponent implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly messageService = inject(MessageService);
   private readonly confirmationService = inject(ConfirmationService);
+  private readonly breadcrumbSvc = inject(BreadcrumbService);
 
   eco: EcoDto | null = null;
   loading = false;
   approving = false;
 
-  readonly breadcrumbs = [
-    { label: 'Home' },
-    { label: 'ECOs', route: ['/ecos'] },
-    { label: 'Detail' },
-  ];
-
   ngOnInit(): void {
     const ecoId = this.route.snapshot.paramMap.get('ecoId') ?? '';
+    this.breadcrumbSvc.set([
+      { label: 'Home' },
+      { label: 'ECOs', route: ['/ecos'] },
+      { label: 'Detail' },
+    ]);
     this.loading = true;
     this.ecoApi.getById(ecoId).subscribe({
       next: eco => { this.eco = eco; this.loading = false; this.cdr.detectChanges(); },

@@ -1,5 +1,7 @@
 package com.mes.workorder.bom.service;
 
+import com.mes.workorder.bom.api.dto.BomLineDto;
+import com.mes.workorder.bom.api.dto.BomMapper;
 import com.mes.workorder.bom.api.dto.CreateBomLineRequest;
 import com.mes.workorder.bom.api.dto.CreateBomRequest;
 import com.mes.workorder.bom.api.dto.PatchBomHeaderRequest;
@@ -12,6 +14,7 @@ import com.mes.workorder.bom.repository.BomLineRepository;
 import com.mes.workorder.bom.repository.BomRepository;
 import com.mes.workorder.eco.service.EcoService;
 import com.mes.workorder.itemmaster.domain.CounterfeitRiskLevel;
+import com.mes.workorder.itemmaster.domain.ItemMaster;
 import com.mes.workorder.itemmaster.repository.ItemMasterRepository;
 import com.mes.workorder.kafka.BomEventPublisher;
 import com.mes.workorder.kafka.ItemMasterEventPublisher;
@@ -20,7 +23,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -142,6 +148,27 @@ public class BomService {
     public List<BomLine> listLines(UUID orgId, UUID bomId) {
         getBom(orgId, bomId);
         return bomLineRepository.findAllByBomId(bomId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<BomLineDto> listEnrichedLines(UUID orgId, UUID bomId) {
+        getBom(orgId, bomId);
+        List<BomLine> lines = bomLineRepository.findAllByBomId(bomId);
+        if (lines.isEmpty()) {
+            return List.of();
+        }
+        Set<UUID> itemIds = lines.stream().map(BomLine::getComponentItemId).collect(Collectors.toSet());
+        Map<UUID, ItemMaster> itemMap = itemMasterRepository.findAllById(itemIds)
+                .stream().collect(Collectors.toMap(ItemMaster::getId, i -> i));
+        return lines.stream()
+                .map(l -> BomMapper.toLineDto(l, itemMap.get(l.getComponentItemId())))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public BomLineDto enrichLine(BomLine line) {
+        ItemMaster item = itemMasterRepository.findById(line.getComponentItemId()).orElse(null);
+        return BomMapper.toLineDto(line, item);
     }
 
     public BomLine updateLine(UUID orgId, UUID bomId, UUID lineId, UpdateBomLineRequest req) {

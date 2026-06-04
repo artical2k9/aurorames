@@ -22,6 +22,10 @@ export interface BomLineDto {
   id: string;
   bomId: string;
   componentItemId: string;
+  partNumber: string;
+  revision: string;
+  description: string;
+  makeBuyCode?: string;
   quantity?: number;
   unitOfMeasure?: string;
   findNumber?: string;
@@ -41,6 +45,9 @@ export interface BomExplosionNode {
   componentItemId: string;
   parentItemId: string;
   depth: number;
+  findNumber?: string;
+  quantity?: number;
+  makeBuyCode?: string;
   partNumber: string;
   revision: string;
   description: string;

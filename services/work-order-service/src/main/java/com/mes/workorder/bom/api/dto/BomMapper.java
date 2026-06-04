@@ -2,6 +2,9 @@ package com.mes.workorder.bom.api.dto;
 
 import com.mes.workorder.bom.domain.BillOfMaterials;
 import com.mes.workorder.bom.domain.BomLine;
+import com.mes.workorder.itemmaster.domain.CounterfeitRiskLevel;
+import com.mes.workorder.itemmaster.domain.ItemMaster;
+import com.mes.workorder.itemmaster.domain.ItemStatus;
 
 public final class BomMapper {
 
@@ -45,6 +48,20 @@ public final class BomMapper {
         dto.setEffectiveToUnit(line.getEffectiveToUnit());
         dto.setCreatedBy(line.getCreatedBy());
         dto.setCreatedAt(line.getCreatedAt());
+        return dto;
+    }
+
+    public static BomLineDto toLineDto(BomLine line, ItemMaster item) {
+        BomLineDto dto = toLineDto(line);
+        if (item != null) {
+            dto.setPartNumber(item.getPartNumber());
+            dto.setRevision(item.getRevision());
+            dto.setDescription(item.getDescription());
+            dto.setMakeBuyCode(item.getMakeBuyCode() != null ? item.getMakeBuyCode().name() : null);
+            CounterfeitRiskLevel risk = item.getCounterfeitRiskLevel();
+            dto.setCounterfeitRiskAlert(risk == CounterfeitRiskLevel.HIGH || risk == CounterfeitRiskLevel.CRITICAL);
+            dto.setComponentObsoleted(item.getStatus() == ItemStatus.OBSOLETE);
+        }
         return dto;
     }
 }

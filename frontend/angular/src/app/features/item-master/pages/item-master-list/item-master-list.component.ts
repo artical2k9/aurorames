@@ -1,13 +1,13 @@
 import {
-  ChangeDetectorRef, Component, inject, OnInit, ViewChild,
+  AfterViewInit, Component, DestroyRef, inject, OnInit, ViewChild,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TableModule, TableLazyLoadEvent } from 'primeng/table';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
-import { SelectButtonModule } from 'primeng/selectbutton';
 import { ButtonModule } from 'primeng/button';
 import { PopoverModule } from 'primeng/popover';
 import { TagModule } from 'primeng/tag';
@@ -15,8 +15,9 @@ import { MenuModule } from 'primeng/menu';
 import { ToastModule } from 'primeng/toast';
 import { Menu } from 'primeng/menu';
 import { MenuItem, MessageService } from 'primeng/api';
+import { LucideColumnsSettings } from '@lucide/angular';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
-import { StatusBadgeComponent, BreadcrumbComponent } from '../../../../shared/ui';
+import { StatusBadgeComponent, BreadcrumbService } from '../../../../shared/ui';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
 import { ClassificationLabelPipe } from '../../pipes/classification-label.pipe';
 import { DEFAULT_ITEM_MASTER_COLUMNS } from '../../constants/default-columns';
@@ -29,10 +30,10 @@ import {
   standalone: true,
   imports: [
     CommonModule, AsyncPipe, FormsModule,
-    TableModule, InputTextModule, SelectModule, SelectButtonModule,
+    TableModule, InputTextModule, SelectModule,
     ButtonModule, PopoverModule, TagModule, MenuModule, ToastModule,
-    ColumnPickerComponent, StatusBadgeComponent, BreadcrumbComponent,
-    ClassificationLabelPipe,
+    ColumnPickerComponent, StatusBadgeComponent,
+    ClassificationLabelPipe, LucideColumnsSettings,
   ],
   providers: [
     MessageService,
@@ -45,8 +46,6 @@ import {
     <p-toast />
 
     <div class="iml">
-
-      <app-breadcrumb [crumbs]="breadcrumbs" />
 
       <!-- Heading row -->
       <div class="iml__heading">
@@ -71,21 +70,33 @@ import {
                   placeholder="Status" [showClear]="true"
                   (onChange)="reload()" styleClass="filter-select" />
 
-        <p-selectbutton [options]="makeBuyOptions" [(ngModel)]="selectedMakeBuy"
-                        optionLabel="label" optionValue="value"
-                        (onChange)="reload()" styleClass="iml__makebuy" />
+        <p-select [options]="makeBuyOptions" [(ngModel)]="selectedMakeBuy"
+                  optionLabel="label" optionValue="value"
+                  placeholder="Make / Buy" [showClear]="true"
+                  (onChange)="reload()" styleClass="filter-select" />
 
         <p-button label="Clear" severity="secondary" size="small" (onClick)="clearFilters()" />
 
-        <p-button icon="pi pi-sliders-h" [rounded]="true" [text]="true"
-                  aria-label="Customize columns" (onClick)="colPickerPanel.toggle($event)" />
+        <p-button [rounded]="true" [text]="true"
+                  aria-label="Customise columns" (onClick)="colPickerPanel.toggle($event)">
+          <svg lucideColumnsSettings [size]="16" [strokeWidth]="1.75"></svg>
+        </p-button>
       </div>
 
       <!-- Selection action bar -->
       @if (selectedItems.length > 0) {
         <div class="iml__selection-bar">
           <span>{{ selectedItems.length }} item{{ selectedItems.length > 1 ? 's' : '' }} selected</span>
-          <p-button label="Obsolete Selected" severity="danger" size="small"
+          <p-button label="View Detail" severity="secondary" size="small"
+                    [disabled]="selectedItems.length !== 1"
+                    (onClick)="navigateToDetail(selectedItems[0].id)" />
+          <p-button label="Edit" severity="secondary" size="small"
+                    [disabled]="selectedItems.length !== 1"
+                    (onClick)="navigateToEdit(selectedItems[0].id)" />
+          <p-button label="Clone Item" severity="secondary" size="small"
+                    [disabled]="selectedItems.length !== 1"
+                    (onClick)="cloneSelected()" />
+          <p-button label="Obsolete" severity="danger" size="small"
                     [loading]="obsoleting" (onClick)="obsoleteSelected()" />
           <p-button label="Clear" [text]="true" size="small" (onClick)="selectedItems = []" />
         </div>
@@ -107,6 +118,7 @@ import {
         [value]="rows"
         [(selection)]="selectedItems"
         [lazy]="true"
+        [lazyLoadOnInit]="false"
         [paginator]="true"
         [rows]="pageSize"
         [totalRecords]="totalRecords"
@@ -220,18 +232,19 @@ import {
     }
   `],
 })
-export class ItemMasterListComponent implements OnInit {
-  private readonly api = inject(ItemMasterApiService);
-  private readonly cdr = inject(ChangeDetectorRef);
-  private readonly router = inject(Router);
+export class ItemMasterListComponent implements OnInit, AfterViewInit {
+  private readonly api            = inject(ItemMasterApiService);
+  private readonly router         = inject(Router);
   private readonly messageService = inject(MessageService);
-  readonly gridPreference = inject(GridPreferenceService);
+  private readonly destroyRef     = inject(DestroyRef);
+  readonly gridPreference         = inject(GridPreferenceService);
+  private readonly breadcrumbSvc  = inject(BreadcrumbService);
 
   @ViewChild('rowMenu') rowMenu!: Menu;
 
   rows: ItemMasterDto[] = [];
   totalRecords = 0;
-  loading = false;
+  loading = true;
   obsoleting = false;
   pageSize = 20;
   currentPage = 0;
@@ -243,12 +256,6 @@ export class ItemMasterListComponent implements OnInit {
   selectedClassification: Classification | null = null;
   selectedStatus: ItemStatus | null = null;
   selectedMakeBuy: MakeBuyCode | null = null;
-
-  readonly breadcrumbs = [
-    { label: 'Home' },
-    { label: 'Materials' },
-    { label: 'Item Master' },
-  ];
 
   readonly classificationOptions = [
     { label: 'Assembly',       value: 'ASSEMBLY' },
@@ -266,7 +273,6 @@ export class ItemMasterListComponent implements OnInit {
   ];
 
   readonly makeBuyOptions = [
-    { label: 'All',    value: null },
     { label: 'Make',   value: 'MAKE' },
     { label: 'Buy',    value: 'BUY' },
     { label: 'Either', value: 'EITHER' },
@@ -281,7 +287,16 @@ export class ItemMasterListComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.breadcrumbSvc.set([
+      { label: 'Home' },
+      { label: 'Materials' },
+      { label: 'Item Master' },
+    ]);
     this.gridPreference.load();
+  }
+
+  ngAfterViewInit(): void {
+    setTimeout(() => this.fetchItems());
   }
 
   onLazyLoad(event: TableLazyLoadEvent): void {
@@ -348,6 +363,12 @@ export class ItemMasterListComponent implements OnInit {
     this.router.navigate(['/item-master', id, 'edit']);
   }
 
+  cloneSelected(): void {
+    if (this.selectedItems.length === 1) {
+      this.router.navigate(['/item-master/new'], { queryParams: { cloneFrom: this.selectedItems[0].id } });
+    }
+  }
+
   showRowMenu(event: Event, item: ItemMasterDto): void {
     this.rowMenuItems = [
       {
@@ -380,7 +401,7 @@ export class ItemMasterListComponent implements OnInit {
   }
 
   obsoleteItem(id: string): void {
-    this.api.obsolete(id).subscribe({
+    this.api.obsolete(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.messageService.add({ severity: 'success', summary: 'Item obsoleted' });
         this.reload();
@@ -393,7 +414,7 @@ export class ItemMasterListComponent implements OnInit {
     const ids = this.selectedItems.map(i => i.id);
     let done = 0;
     ids.forEach(id => {
-      this.api.obsolete(id).subscribe({
+      this.api.obsolete(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           done++;
           if (done === ids.length) {
@@ -423,14 +444,13 @@ export class ItemMasterListComponent implements OnInit {
       classification: this.selectedClassification ?? undefined,
       status: this.selectedStatus ?? undefined,
       makeBuyCode: this.selectedMakeBuy ?? undefined,
-    }).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: page => {
         this.rows = page.content;
         this.totalRecords = page.totalElements;
         this.loading = false;
-        this.cdr.detectChanges();
       },
-      error: () => { this.loading = false; this.cdr.detectChanges(); },
+      error: () => { this.loading = false; },
     });
   }
 }
