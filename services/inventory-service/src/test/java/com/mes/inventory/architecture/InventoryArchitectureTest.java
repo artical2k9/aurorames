@@ -10,8 +10,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 @AnalyzeClasses(packages = "com.mes.inventory")
 class InventoryArchitectureTest {
 
+    private InventoryArchitectureTest() {}
+
     @ArchTest
-    static final ArchRule noKafkaListeners = noClasses()
+    static final ArchRule NO_KAFKA_LISTENERS = noClasses()
             .should().beAnnotatedWith(KafkaListener.class)
             .as("inventory-service must be producer-only (FR-013): @KafkaListener is prohibited");
 }
