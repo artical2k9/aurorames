@@ -1,5 +1,5 @@
 import {
-  ChangeDetectorRef, Component, DestroyRef, inject, OnInit, ViewChild,
+  AfterViewInit, Component, DestroyRef, inject, OnInit, ViewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AsyncPipe, CommonModule } from '@angular/common';
@@ -118,6 +118,7 @@ import {
         [value]="rows"
         [(selection)]="selectedItems"
         [lazy]="true"
+        [lazyLoadOnInit]="false"
         [paginator]="true"
         [rows]="pageSize"
         [totalRecords]="totalRecords"
@@ -231,9 +232,8 @@ import {
     }
   `],
 })
-export class ItemMasterListComponent implements OnInit {
+export class ItemMasterListComponent implements OnInit, AfterViewInit {
   private readonly api            = inject(ItemMasterApiService);
-  private readonly cdr            = inject(ChangeDetectorRef);
   private readonly router         = inject(Router);
   private readonly messageService = inject(MessageService);
   private readonly destroyRef     = inject(DestroyRef);
@@ -244,7 +244,7 @@ export class ItemMasterListComponent implements OnInit {
 
   rows: ItemMasterDto[] = [];
   totalRecords = 0;
-  loading = false;
+  loading = true;
   obsoleting = false;
   pageSize = 20;
   currentPage = 0;
@@ -293,6 +293,10 @@ export class ItemMasterListComponent implements OnInit {
       { label: 'Item Master' },
     ]);
     this.gridPreference.load();
+  }
+
+  ngAfterViewInit(): void {
+    setTimeout(() => this.fetchItems());
   }
 
   onLazyLoad(event: TableLazyLoadEvent): void {
@@ -445,9 +449,8 @@ export class ItemMasterListComponent implements OnInit {
         this.rows = page.content;
         this.totalRecords = page.totalElements;
         this.loading = false;
-        this.cdr.detectChanges();
       },
-      error: () => { this.loading = false; this.cdr.detectChanges(); },
+      error: () => { this.loading = false; },
     });
   }
 }

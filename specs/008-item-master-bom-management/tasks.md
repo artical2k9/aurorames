@@ -519,6 +519,7 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 - [ ] T203 Fix `BomControllerTest.updateLineDelegatesToServiceAndReturnsMappedDto` NPE — stub `bomService.enrichLine(line)` in the test; controller chains `enrichLine(updateLine(...))` but the test only mocked `updateLine`, leaving `enrichLine` returning null; add `when(bomService.enrichLine(line)).thenReturn(BomMapper.toLineDto(line))` before calling the controller
 - [ ] T204 Fix NG0100 in `BomBrowserComponent` — add `[lazyLoadOnInit]="false"` to the `p-table` and remove the `skipNextLazyLoad` sentinel; PrimeNG fires `onLazyLoad` synchronously from `ngOnInit` (inside Angular's CD pass) then again when `[value]` changes, causing `loading` to flip `false→true` between snapshot and CHECK pass; `[lazyLoadOnInit]="false"` is the correct PrimeNG opt-out — the component owns the initial load via `ngAfterViewInit → setTimeout`
+- [ ] T205 Apply same `[lazyLoadOnInit]="false"` fix to all remaining lazy tables: `ItemMasterListComponent` and `EcoListComponent`; remove `cdr.detectChanges()` anti-pattern from both (Zone.js handles CD; calling `detectChanges` inside an HTTP callback can cause nested CD); add `ngAfterViewInit → setTimeout` initial load to both; add missing `takeUntilDestroyed` to `EcoListComponent` subscriptions; remove `fetchRows()` call from `EcoListComponent.ngOnInit` (was double-loading alongside PrimeNG's auto-emit)
 
 ---
 

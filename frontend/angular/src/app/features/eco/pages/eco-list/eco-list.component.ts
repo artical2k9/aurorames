@@ -1,4 +1,5 @@
-import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
+import { AfterViewInit, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -38,7 +39,7 @@ import { EcoDto } from '../../models/eco.model';
         </div>
       </div>
 
-      <p-table [value]="rows" [lazy]="true" [paginator]="true"
+      <p-table [value]="rows" [lazy]="true" [lazyLoadOnInit]="false" [paginator]="true"
                [rows]="pageSize" [totalRecords]="totalRecords"
                (onLazyLoad)="onLazyLoad($event)"
                [loading]="loading"
@@ -97,17 +98,17 @@ import { EcoDto } from '../../models/eco.model';
     :host ::ng-deep .el__status-filter { min-width: 160px; }
   `],
 })
-export class EcoListComponent implements OnInit {
+export class EcoListComponent implements OnInit, AfterViewInit {
   private readonly ecoApi = inject(EcoApiService);
   private readonly router = inject(Router);
-  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly messageService = inject(MessageService);
   private readonly confirmationService = inject(ConfirmationService);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
 
   rows: EcoDto[] = [];
   totalRecords = 0;
-  loading = false;
+  loading = true;
   pageSize = 20;
   currentPage = 0;
   showCreate = false;
@@ -124,7 +125,10 @@ export class EcoListComponent implements OnInit {
       { label: 'Home' },
       { label: 'Engineering Change Orders' },
     ]);
-    this.fetchRows();
+  }
+
+  ngAfterViewInit(): void {
+    setTimeout(() => this.fetchRows());
   }
 
   onLazyLoad(event: TableLazyLoadEvent): void {
@@ -150,15 +154,17 @@ export class EcoListComponent implements OnInit {
   }
 
   approve(eco: EcoDto): void {
-    this.ecoApi.approve(eco.id).subscribe({
-      next: () => {
-        this.messageService.add({ severity: 'success', summary: `ECO ${eco.ecoNumber} approved` });
-        this.fetchRows();
-      },
-      error: () => {
-        this.messageService.add({ severity: 'error', summary: 'Approval failed' });
-      },
-    });
+    this.ecoApi.approve(eco.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.messageService.add({ severity: 'success', summary: `ECO ${eco.ecoNumber} approved` });
+          this.fetchRows();
+        },
+        error: () => {
+          this.messageService.add({ severity: 'error', summary: 'Approval failed' });
+        },
+      });
   }
 
   onEcoCreated(eco: EcoDto): void {
@@ -178,14 +184,15 @@ export class EcoListComponent implements OnInit {
 
   private fetchRows(): void {
     this.loading = true;
-    this.ecoApi.list(this.currentPage, this.pageSize).subscribe({
-      next: page => {
-        this.rows = page.content;
-        this.totalRecords = page.totalElements;
-        this.loading = false;
-        this.cdr.detectChanges();
-      },
-      error: () => { this.loading = false; this.cdr.detectChanges(); },
-    });
+    this.ecoApi.list(this.currentPage, this.pageSize)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: page => {
+          this.rows = page.content;
+          this.totalRecords = page.totalElements;
+          this.loading = false;
+        },
+        error: () => { this.loading = false; },
+      });
   }
 }
