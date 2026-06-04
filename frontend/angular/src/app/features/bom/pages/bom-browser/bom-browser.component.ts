@@ -43,6 +43,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
                [rows]="pageSize"
                [totalRecords]="totalRecords"
                [lazy]="true"
+               [lazyLoadOnInit]="false"
                (onLazyLoad)="onLazyLoad($event)"
                [rowHover]="true"
                styleClass="bb__table">
@@ -154,29 +155,19 @@ export class BomBrowserComponent implements AfterViewInit {
   totalRecords = 0;
 
   private searchDebounce?: ReturnType<typeof setTimeout>;
-  // p-table fires onLazyLoad synchronously from its own ngOnInit, which runs
-  // inside Angular's CD pass. Mutations there cause NG0100 (items and loading
-  // both change after the evaluation snapshot). Skip that first auto-fire and
-  // let ngAfterViewInit start the real load via setTimeout (a new macrotask,
-  // guaranteed outside any CD cycle).
-  private skipNextLazyLoad = true;
 
   ngAfterViewInit(): void {
+    // lazyLoadOnInit="false" on the table suppresses PrimeNG's auto-emit from
+    // ngOnInit. Initial load is owned here, deferred past the first CD pass.
     setTimeout(() => this.load(0));
   }
 
   onLazyLoad(event: TableLazyLoadEvent): void {
-    if (this.skipNextLazyLoad) {
-      this.skipNextLazyLoad = false;
-      return;
-    }
     const first = event.first ?? 0;
     const rows = event.rows ?? this.pageSize;
     const page = Math.floor(first / rows);
     this.pageSize = rows;
-    // Defer to a new macrotask so any CD verification pass that PrimeNG may
-    // trigger by firing onLazyLoad from a child lifecycle hook completes first.
-    setTimeout(() => this.load(page));
+    this.load(page);
   }
 
   onSearch(): void {

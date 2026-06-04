@@ -518,7 +518,7 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 ## Bug Fixes (discovered during PR 6b testing)
 
 - [ ] T203 Fix `BomControllerTest.updateLineDelegatesToServiceAndReturnsMappedDto` NPE — stub `bomService.enrichLine(line)` in the test; controller chains `enrichLine(updateLine(...))` but the test only mocked `updateLine`, leaving `enrichLine` returning null; add `when(bomService.enrichLine(line)).thenReturn(BomMapper.toLineDto(line))` before calling the controller
-- [ ] T204 Fix NG0100 in `BomBrowserComponent.onLazyLoad` — wrap `this.load(page)` in `setTimeout()` so it is always deferred to a new macrotask; PrimeNG can fire `onLazyLoad` from child lifecycle hooks that run during Angular's CD verification pass; calling `load()` directly from there mutates state (`this.loading = true`) that the CHECK pass detects as changed after snapshot; `setTimeout` matches the existing pattern in `ngAfterViewInit`
+- [ ] T204 Fix NG0100 in `BomBrowserComponent` — add `[lazyLoadOnInit]="false"` to the `p-table` and remove the `skipNextLazyLoad` sentinel; PrimeNG fires `onLazyLoad` synchronously from `ngOnInit` (inside Angular's CD pass) then again when `[value]` changes, causing `loading` to flip `false→true` between snapshot and CHECK pass; `[lazyLoadOnInit]="false"` is the correct PrimeNG opt-out — the component owns the initial load via `ngAfterViewInit → setTimeout`
 
 ---
 
