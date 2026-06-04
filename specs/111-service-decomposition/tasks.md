@@ -26,9 +26,9 @@ Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`
 | PR | Phases | Task Range | CI Anchor | Notes |
 |---|---|---|---|---|
 | PR 1 | Phase 1 + 2 | T001–T037 | `./gradlew :services:inventory-service:check` | Scaffold + migrate ItemMaster + BOM to inventory-service. No gateway change yet — inventory-service testable directly on port 8096. SonarCloud anchor for new module. |
-| PR 2 | Phase 3 + 4 | T038–T058 | `./gradlew :services:engineering-service:check` | Scaffold + migrate ECO to engineering-service + `bom.released` Kafka consumer. No gateway change yet. Can develop in parallel with PR 1 on a separate sub-branch. |
-| PR 3 | Phase 5 | T059–T070 | `./gradlew :services:gateway-service:check :services:platform-service:check` | Gateway cut-over + UserGridPreference migration. Hard dependency on PR 1 AND PR 2 merged. Live cut-over PR — verify all routes healthy before merge. |
-| PR 4 | Phase 6 + Verification | T071–T084 | `./gradlew check` (root) | Decommission migrated packages from work-order-service. Depends on PR 3 stable. |
+| PR 2 | Phase 3 + 4 | T038–T063 | `./gradlew :services:engineering-service:check` | Scaffold + migrate ECO to engineering-service + `bom.released` Kafka consumer. No gateway change yet. Can develop in parallel with PR 1 on a separate sub-branch. |
+| PR 3 | Phase 5 | T064–T075 | `./gradlew :services:gateway-service:check :services:platform-service:check` | Gateway cut-over + UserGridPreference migration. Hard dependency on PR 1 AND PR 2 merged. Live cut-over PR — verify all routes healthy before merge. |
+| PR 4 | Phase 6 + Verification | T076–T095 | `./gradlew check` (root) | Decommission migrated packages from work-order-service + compliance gates. Depends on PR 3 stable. |
 
 **Sequencing note**: PR 1 and PR 2 can be developed in parallel on separate branches (both cut from `Develop`). PR 3 is a hard dependency on both PR 1 AND PR 2 merged. PR 4 depends on PR 3. All PRs target `Develop`.
 
@@ -104,8 +104,9 @@ Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`
 
 - [ ] T034 [P] Copy `itemmaster/api/` → `com.mes.inventory.itemmaster.api`; update all imports; privilege constants (`item-master:records:view` etc.) unchanged
 - [ ] T035 [P] Copy `bom/api/` → `com.mes.inventory.bom.api`; update all imports
-- [ ] T036 Copy and **modify** `kafka/BomEventPublisher.java` → `com.mes.inventory.kafka` — update `publishReleased()` to include `ecoId`, `parentItemId`, `bomRevision` in the JSON payload (see `data-model.md` §Kafka Events); verify JSON serialisation via `JsonSerializer` (Q2 confirmed)
+- [ ] T036 Copy and **modify** `kafka/BomEventPublisher.java` → `com.mes.inventory.kafka` — update `publishReleased()` to include `ecoId`, `parentItemId`, `bomRevision` in the JSON payload (see `data-model.md` §Kafka Events); verify JSON serialisation via `JsonSerializer` (Q2 confirmed); **field names MUST exactly match the `BomReleasedEvent` POJO in engineering-service (T063): `bomId`, `ecoId`, `orgId`, `parentItemId`, `bomRevision` — any mismatch will silently deserialise as null**
 - [ ] T037 [P] Copy `kafka/ItemMasterEventPublisher.java` → `com.mes.inventory.kafka`; update package declarations
+- [ ] T037a Add ArchUnit dependency to `services/inventory-service/build.gradle` (`testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'`); create `services/inventory-service/src/test/java/com/mes/inventory/architecture/InventoryArchitectureTest.java` — `@AnalyzeClasses(packages = "com.mes.inventory")`; single `@ArchTest`: `noClasses().should().beAnnotatedWith(KafkaListener.class).as("inventory-service must be producer-only (FR-013): @KafkaListener is prohibited")`; this converts the manual T088 grep gate into a build-time CI failure
 
 **Checkpoint**: `./gradlew :services:inventory-service:check` passes with T021–T023 GREEN; zero Checkstyle/SpotBugs violations; `grep -r "@KafkaListener" services/inventory-service/src/main/java` returns zero results (FR-013 producer-only gate).
 
@@ -137,8 +138,9 @@ Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`
 - [ ] T050 [P] Create `V003__create_udf_field_definition.sql` — same structure as inventory V004; module_key = 'ECO' only
 - [ ] T051 [P] Create `V004__add_envers_tables.sql` — `engineering.revinfo`, `engineering.engineering_change_order_aud`; copy pattern from work-order-service/V006 with prefix replacement
 - [ ] T052 [P] Create `V005__add_envers_revend_columns.sql` — copy from work-order-service/V011; replace prefix
+- [ ] T052a [P] Create `V006__seed_eco_privileges.sql` — INSERT into `iam.privilege` for `item-master:eco:manage` if not already present (use `INSERT … ON CONFLICT DO NOTHING`); INSERT into `iam.role_privilege` granting it to SYSTEM_ADMIN and ENGINEER; use SELECT to look up role IDs by name — mirrors work-order-service/V007 pattern for the ECO privilege key only
 
-**Checkpoint**: `./gradlew :services:engineering-service:build -x test` compiles zero errors; Flyway V001–V005 apply cleanly in Testcontainers.
+**Checkpoint**: `./gradlew :services:engineering-service:build -x test` compiles zero errors; Flyway V001–V006 apply cleanly in Testcontainers.
 
 ---
 
@@ -165,7 +167,7 @@ Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `perf`
 - [ ] T060 [P] Copy `eco/api/` → `com.mes.engineering.eco.api`; update all imports
 - [ ] T061 [P] Copy `kafka/EcoEventPublisher.java` → `com.mes.engineering.kafka`; update package declarations; JSON serialisation unchanged (Q2 confirmed)
 - [ ] T062 Create `services/engineering-service/src/main/java/com/mes/engineering/kafka/BomReleasedEventHandler.java` — `@Component`; `@KafkaListener(topics = "bom.released", groupId = "engineering-service")`; `@Payload BomReleasedEvent event` (POJO with `bomId`, `ecoId`, `orgId`, `parentItemId`, `bomRevision` — JSON deserialised via `JsonDeserializer`); if `event.getEcoId() != null` call `ecoService.addOutputBom(event.getEcoId(), event.getBomId())`; if ECO not found log WARN and skip (idempotent); annotate class with a comment: "engineering-service MAY have Kafka consumers — only inventory-service is producer-only per FR-013"
-- [ ] T063 Create `services/engineering-service/src/main/java/com/mes/engineering/kafka/BomReleasedEvent.java` — plain POJO with `bomId`, `ecoId`, `orgId`, `parentItemId`, `bomRevision` fields; Jackson `@JsonIgnoreProperties(ignoreUnknown = true)`; no-arg constructor; getters/setters
+- [ ] T063 Create `services/engineering-service/src/main/java/com/mes/engineering/kafka/BomReleasedEvent.java` — plain POJO with `bomId`, `ecoId`, `orgId`, `parentItemId`, `bomRevision` fields; Jackson `@JsonIgnoreProperties(ignoreUnknown = true)`; no-arg constructor; getters/setters; **field names MUST exactly match what `BomEventPublisher` (inventory-service T036) serialises — verify against `data-model.md` §Kafka Events canonical payload definition**
 
 **Checkpoint**: `./gradlew :services:engineering-service:check` passes with T054–T055 GREEN; zero Checkstyle/SpotBugs violations; BOM release Kafka event consumed correctly.
 
@@ -195,7 +197,7 @@ curl http://localhost:8082/api/v1/users/preferences/grid/ITEM_MASTER → 200 fro
 
 ### platform-service: UserGridPreference — implementation (GREEN)
 
-- [ ] T066 [US3] Add Flyway migration to `platform-service` — `V00X__create_user_grid_preferences.sql`; create `platform.user_grid_preferences` table with same DDL as current `work_order.user_grid_preferences` (id UUID PK, org_id, user_id, module_key, column_config JSONB, updated_at, UNIQUE(org_id, user_id, module_key))
+- [ ] T066 [US3] Add Flyway migration to `platform-service` — first run `ls services/platform-service/src/main/resources/db/migration/` to determine the next version number (V = highest existing + 1), then create `V{N}__create_user_grid_preferences.sql`; create `platform.user_grid_preferences` table with same DDL as current `work_order.user_grid_preferences` (id UUID PK, org_id, user_id, module_key, column_config JSONB, updated_at, UNIQUE(org_id, user_id, module_key))
 - [ ] T067 [P] [US3] Copy `preferences/domain/UserGridPreference.java` → `com.mes.platform.preferences.domain`; `@Table(schema = "platform")`; update package declarations
 - [ ] T068 [P] [US3] Copy `preferences/repository/UserGridPreferenceRepository.java` → `com.mes.platform.preferences.repository`; update imports
 - [ ] T069 [P] [US3] Copy `preferences/service/UserGridPreferenceService.java` → `com.mes.platform.preferences.service`; update imports
@@ -245,7 +247,7 @@ curl http://localhost:8082/api/v1/users/preferences/grid/ITEM_MASTER → 200 fro
 - [ ] T079 [US4] Delete `services/work-order-service/src/main/java/com/mes/workorder/preferences/` package directory entirely
 - [ ] T080 [US4] Delete `services/work-order-service/src/main/java/com/mes/workorder/kafka/BomEventPublisher.java`, `EcoEventPublisher.java`, `ItemMasterEventPublisher.java`
 - [ ] T081 [US4] Clean `services/work-order-service/src/main/resources/application.yml` — remove item-master/bom/eco Kafka topic references; remove UDF auto-config references; retain schema `work_order`, port 8095, and any infrastructure config
-- [ ] T082 [US4] Add comment migration `services/work-order-service/src/main/resources/db/migration/V002__note_domains_migrated.sql` — content: `-- Item Master (V002), BOM (V003), ECO (V004, V012), UDF (V005), and user_grid_preferences (V008) domains migrated to inventory-service, engineering-service, and platform-service in MES-111. work-order-service retains work_order schema for future Work Orders domain.`; prevents Flyway checksum error on fresh installs
+- [ ] T082 [US4] Add comment migration `services/work-order-service/src/main/resources/db/migration/V015__note_domains_migrated.sql` — content: `-- Item Master (V002), BOM (V003), ECO (V004, V012), UDF (V005), and user_grid_preferences (V008) domains migrated to inventory-service, engineering-service, and platform-service in MES-111. work-order-service retains work_order schema for future Work Orders domain.`; V015 = next version after existing V014; prevents Flyway version gap warning on fresh installs
 - [ ] T083 [US4] Delete migrated test classes from `work-order-service/src/test/` — `ItemMasterControllerIT.java`, `BomControllerIT.java`, `EcoControllerIT.java`, `BomControllerTest.java`, `BomExportServiceTest.java`, `BomServiceTest.java`; keep `BaseIntegrationTest.java` (still needed for future work-order tests)
 - [ ] T084 [US4] Run `./gradlew :services:work-order-service:check` — compiles zero errors; all remaining tests pass; verify `grep -r "itemmaster\|BomController\|EcoController\|UserGridPreference" services/work-order-service/src/main/java` returns zero results
 

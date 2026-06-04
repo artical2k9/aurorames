@@ -1,6 +1,30 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.2.1 → 1.3.0 (MINOR — §XI Service Boundary Integrity added)
+
+Amendment 2026-06-04:
+  - §XI Service Boundary Integrity: new principle formalising the architectural
+    constraint that each service owns only its declared ISA-95 domain APIs,
+    prohibits catch-all gateway predicates, and mandates fault isolation per
+    service. Added to resolve the speckit-analyze C1 finding on MES-111 spec,
+    which cited §XI before it existed. Principle text derived from Constitution
+    §VI (ISA-95 conformance), §VIII (Integration Integrity), and the live
+    incident of 2026-06-02 that motivated MES-111.
+  - Rationale: MES-111 /speckit-analyze flagged citation of §XI as CRITICAL
+    because the principle was missing from the constitution; the epic's
+    architectural justification was incomplete without it.
+  - Approved by project owner (MES-111 session 2026-06-04).
+  - Version bumped MINOR (new principle added).
+
+Templates requiring updates:
+  ✅ .specify/memory/constitution.md — this file (completed)
+  ⚠  .specify/templates/spec-template.md — Compliance References table should
+     list §XI alongside ISA-95 for service-decomposition-type features
+  ⚠  .specify/templates/plan-template.md — Constitution Check gate for §XI
+     should be added for service-type features
+
+---
 Version change: 1.2.0 → 1.2.1 (PATCH — §IV 21 CFR Part 11 scope clarification)
 
 Amendment 2026-05-31:
@@ -255,6 +279,23 @@ bookings) MUST reflect reality as closely as system constraints allow.
 - Work instruction versions used at point of manufacture MUST be recorded
   against each operation record; retroactive version changes are not permitted.
 
+### XI. Service Boundary Integrity
+
+Each service MUST expose only APIs within its declared ISA-95 functional domain.
+Gateway routing MUST use domain-specific path predicates; catch-all wildcard
+predicates (e.g., `Path=/api/v1/**`) that route multiple unrelated domains to
+a single service are prohibited.
+
+- No service MAY host controllers for a domain it does not own per the
+  Technology Stack service table (§ Technology Stack).
+- Cross-domain data access MUST go through the owning service's REST API or
+  a Kafka domain event — never via shared schema or direct JVM call across
+  service boundaries.
+- A single service's failure mode (e.g., thread exhaustion from Kafka consumers)
+  MUST NOT degrade availability of unrelated domains.
+- Services are the unit of fault isolation: each MUST have its own PostgreSQL
+  schema, its own Flyway migration history, and its own deployment container.
+
 ---
 
 ## Functional Domain Coverage
@@ -506,4 +547,4 @@ Aurora MES/                          ← root Gradle project
   justification in the Complexity Tracking section of the plan.
 - This constitution supersedes all other informal conventions and practices.
 
-**Version**: 1.2.1 | **Ratified**: 2026-05-19 | **Last Amended**: 2026-05-31
+**Version**: 1.3.0 | **Ratified**: 2026-05-19 | **Last Amended**: 2026-06-04

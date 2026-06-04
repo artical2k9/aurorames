@@ -48,7 +48,7 @@ An operator navigates to Item Master and BOM screens. These pages load on the fi
 **Acceptance Scenarios**:
 
 1. **Given** `work-order-service` is stopped, **When** a user navigates to `/item-master`, **Then** the item list loads successfully from `inventory-service`
-2. **Given** a normal deployment, **When** a user calls `GET /api/v1/item-master`, **Then** the gateway routes to `inventory-service` (not `work-order-service`)
+2. **Given** a normal deployment, **When** a user calls `GET /api/v1/item-master`, **Then** the gateway routes to `inventory-service` (not `work-order-service`) *(fully verified post-PR 3 gateway cut-over; PR 1 validates via direct port 8096 access)*
 3. **Given** `inventory-service` starts fresh, **When** Flyway runs, **Then** `inventory` schema tables are created and all V001–V014 equivalents apply cleanly
 4. **Given** an item with BOM, **When** `BomService.releaseBom()` is called and that BOM is linked to an ECO, **Then** a `bom.released` Kafka event is published and `engineering-service` consumes it to call `addOutputBom()`
 
@@ -60,7 +60,7 @@ An engineer navigates to ECO screens. These pages load independently of `invento
 
 **Why this priority**: ECO domain is constitutionally incorrect in `work-order-service`; cross-service call from BOM → ECO must become an event.
 
-**Independent Test**: Stop `inventory-service`. ECO list, detail, and approve flows all work against `engineering-service`. Kafka event `bom.released` is consumed and `outputBomId` set on the ECO.
+**Independent Test**: Stop `inventory-service`. ECO list, detail, and approve flows all work against `engineering-service`. Kafka event `bom.released` is consumed and `outputBomIds` updated on the ECO.
 
 **Acceptance Scenarios**:
 
@@ -103,7 +103,7 @@ A user customises their column picker on the Item Master list. Their preference 
 
 ### Edge Cases
 
-- BOM `releaseBom()` currently makes a direct call to `EcoService.addOutputBom()`. After decomposition this becomes a Kafka event — what happens if the event is lost? → `engineering-service` Kafka consumer must be idempotent; dead-letter topic required.
+- BOM `releaseBom()` currently makes a direct call to `EcoService.addOutputBom()`. After decomposition this becomes a Kafka event — what happens if the event is lost? → `engineering-service` Kafka consumer must be idempotent; dead-letter topic recommended for production resilience (deferred — see DEF-002).
 - `UserGridPreference` data is not migrated — `platform-service` starts with an empty `user_grid_preferences` table; users re-save column preferences after cut-over.
 - UDF field definitions are not migrated — each new service starts with an empty `udf_field_definition` table; UDF fields are re-created via the admin UI after cut-over.
 - If `inventory-service` and `work-order-service` are deployed simultaneously during cut-over, two services could accept writes. Gateway routing must be updated atomically.
@@ -129,7 +129,7 @@ A user customises their column picker on the Item Master list. Their preference 
   - `Path=/api/v1/boms/**` → `inventory-service`
   - `Path=/api/v1/udf/**` → `inventory-service` (UDF admin endpoints scoped to inventory domain)
   - `Path=/api/v1/ecos/**` → `engineering-service`
-  - `Path=/api/v1/users/preferences/**` → `platform-service`
+  - `Path=/api/v1/users/**` → `platform-service` (broad path; platform-service owns all user-level endpoints)
   - `Path=/api/v1/work-orders/**` → `work-order-service` (narrowed from catch-all; no current traffic; correct permanent predicate for future Work Orders domain)
 - **FR-011**: All existing integration tests (`ItemMasterControllerIT`, `BomControllerIT`, `EcoControllerIT`) MUST pass against the new service boundaries
 - **FR-012**: `work-order-service` MUST be cleaned of all migrated domain packages after US1–US3 are stable; only infrastructure scaffolding for future work orders remains
