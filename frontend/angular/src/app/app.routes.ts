@@ -4,11 +4,27 @@ import { authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
   {
+    path: 'login',
+    loadComponent: () => import('./auth/login/login.component').then(m => m.LoginComponent),
+  },
+  {
     path: '',
     component: AppShellComponent,
     canActivate: [authGuard],
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      {
+        path: 'bom',
+        loadComponent: () =>
+          import('./features/bom/pages/bom-browser/bom-browser.component')
+            .then(m => m.BomBrowserComponent),
+      },
+      {
+        path: 'bom/:itemId',
+        loadComponent: () =>
+          import('./features/bom/pages/bom-list/bom-list.component')
+            .then(m => m.BomListComponent),
+      },
       {
         path: 'dashboard',
         loadComponent: () => import('./dashboard/dashboard').then(m => m.Dashboard),
@@ -66,6 +82,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/eco/pages/eco-list/eco-list.component')
             .then(m => m.EcoListComponent),
+      },
+      {
+        path: 'master-data/udf',
+        loadComponent: () =>
+          import('./features/master-data/pages/udf-admin/udf-admin.component')
+            .then(m => m.UdfAdminComponent),
       },
     ],
   },

@@ -8,12 +8,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -32,7 +34,7 @@ public class BomExplosionService {
     }
 
     public List<BomExplosionNode> explode(UUID orgId, UUID bomId, String format,
-                                           LocalDate asOfDate, String asOfUnit) {
+                                           LocalDate asOfDate, String asOfUnit, int requestMaxDepth) {
         BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException("BOM not found: " + bomId));
 
@@ -44,6 +46,12 @@ public class BomExplosionService {
                 throw new BomValidationException(
                         "BOM depth exceeds maximum allowed depth of " + maxDepth);
             }
+        }
+
+        if (requestMaxDepth > 0 && requestMaxDepth < maxDepth) {
+            rows = rows.stream()
+                    .filter(row -> ((Number) row[2]).intValue() <= requestMaxDepth)
+                    .collect(Collectors.toList());
         }
 
         List<Object[]> effectiveRows = filterByEffectivity(rows, asOfDate, asOfUnit);
@@ -127,6 +135,11 @@ public class BomExplosionService {
         String riskLevel = (String) row[7];
         node.setCounterfeitRiskAlert("HIGH".equals(riskLevel) || "CRITICAL".equals(riskLevel));
         node.setComponentObsoleted("OBSOLETE".equals(row[8]));
+        node.setFindNumber((String) row[14]);
+        if (row[15] != null) {
+            node.setQuantity(new BigDecimal(row[15].toString()));
+        }
+        node.setMakeBuyCode((String) row[16]);
         return node;
     }
 

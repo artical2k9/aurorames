@@ -1,6 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -10,9 +10,9 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { TextareaModule } from 'primeng/textarea';
 import { MessageModule } from 'primeng/message';
 import { SkeletonModule } from 'primeng/skeleton';
-import { BreadcrumbComponent } from '../../../../shared/ui/breadcrumb/breadcrumb.component';
+import { BreadcrumbService } from '../../../../shared/ui';
+import { UdfFieldsComponent } from '../../../../shared/udf/udf-fields.component';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
-import { UdfApiService, UdfFieldDefinition } from '../../services/udf-api.service';
 import {
   Classification, TraceabilityMethod, CounterfeitRiskLevel, MakeBuyCode,
 } from '../../models/item-master.model';
@@ -24,12 +24,10 @@ import {
     CommonModule, ReactiveFormsModule,
     ButtonModule, InputTextModule, SelectModule,
     ToggleSwitchModule, InputNumberModule, TextareaModule, MessageModule, SkeletonModule,
-    BreadcrumbComponent,
+    UdfFieldsComponent,
   ],
   template: `
     <div class="imcr">
-
-      <app-breadcrumb [crumbs]="breadcrumbs" />
 
       <div class="imcr__header">
         <div>
@@ -82,7 +80,9 @@ import {
 
             <div class="imcr__field">
               <label class="imcr__label">Unit of Measure <span class="imcr__req">*</span></label>
-              <input pInputText formControlName="unitOfMeasure" placeholder="e.g. EA" />
+              <p-select formControlName="unitOfMeasure" [options]="uomOptions"
+                        optionLabel="label" optionValue="value"
+                        [editable]="true" placeholder="Each (EA)" />
             </div>
 
             <div class="imcr__field">
@@ -111,22 +111,42 @@ import {
           <div class="imcr__section">
             <h3 class="imcr__section-title">Traceability & Compliance</h3>
 
+            <!-- Traceability method multi-select (FR-033b) -->
             <div class="imcr__field">
               <label class="imcr__label">Traceability Method <span class="imcr__req">*</span></label>
-              <p-select formControlName="traceabilityMethod" [options]="traceabilityOptions"
-                        optionLabel="label" optionValue="value" placeholder="Select…" />
+              <div class="imcr__trace-btns">
+                @for (opt of traceOptions; track opt.value) {
+                  <p-button [label]="opt.label" size="small" type="button"
+                            [severity]="traceHas(opt.value) ? 'primary' : 'secondary'"
+                            [disabled]="!traceEnabled(opt.value)"
+                            [title]="opt.hint ?? opt.label"
+                            (onClick)="toggleTrace(opt.value)" />
+                }
+              </div>
+              @if (traceabilityTouched && selectedTraceability.size === 0) {
+                <small class="imcr__error-text">Select at least one traceability method</small>
+              }
             </div>
 
+            <!-- Shelf Life Controlled (T-3) -->
             <div class="imcr__field">
               <div class="imcr__toggle-row">
                 <p-toggleswitch formControlName="shelfLifeControlled" />
                 <label class="imcr__label">Shelf Life Controlled</label>
               </div>
-              @if (form.get('shelfLifeControlled')?.value) {
+              @if (!shelfLifeAllowed) {
+                <small class="imcr__hint-text">Requires Serial or Lot traceability</small>
+              }
+              <!-- T-4: days shown when shelf-life=true AND make active -->
+              @if (form.get('shelfLifeControlled')?.value && shelfLifeDaysActive) {
                 <div class="imcr__field" style="margin-top:0.5rem">
                   <label class="imcr__label">Shelf Life Days <span class="imcr__req">*</span></label>
                   <p-inputnumber formControlName="shelfLifeDays" [min]="1" placeholder="Days" />
                 </div>
+              }
+              <!-- T-5: buy-only hint -->
+              @if (form.get('shelfLifeControlled')?.value && !shelfLifeDaysActive && buyActive && !makeActive) {
+                <small class="imcr__hint-text">Shelf Life Days not applicable for Buy-only items</small>
               }
             </div>
 
@@ -156,34 +176,7 @@ import {
           </div>
         </div>
 
-        <!-- UDF Section (full width) -->
-        @if (udfFields.length > 0) {
-          <div class="imcr__udf-section">
-            <h3 class="imcr__section-title">User-Defined Fields</h3>
-            <p class="imcr__udf-subtitle">
-              {{ udfFields.length }} field{{ udfFields.length !== 1 ? 's' : '' }} configured for ITEM_MASTER module
-            </p>
-            <div class="imcr__udf-grid" formGroupName="udfValues">
-              @for (field of udfFields; track field.fieldKey) {
-                <div class="imcr__field">
-                  <label class="imcr__label">
-                    {{ field.label }}
-                    @if (field.required) { <span class="imcr__req">*</span> }
-                  </label>
-                  @switch (field.fieldType) {
-                    @case ('NUMBER') { <p-inputnumber [formControlName]="field.fieldKey" /> }
-                    @case ('BOOLEAN') { <p-toggleswitch [formControlName]="field.fieldKey" /> }
-                    @case ('LIST') {
-                      <p-select [formControlName]="field.fieldKey"
-                                [options]="field.listOptions ?? []" placeholder="Select…" />
-                    }
-                    @default { <input pInputText [formControlName]="field.fieldKey" /> }
-                  }
-                </div>
-              }
-            </div>
-          </div>
-        }
+        <app-udf-fields moduleKey="ITEM_MASTER" [udfGroup]="udfGroup" />
       </form>
 
     </div>
@@ -221,28 +214,28 @@ import {
     .imcr__label { font-size: 0.8125rem; font-weight: 500; color: var(--p-text-muted-color); }
     .imcr__req { color: #EF4444; }
     .imcr__error-text { font-size: 0.75rem; color: #EF4444; margin-top: 0.25rem; }
+    .imcr__hint-text { font-size: 0.75rem; color: var(--p-text-muted-color); margin-top: 0.2rem; }
 
     .imcr__toggle-row { display: flex; align-items: center; gap: 0.5rem; }
     .imcr__makebuy { display: flex; gap: 0.5rem; }
+    .imcr__trace-btns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
-    .imcr__udf-section {
-      border: 1px solid var(--p-surface-border); border-radius: 8px; padding: 1.25rem;
-    }
-    .imcr__udf-subtitle { font-size: 0.8125rem; color: var(--p-text-muted-color); margin: 0.25rem 0 1rem; }
-    .imcr__udf-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.875rem; }
   `],
 })
 export class ItemMasterCreateComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly api = inject(ItemMasterApiService);
-  private readonly udfApi = inject(UdfApiService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly breadcrumbSvc = inject(BreadcrumbService);
 
-  readonly breadcrumbs = [
-    { label: 'Materials' },
-    { label: 'Item Master', route: ['/item-master'] },
-    { label: 'New Item' },
+  readonly uomOptions = [
+    { label: 'Each (EA)',      value: 'EA' },
+    { label: 'Kilogram (KG)', value: 'KG' },
+    { label: 'Metre (M)',     value: 'M' },
+    { label: 'Litre (L)',     value: 'L' },
+    { label: 'Piece (PC)',    value: 'PC' },
+    { label: 'Set (SET)',     value: 'SET' },
   ];
 
   readonly classificationOptions = [
@@ -254,12 +247,12 @@ export class ItemMasterCreateComponent implements OnInit {
     { label: 'Service',        value: 'SERVICE' },
   ];
 
-  readonly traceabilityOptions = [
+  readonly traceOptions: { label: string; value: TraceabilityMethod; hint?: string }[] = [
+    { label: 'None',      value: 'NONE' },
     { label: 'Serial',    value: 'SERIAL' },
     { label: 'Lot',       value: 'LOT' },
-    { label: 'Heat Code', value: 'HEAT_CODE' },
-    { label: 'Date Code', value: 'DATE_CODE' },
-    { label: 'None',      value: 'NONE' },
+    { label: 'Heat Code', value: 'HEAT_CODE', hint: 'Requires Lot control' },
+    { label: 'Date Code', value: 'DATE_CODE', hint: 'Requires Lot control' },
   ];
 
   readonly riskOptions = [
@@ -273,9 +266,8 @@ export class ItemMasterCreateComponent implements OnInit {
     partNumber:           ['', Validators.required],
     revision:             ['', Validators.required],
     description:          ['', Validators.required],
-    unitOfMeasure:        ['', Validators.required],
+    unitOfMeasure:        ['EA', Validators.required],
     classification:       [null as Classification | null, Validators.required],
-    traceabilityMethod:   [null as TraceabilityMethod | null, Validators.required],
     cageCode:             [''],
     shelfLifeControlled:  [false],
     shelfLifeDays:        [null as number | null],
@@ -285,7 +277,6 @@ export class ItemMasterCreateComponent implements OnInit {
     udfValues:            this.fb.group({}),
   });
 
-  udfFields: UdfFieldDefinition[] = [];
   serverErrors: string[] = [];
   saving = false;
   cloneLoading = false;
@@ -293,6 +284,11 @@ export class ItemMasterCreateComponent implements OnInit {
   makeActive = false;
   buyActive = false;
   makeBuyTouched = false;
+
+  selectedTraceability = new Set<TraceabilityMethod>();
+  traceabilityTouched = false;
+
+  // ── Make/Buy ─────────────────────────────────────────────────────────────────
 
   get derivedMakeBuyCode(): MakeBuyCode | null {
     if (this.makeActive && this.buyActive) return 'EITHER';
@@ -302,40 +298,117 @@ export class ItemMasterCreateComponent implements OnInit {
   }
 
   canSave(): boolean {
-    return this.form.valid && this.derivedMakeBuyCode !== null;
+    return this.form.valid
+      && this.derivedMakeBuyCode !== null
+      && this.selectedTraceability.size > 0;
   }
 
   toggleMake(): void {
     this.makeActive = !this.makeActive;
     this.makeBuyTouched = true;
+    this.updateShelfLifeDaysValidity();
   }
 
   toggleBuy(): void {
     this.buyActive = !this.buyActive;
     this.makeBuyTouched = true;
+    this.updateShelfLifeDaysValidity();
   }
 
-  ngOnInit(): void {
-    this.form.get('shelfLifeControlled')!.valueChanges.subscribe(on => {
-      const ctrl = this.form.get('shelfLifeDays')!;
-      if (on) {
-        ctrl.addValidators(Validators.required);
-      } else {
-        ctrl.clearValidators();
-        ctrl.setValue(null);
-      }
-      ctrl.updateValueAndValidity();
-    });
+  // ── Traceability helpers (FR-033b) ───────────────────────────────────────────
 
-    this.udfApi.listFields('ITEM_MASTER').subscribe(fields => {
-      this.udfFields = fields;
-      const udfGroup = this.form.get('udfValues') as ReturnType<typeof this.fb.group>;
-      fields.forEach(f => {
-        udfGroup.addControl(
-          f.fieldKey,
-          this.fb.control(f.defaultValue ?? null, f.required ? Validators.required : []),
-        );
-      });
+  traceHas(m: TraceabilityMethod): boolean {
+    return this.selectedTraceability.has(m);
+  }
+
+  traceEnabled(m: TraceabilityMethod): boolean {
+    if (m === 'HEAT_CODE' || m === 'DATE_CODE') return this.selectedTraceability.has('LOT');
+    return true;
+  }
+
+  toggleTrace(m: TraceabilityMethod): void {
+    this.traceabilityTouched = true;
+    if (m === 'NONE') {
+      this.selectedTraceability.clear();
+      this.selectedTraceability.add('NONE');
+    } else {
+      this.selectedTraceability.delete('NONE');
+      if (this.selectedTraceability.has(m)) {
+        this.selectedTraceability.delete(m);
+        if (m === 'LOT') {
+          this.selectedTraceability.delete('HEAT_CODE'); // T-1
+          this.selectedTraceability.delete('DATE_CODE'); // T-1
+        }
+      } else {
+        this.selectedTraceability.add(m);
+      }
+    }
+    if (!this.shelfLifeAllowed) {
+      this.form.get('shelfLifeControlled')?.setValue(false); // T-6
+    }
+    this.updateShelfLifeDaysValidity();
+  }
+
+  get shelfLifeAllowed(): boolean {
+    // T-3: enabled only with Serial/Lot/HeatCode/DateCode
+    const s = this.selectedTraceability;
+    if (s.size === 0 || s.has('NONE')) return false;
+    return s.has('SERIAL') || s.has('LOT') || s.has('HEAT_CODE') || s.has('DATE_CODE');
+  }
+
+  get shelfLifeDaysActive(): boolean {
+    // T-4/T-5: days shown only when shelf-life=true AND make is active (not buy-only)
+    return !!this.form.get('shelfLifeControlled')?.value && this.makeActive;
+  }
+
+  get derivedTraceabilityMethod(): TraceabilityMethod {
+    const s = this.selectedTraceability;
+    if (s.has('HEAT_CODE')) return 'HEAT_CODE';
+    if (s.has('DATE_CODE')) return 'DATE_CODE';
+    if (s.has('LOT'))       return 'LOT';
+    if (s.has('SERIAL'))    return 'SERIAL';
+    return 'NONE';
+  }
+
+  private updateShelfLifeDaysValidity(): void {
+    const ctrl = this.form.get('shelfLifeDays')!;
+    if (this.shelfLifeDaysActive) {
+      ctrl.addValidators(Validators.required);
+    } else {
+      ctrl.clearValidators();
+      ctrl.setValue(null);
+    }
+    ctrl.updateValueAndValidity();
+  }
+
+  private initTraceability(method: TraceabilityMethod): void {
+    this.selectedTraceability.clear();
+    if (method === 'HEAT_CODE') {
+      this.selectedTraceability.add('LOT');
+      this.selectedTraceability.add('HEAT_CODE');
+    } else if (method === 'DATE_CODE') {
+      this.selectedTraceability.add('LOT');
+      this.selectedTraceability.add('DATE_CODE');
+    } else {
+      this.selectedTraceability.add(method);
+    }
+  }
+
+  get udfGroup(): FormGroup {
+    return this.form.get('udfValues') as FormGroup;
+  }
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────────
+
+  ngOnInit(): void {
+    this.breadcrumbSvc.set([
+      { label: 'Materials' },
+      { label: 'Item Master', route: ['/item-master'] },
+      { label: 'New Item' },
+    ]);
+
+    this.form.get('shelfLifeControlled')!.valueChanges.subscribe(() => {
+      this.updateShelfLifeDaysValidity();
     });
 
     const cloneFrom = this.route.snapshot.queryParamMap.get('cloneFrom');
@@ -348,7 +421,6 @@ export class ItemMasterCreateComponent implements OnInit {
             description:          item.description,
             unitOfMeasure:        item.unitOfMeasure,
             classification:       item.classification,
-            traceabilityMethod:   item.traceabilityMethod,
             cageCode:             item.cageCode ?? '',
             shelfLifeControlled:  item.shelfLifeControlled,
             shelfLifeDays:        item.shelfLifeDays ?? null,
@@ -358,6 +430,8 @@ export class ItemMasterCreateComponent implements OnInit {
           });
           this.makeActive = item.makeBuyCode === 'MAKE' || item.makeBuyCode === 'EITHER';
           this.buyActive  = item.makeBuyCode === 'BUY'  || item.makeBuyCode === 'EITHER';
+          this.initTraceability(item.traceabilityMethod);
+          this.updateShelfLifeDaysValidity();
         },
         error: () => { this.cloneLoading = false; },
       });
@@ -370,7 +444,8 @@ export class ItemMasterCreateComponent implements OnInit {
 
   save(): void {
     this.makeBuyTouched = true;
-    if (this.form.invalid || !this.derivedMakeBuyCode) return;
+    this.traceabilityTouched = true;
+    if (this.form.invalid || !this.derivedMakeBuyCode || this.selectedTraceability.size === 0) return;
 
     this.saving = true;
     this.serverErrors = [];
@@ -383,10 +458,10 @@ export class ItemMasterCreateComponent implements OnInit {
       unitOfMeasure:        v.unitOfMeasure!,
       classification:       v.classification as Classification,
       makeBuyCode:          this.derivedMakeBuyCode,
-      traceabilityMethod:   v.traceabilityMethod as TraceabilityMethod,
+      traceabilityMethod:   this.derivedTraceabilityMethod,
       cageCode:             v.cageCode || undefined,
       shelfLifeControlled:  v.shelfLifeControlled ?? undefined,
-      shelfLifeDays:        v.shelfLifeDays ?? undefined,
+      shelfLifeDays:        this.shelfLifeDaysActive ? (v.shelfLifeDays ?? undefined) : undefined,
       counterfeitRiskLevel: (v.counterfeitRiskLevel as CounterfeitRiskLevel) ?? undefined,
       verificationRequired: v.verificationRequired ?? undefined,
       stepPartRef:          v.stepPartRef || undefined,
@@ -406,14 +481,12 @@ export class ItemMasterCreateComponent implements OnInit {
   }
 
   private buildCustomFields(): Record<string, unknown> | undefined {
-    const udfGroup = this.form.get('udfValues');
-    if (!udfGroup || !this.udfFields.length) return undefined;
+    const keys = Object.keys(this.udfGroup.controls);
+    if (keys.length === 0) return undefined;
     const result: Record<string, unknown> = {};
-    this.udfFields.forEach(f => {
-      const val = udfGroup.get(f.fieldKey)?.value;
-      if (val !== null && val !== undefined && val !== '') {
-        result[f.fieldKey] = val;
-      }
+    keys.forEach(key => {
+      const val = this.udfGroup.get(key)?.value;
+      if (val !== null && val !== undefined && val !== '') result[key] = val;
     });
     return Object.keys(result).length ? result : undefined;
   }

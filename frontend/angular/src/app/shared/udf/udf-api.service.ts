@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, catchError, of } from 'rxjs';
+import { Observable } from 'rxjs';
 
 export type UdfFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'LIST';
 
@@ -22,8 +22,6 @@ export class UdfApiService {
 
   listFields(moduleKey: string): Observable<UdfFieldDefinition[]> {
     const params = new HttpParams().set('module', moduleKey);
-    return this.http.get<UdfFieldDefinition[]>('/api/v1/udf/fields', { params }).pipe(
-      catchError(() => of([])),
-    );
+    return this.http.get<UdfFieldDefinition[]>('/api/v1/udf/fields', { params });
   }
 }

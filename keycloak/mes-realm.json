@@ -66,7 +66,7 @@
   "roles": {
     "realm": [
       {
-        "name": "ADMIN",
+        "name": "SYSTEM_ADMIN",
         "description": "Full system administration: manage users, roles, and all privileges",
         "composite": false,
         "clientRole": false
@@ -293,12 +293,12 @@
     {
       "clientId": "mes-frontend",
       "name": "Aurora MES Angular Frontend",
-      "description": "Public OIDC client for the Angular SPA — Authorization Code + PKCE",
+      "description": "Public OIDC client for the Angular SPA — Authorization Code + PKCE, and ROPC for the custom login form",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
+      "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
       "protocol": "openid-connect",
       "redirectUris": [
@@ -312,7 +312,7 @@
       "baseUrl": "http://localhost:4200",
       "adminUrl": "",
       "bearerOnly": false,
-      "fullScopeAllowed": false,
+      "fullScopeAllowed": true,
       "consentRequired": false,
       "defaultClientScopes": [
         "openid",
@@ -440,11 +440,11 @@
       "credentials": [
         {
           "type": "password",
-          "value": "admin123",
-          "temporary": true
+          "value": "Admin123!",
+          "temporary": false
         }
       ],
-      "realmRoles": ["ADMIN"]
+      "realmRoles": ["SYSTEM_ADMIN"]
     }
   ],
 

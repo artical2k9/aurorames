@@ -22,7 +22,7 @@ import { RouterLink } from '@angular/router';
   styles: [`
     .breadcrumb {
       display: flex; align-items: center; gap: 0.375rem; flex-wrap: wrap;
-      font-size: 0.8125rem; margin-bottom: 1rem;
+      font-size: 0.8125rem;
       color: var(--p-text-muted-color);
     }
     .breadcrumb__link {

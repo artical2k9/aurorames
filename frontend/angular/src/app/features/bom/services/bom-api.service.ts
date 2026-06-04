@@ -36,6 +36,10 @@ export class BomApiService {
     return this.http.post<BomLineDto>(`${this.base}/${bomId}/lines`, req);
   }
 
+  patchLine(bomId: string, lineId: string, req: { quantity?: number; referenceDesignators?: string }): Observable<BomLineDto> {
+    return this.http.patch<BomLineDto>(`${this.base}/${bomId}/lines/${lineId}`, req);
+  }
+
   removeLine(bomId: string, lineId: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/${bomId}/lines/${lineId}`);
   }
@@ -49,10 +53,12 @@ export class BomApiService {
     format: 'flat' | 'indented' = 'indented',
     asOfDate?: string,
     asOfUnit?: string,
+    maxDepth?: number,
   ): Observable<BomExplosionNode[]> {
     let params = new HttpParams().set('format', format);
     if (asOfDate) params = params.set('asOfDate', asOfDate);
     if (asOfUnit) params = params.set('asOfUnit', asOfUnit);
+    if (maxDepth) params = params.set('maxDepth', maxDepth);
     return this.http.get<BomExplosionNode[]>(`${this.base}/${bomId}/explosion`, { params });
   }
 

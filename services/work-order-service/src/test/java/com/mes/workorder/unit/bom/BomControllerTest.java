@@ -2,6 +2,7 @@ package com.mes.workorder.unit.bom;
 
 import com.mes.workorder.bom.api.BomController;
 import com.mes.workorder.bom.api.dto.BomLineDto;
+import com.mes.workorder.bom.api.dto.BomMapper;
 import com.mes.workorder.bom.api.dto.UpdateBomLineRequest;
 import com.mes.workorder.bom.domain.BomLine;
 import com.mes.workorder.bom.service.BomExplosionService;
@@ -47,6 +48,7 @@ class BomControllerTest {
         line.setQuantity(new BigDecimal("3.0"));
 
         when(bomService.updateLine(eq(orgId), eq(bomId), eq(lineId), any())).thenReturn(line);
+        when(bomService.enrichLine(line)).thenReturn(BomMapper.toLineDto(line));
 
         UpdateBomLineRequest req = new UpdateBomLineRequest();
         req.setQuantity(new BigDecimal("3.0"));

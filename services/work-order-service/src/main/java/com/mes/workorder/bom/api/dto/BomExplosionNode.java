@@ -2,6 +2,7 @@ package com.mes.workorder.bom.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class BomExplosionNode {
@@ -9,6 +10,9 @@ public class BomExplosionNode {
     private String componentItemId;
     private String parentItemId;
     private int depth;
+    private String findNumber;
+    private BigDecimal quantity;
+    private String makeBuyCode;
     private String partNumber;
     private String revision;
     private String description;
@@ -89,6 +93,30 @@ public class BomExplosionNode {
 
     public void setComponentObsoleted(boolean componentObsoleted) {
         this.componentObsoleted = componentObsoleted;
+    }
+
+    public String getFindNumber() {
+        return findNumber;
+    }
+
+    public void setFindNumber(String findNumber) {
+        this.findNumber = findNumber;
+    }
+
+    public BigDecimal getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(BigDecimal quantity) {
+        this.quantity = quantity;
+    }
+
+    public String getMakeBuyCode() {
+        return makeBuyCode;
+    }
+
+    public void setMakeBuyCode(String makeBuyCode) {
+        this.makeBuyCode = makeBuyCode;
     }
 
     public List<BomExplosionNode> getChildren() {
