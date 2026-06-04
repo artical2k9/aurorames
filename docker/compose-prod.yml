@@ -290,6 +290,38 @@ services:
     networks:
       - mes-net
 
+  # ── Inventory Service (Item Master + BOM) ────────────────────────────────────
+  inventory-service:
+    image: ghcr.io/artical2k9/mes-inventory-service:${TAG:-latest}
+    container_name: mes-inventory-service
+    restart: unless-stopped
+    environment:
+      INVENTORY_DB_URL: jdbc:postgresql://postgres:5432/mes?currentSchema=inventory
+      INVENTORY_DB_USER: ${INVENTORY_DB_USER:?INVENTORY_DB_USER must be set}
+      INVENTORY_DB_PASSWORD: ${INVENTORY_DB_PASSWORD:?INVENTORY_DB_PASSWORD must be set}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mes}
+      IAM_SERVICE_URL: http://iam-service:8080
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MES_SECURITY_WEBHOOK_TOKEN: ${MES_SECURITY_WEBHOOK_TOKEN:?MES_SECURITY_WEBHOOK_TOKEN must be set}
+      ADMIN_SERVICE_URL: http://admin-service:8888
+    ports:
+      - "8096:8096"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8096/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - mes-net
+
 volumes:
   postgres-data:
     driver: local

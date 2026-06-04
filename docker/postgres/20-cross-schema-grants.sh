@@ -1,11 +1,13 @@
 #!/bin/bash
 # Cross-schema grants for Aurora MES — runs as postgres superuser on first container start.
-# Grants work_order_user access to iam schema objects so V007__seed_item_master_privileges.sql
-# can INSERT into iam.privilege and iam.role_privilege once the IAM service has run its migrations.
+# Creates service DB users and grants them access to the iam schema so Flyway privilege-seed
+# migrations can INSERT into iam.privilege and iam.role_privilege once iam-service has run.
 set -e
 
 WORK_ORDER_USER="${WORK_ORDER_DB_USER:-work_order_user}"
 WORK_ORDER_PASS="${WORK_ORDER_DB_PASSWORD:-changeme}"
+INVENTORY_USER="${INVENTORY_DB_USER:-inventory_user}"
+INVENTORY_PASS="${INVENTORY_DB_PASSWORD:-changeme}"
 
 psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<-EOSQL
     DO \$\$
@@ -16,16 +18,28 @@ psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<-EOSQL
     END
     \$\$;
 
-    -- Allow work_order_user to create its own schema in the mes database
-    GRANT CONNECT, CREATE ON DATABASE "${POSTGRES_DB}" TO "${WORK_ORDER_USER}";
+    DO \$\$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${INVENTORY_USER}') THEN
+            CREATE ROLE "${INVENTORY_USER}" WITH LOGIN PASSWORD '${INVENTORY_PASS}';
+        END IF;
+    END
+    \$\$;
 
-    -- Pre-create iam schema so the GRANT USAGE and ALTER DEFAULT PRIVILEGES can be set
+    -- Allow service users to create their own schemas in the mes database
+    GRANT CONNECT, CREATE ON DATABASE "${POSTGRES_DB}" TO "${WORK_ORDER_USER}";
+    GRANT CONNECT, CREATE ON DATABASE "${POSTGRES_DB}" TO "${INVENTORY_USER}";
+
+    -- Pre-create iam schema so GRANT USAGE and ALTER DEFAULT PRIVILEGES can be set
     -- before the IAM service Flyway runs. Tables are created later by iam-service.
     CREATE SCHEMA IF NOT EXISTS iam;
     GRANT USAGE ON SCHEMA iam TO "${WORK_ORDER_USER}";
+    GRANT USAGE ON SCHEMA iam TO "${INVENTORY_USER}";
 
     -- Grant read/write on all future tables that the IAM service (running as $POSTGRES_USER)
-    -- creates in the iam schema. This covers iam.privilege and iam.role_privilege.
+    -- creates in the iam schema. Covers iam.privilege, iam.role_privilege, iam.role.
     ALTER DEFAULT PRIVILEGES FOR ROLE "${POSTGRES_USER}" IN SCHEMA iam
         GRANT SELECT, INSERT ON TABLES TO "${WORK_ORDER_USER}";
+    ALTER DEFAULT PRIVILEGES FOR ROLE "${POSTGRES_USER}" IN SCHEMA iam
+        GRANT SELECT, INSERT ON TABLES TO "${INVENTORY_USER}";
 EOSQL
