@@ -44,3 +44,4 @@
 | ERR-MES-056 | 2026-05-31 | Agent Process | `speckit-clarify`/`speckit-analyze` analyse documents, not code; they cannot detect missing backend endpoints; manual controller reads are required as a pre-flight for frontend PRs |
 | ERR-MES-057 | 2026-05-31 | Backend — Hibernate Envers | Adding columns to `@Audited` entity requires same columns in `_aud` table in the same migration; Envers schema-validation enforces parity at startup |
 | ERR-MES-058 | 2026-05-31 | Agent Process | Pre-PR retrospective is a technical gate, not a formality; skipping it let a known Envers pattern repeat; must spot-check all relevant index categories before `gh pr create` |
+| ERR-MES-059 | 2026-06-05 | Frontend — Angular Change Detection | Every `.subscribe()` callback mutating a template-bound property needs `cdr.detectChanges()` at the end of both `next:` and `error:` — applies to all lifecycle hooks and action methods |

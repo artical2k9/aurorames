@@ -16,6 +16,13 @@
 
 <!-- Add new errors below this line. Oldest at the top, newest at the bottom. -->
 
+## ERR-MES-059 — Angular subscribe callbacks mutating template-bound properties trigger NG0100 across entire app
+**Date:** 2026-06-05  **Category:** Frontend — Angular Change Detection  **Status:** Promoted 2026-06-05
+**Symptom:** `RuntimeError: NG0100: ExpressionChangedAfterItHasBeenCheckedError` thrown in dev mode on page load and on form-save errors. Affected 14 components across BOM, ECO, Item Master, UDF, and shared features. The error surfaced incrementally — fixing one component revealed the same pattern in others, requiring 4 separate fix passes.
+**Root cause:** Angular dev mode runs change detection twice (a render pass then a `checkNoChanges` pass). When an HTTP Observable emits inside the Angular zone (e.g. from `ngOnInit`, `constructor`, `ngAfterViewInit`, or a form-submit callback), it mutates template-bound properties (`loading`, `items`, `serverError`, `parentItem`, etc.) between the two passes. Angular's second pass detects the discrepancy and throws. The pattern is latent in every component that subscribes to HTTP and mutates state in the callback; it surfaces only when a response arrives synchronously-enough to land within the same CD cycle.
+**Fix applied:** Injected `ChangeDetectorRef` into all 14 affected components and called `this.cdr.detectChanges()` at the end of every `next:` and `error:` callback that mutates any template-bound property. Full component list documented in ERR-MES-059 archive entry.
+**Rule:** Every Angular component that has a `.subscribe()` call mutating a template-bound property MUST inject `ChangeDetectorRef` and call `this.cdr.detectChanges()` at the end of both the `next:` and `error:` callbacks. This applies to page-load subscribes (`ngOnInit`, `constructor`), user-action subscribes (`save()`, `delete()`, `obsolete()`), and shared/child components. When creating any new component with an HTTP subscribe, add `cdr` injection and `detectChanges()` as a mandatory part of the component template. See CLAUDE.md §Angular Change Detection Rules.
+
 ## ERR-MES-057 — Adding columns to @Audited entity without updating _aud table breaks schema-validation
 **Date:** 2026-05-31  **Category:** Backend — Hibernate Envers  **Status:** Promoted 2026-05-31
 **Symptom:** All integration tests failed at context startup with `SchemaManagementException: Schema-validation: missing column [bom_type] in table [work_order.bill_of_materials_aud]`. V013 added five new columns to `bill_of_materials` but left `bill_of_materials_aud` unchanged.
