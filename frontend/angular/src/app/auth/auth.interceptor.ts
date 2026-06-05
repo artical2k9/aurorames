@@ -1,25 +1,42 @@
 import { inject } from '@angular/core';
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
-import { Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
-import { catchError, throwError } from 'rxjs';
+import { catchError, switchMap, throwError } from 'rxjs';
+import { AuthSessionService } from './auth-session.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const oauthService = inject(OAuthService);
-  const router = inject(Router);
+  const oauth       = inject(OAuthService);
+  const authSession = inject(AuthSessionService);
 
-  const token = oauthService.getAccessToken();
-  if (token) {
-    req = req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
-  }
+  const token   = oauth.getAccessToken();
+  const authReq = token
+    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
+    : req;
 
-  return next(req).pipe(
+  return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (error.status === 401 && !req.url.includes('/realms/')) {
-        oauthService.logOut(true);
-        router.navigateByUrl('/login');
+      // Only intercept 401s that are not from Keycloak's own endpoints.
+      if (error.status !== 401 || req.url.includes('/realms/')) {
+        return throwError(() => error);
       }
-      return throwError(() => error);
+
+      // Attempt one silent refresh then replay the original request.
+      // refreshOnce() is shared — concurrent 401s from multiple in-flight
+      // requests all subscribe to the same observable and hit the token
+      // endpoint exactly once.
+      return authSession.refreshOnce().pipe(
+        switchMap(() => {
+          const newToken = oauth.getAccessToken();
+          const retryReq = newToken
+            ? req.clone({ setHeaders: { Authorization: `Bearer ${newToken}` } })
+            : req;
+          return next(retryReq);
+        }),
+        catchError(() => {
+          authSession.endSession();
+          return throwError(() => error);
+        }),
+      );
     }),
   );
 };

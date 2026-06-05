@@ -1,12 +1,17 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { OAuthService } from 'angular-oauth2-oidc';
+import { AuthSessionService } from './auth-session.service';
 
 export const authGuard: CanActivateFn = () => {
-  const oauthService = inject(OAuthService);
-  const router = inject(Router);
-  if (oauthService.hasValidAccessToken()) {
+  const authSession = inject(AuthSessionService);
+  const router      = inject(Router);
+
+  if (authSession.isSessionValid()) {
     return true;
   }
-  return router.createUrlTree(['/login']);
+
+  const returnUrl = window.location.pathname + window.location.search;
+  return router.createUrlTree(['/login'], {
+    queryParams: returnUrl && returnUrl !== '/' ? { returnUrl } : {},
+  });
 };
