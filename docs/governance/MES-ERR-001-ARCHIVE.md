@@ -4,6 +4,26 @@
 
 ---
 
+## ERR-MES-060 — Keycloak 25 stopped auto-including `sub` in access tokens; jwt.getSubject() returns null
+**Date:** 2026-06-05  **Category:** Backend — Keycloak / JWT  **Status:** Promoted 2026-06-05
+
+**Symptom:** `POST /api/v1/ecos` returned 409: `null value in column "initiated_by" violates not-null constraint`. The same request showed `created_by = "system"` — meaning the authenticated user's identity was lost. Analysis identified five additional at-risk call sites across engineering-service, platform-service, iam-service, lib-common-audit, and work-order-service.
+
+**Root cause:** Keycloak 25 changed default behaviour — the `sub` (subject) claim is no longer automatically included in access tokens. An explicit `oidc-usermodel-property-mapper` (property: `id`, claim name: `sub`) must be added to the client or a client scope. After an Option B realm reimport that lacked this mapper, every `jwt.getSubject()` call returned null. Code that passed null directly into `NOT NULL` columns caused 409 Conflict; code using `Optional.of(auth.getName())` without a null guard would NPE with 500 on any JPA write.
+
+**Fix applied:**
+1. Added `sub` protocol mapper to `mes-frontend` client via Keycloak admin API (live, no restart needed).
+2. Persisted the mapper to `keycloak/mes-realm.json` so it survives future realm reimports.
+3. Added `JwtClaimsExtractor.nullSafeSubject()` to lib-common-security — `sub → preferred_username → "unknown"` fallback chain.
+4. Hardened `MesRevisionListener.resolveUserId()` in lib-common-audit with the same fallback.
+5. Fixed `Optional.of(auth.getName())` NPE in iam-service and platform-service `JpaConfig`.
+6. Added `subjectOf(Jwt)` null-safe helper to work-order-service `EcoController`.
+7. Fix 5 deferred for engineering-service/platform-service controllers — source is on branch `111-engineering-service-scaffold`.
+
+**Rule:** Every Keycloak client definition in `mes-realm.json` must include an explicit `sub` mapper. Never call `jwt.getSubject()` without a null fallback chain (`sub → preferred_username → "unknown"`). Use `JwtClaimsExtractor.nullSafeSubject()` or inline the same pattern. Add a pre-PR grep check for `getSubject()` in backend diffs. See CLAUDE.md §Keycloak Protocol Mapper Rules.
+
+---
+
 ## ERR-MES-057 — Adding columns to @Audited entity without updating _aud table breaks schema-validation
 **Date:** 2026-05-31  **Category:** Backend — Hibernate Envers  **Status:** Promoted 2026-05-31
 

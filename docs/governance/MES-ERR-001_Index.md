@@ -44,6 +44,7 @@
 | ERR-MES-056 | 2026-05-31 | Agent Process | `speckit-clarify`/`speckit-analyze` analyse documents, not code; they cannot detect missing backend endpoints; manual controller reads are required as a pre-flight for frontend PRs |
 | ERR-MES-057 | 2026-05-31 | Backend — Hibernate Envers | Adding columns to `@Audited` entity requires same columns in `_aud` table in the same migration; Envers schema-validation enforces parity at startup |
 | ERR-MES-058 | 2026-05-31 | Agent Process | Pre-PR retrospective is a technical gate, not a formality; skipping it let a known Envers pattern repeat; must spot-check all relevant index categories before `gh pr create` |
+| ERR-MES-060 | 2026-06-05 | Backend — Keycloak / JWT | Keycloak 25 no longer auto-includes `sub`; every client needs an explicit sub mapper; never call `jwt.getSubject()` without `sub → preferred_username → "unknown"` fallback |
 | ERR-MES-061 | 2026-06-04 | Backend — Hibernate Envers | New service scaffold must grep `libs/` for `@Audited` entities — every one needs a `_aud` table in the service's Flyway migrations |
 | ERR-MES-062 | 2026-06-05 | Backend — Spring Data / JPA Auditing | Every service with `@EnableJpaAuditing` and `NOT NULL` `@CreatedBy`/`@LastModifiedBy` fields must have an `AuditorAware<String>` bean in `AppConfig.java` |
 | ERR-MES-063 | 2026-06-05 | Backend — Kafka | Any service using `KafkaTemplate` with non-String values must set `spring.kafka.producer.value-serializer: JsonSerializer` explicitly — Spring Boot default is `StringSerializer` |

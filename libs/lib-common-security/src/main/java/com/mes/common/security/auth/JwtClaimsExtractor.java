@@ -33,4 +33,12 @@ public class JwtClaimsExtractor {
     public String getSub() {
         return jwt.getSubject();
     }
+
+    /** Returns sub if present; falls back to preferred_username; falls back to "unknown". */
+    public String nullSafeSubject() {
+        String sub = jwt.getSubject();
+        if (sub != null && !sub.isBlank()) return sub;
+        String username = jwt.getClaimAsString("preferred_username");
+        return (username != null && !username.isBlank()) ? username : "unknown";
+    }
 }
