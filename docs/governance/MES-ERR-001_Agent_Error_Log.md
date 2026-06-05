@@ -73,11 +73,25 @@
 **Rule:** Never use `npm install --legacy-peer-deps` for Angular workspace packages. Angular packages have exact cross-peer deps (`@angular/animations@X.Y.Z` requires `@angular/core@"X.Y.Z"` exactly). All `@angular/*` runtime packages must be pinned to the same exact version in `package.json`. When adding a new Angular package, verify `node_modules/primeng/package.json` (or the relevant pkg) shows matching peer dep versions before committing the lockfile.
 
 ## ERR-MES-061 — New service scaffold omitted @Audited library entity from Envers migrations
-**Date:** 2026-06-04  **Category:** Backend — Hibernate Envers  **Status:** Open
+**Date:** 2026-06-04  **Category:** Backend — Hibernate Envers  **Status:** Promoted 2026-06-05
 **Symptom:** All integration tests in inventory-service failed at Spring context startup on CI with `SchemaManagementException: Schema-validation: missing table [udf_field_definition_aud]`. Local `./gradlew check` passed because Testcontainers is skipped on Windows without Docker socket.
 **Root cause:** `UdfFieldDefinition` from `libs/mes-udf-lib` is `@Audited`. V005 created audit tables only for the three entities defined inside inventory-service (ItemMaster, BillOfMaterials, BomLine). The pre-PR retrospective spot-checked ERR-MES-057 against entities written in the service but did not scan library dependencies for `@Audited` entities. Hibernate Envers validates ALL `@Audited` entities on the classpath, including those from transitively included JARs.
 **Fix applied:** Added V010 migration creating `inventory.udf_field_definition_aud` with all entity columns and revend/revend_tstmp (ValidityAuditStrategy). `BUILD SUCCESSFUL` confirmed locally with Docker.
 **Rule:** When scaffolding a new service, grep ALL library deps for `@Audited` (not just entities defined in the service itself): `grep -rn "@Audited" libs/ --include="*.java"`. Every `@Audited` entity reachable on the classpath needs a corresponding `_aud` table in the service's Flyway migrations. Add this step explicitly to the Envers spot-check in the pre-PR retrospective.
+
+## ERR-MES-062 — New service scaffold missing AuditorAware bean; @CreatedBy fields fail NOT NULL
+**Date:** 2026-06-05  **Category:** Backend — Spring Data / JPA Auditing  **Status:** Promoted 2026-06-05
+**Symptom:** Every `POST /api/v1/ecos` in CI returned 409 CONFLICT. `GlobalExceptionHandler` maps `DataIntegrityViolationException` to 409. The exception was a NOT NULL constraint violation on `created_by` / `modified_by` columns.
+**Root cause:** `EngineeringChangeOrder` uses `@CreatedBy` + `@LastModifiedBy` with `nullable = false`. `@EnableJpaAuditing` is present, but without an `AuditorAware<String>` bean Spring Data cannot resolve the current user; it leaves the fields null, causing the INSERT to fail. Inventory-service had this bean in `AppConfig.java`; engineering-service was missing it.
+**Fix applied:** Added `AppConfig.java` to `com.mes.engineering.config` with `AuditorAware<String>` reading from `SecurityContextHolder`; falls back to `"system"` when unauthenticated.
+**Rule:** Every new Spring Boot service that declares `@EnableJpaAuditing` and has `@CreatedBy`/`@LastModifiedBy` columns with `nullable = false` MUST have an `AuditorAware<String>` bean. Add it as `AppConfig.java` in `config/`. Failure manifests as DataIntegrityViolationException (409) on every create, not a startup error.
+
+## ERR-MES-063 — Missing producer serializer config; KafkaTemplate cannot serialize Map payloads
+**Date:** 2026-06-05  **Category:** Backend — Kafka  **Status:** Promoted 2026-06-05
+**Symptom:** `BomReleasedConsumerIT` failed with `SerializationException: Can't convert value of class java.util.HashMap to class StringSerializer`. The auto-configured `KafkaTemplate<String, Map<String, Object>>` used by `EcoEventPublisher` silently defaulted to `StringSerializer` for values.
+**Root cause:** `application.yml` had no `spring.kafka.producer` section. Spring Boot's `KafkaAutoConfiguration` defaults `value-serializer` to `StringSerializer`. `EcoEventPublisher` injects `KafkaTemplate<String, Map<String, Object>>` and calls it with `Map.of(...)`. `StringSerializer` cannot serialize `HashMap`.
+**Fix applied:** Added `spring.kafka.producer.value-serializer: JsonSerializer` and `spring.kafka.producer.key-serializer: StringSerializer` to `application.yml`. Added `spring.json.value.default.type` + `spring.json.use.type.headers=false` to consumer config so `JsonDeserializer` correctly targets `BomReleasedEvent` regardless of type headers.
+**Rule:** Any service that uses `KafkaTemplate` to produce non-String payloads MUST explicitly set `spring.kafka.producer.value-serializer: org.springframework.kafka.support.serializer.JsonSerializer`. Spring Boot does not auto-configure `JsonSerializer`; the default is `StringSerializer` which cannot handle `Map` or POJO values. This is a silent failure — no startup error, only a runtime `SerializationException` when `send()` is called.
 
 ## ERR-MES-020 — `gradlew` missing execute bit breaks Linux CI
 **Date:** 2026-05-21  **Category:** CI — Permissions  **Status:** Open
