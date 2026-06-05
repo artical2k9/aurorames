@@ -4,6 +4,24 @@
 
 ---
 
+## ERR-MES-059 — Angular subscribe callbacks mutating template-bound properties trigger NG0100 across entire app
+**Date:** 2026-06-05  **Category:** Frontend — Angular Change Detection  **Status:** Promoted 2026-06-05
+
+**Symptom:** `RuntimeError: NG0100: ExpressionChangedAfterItHasBeenCheckedError` thrown in dev mode on page load and on form-save error paths. Errors surfaced across 14 components in 4 separate fix passes: `bom-browser`, `item-master-list`, `eco-list`, `udf-admin`, `item-master-detail` (UDF + loadItem), `udf-fields`, `bom-list`, `eco-form` (constructor itemOptions + save error), `bom-authoring`, `bom-explosion`, `eco-detail`, `item-master-edit` (loadItem + obsoleteItem + save error), `item-master-create` (clone subscribe + save error), `add-bom-line-form` (search subscribe + save error), `item-master-form` (loadItem + save error).
+
+**Root cause:** Angular dev mode runs change detection twice per tick: a render pass followed by a `checkNoChanges` pass. When an HTTP Observable emits inside the Angular zone, its subscriber callback runs synchronously within the same CD cycle. If the callback mutates a template-bound property (`loading`, `items[]`, `serverError`, `parentItem`, etc.) the mutation lands between the two passes. Angular's second pass detects the discrepancy and throws NG0100. The pattern is latent in every component that subscribes to HTTP without explicitly telling Angular to re-check; it surfaces non-deterministically depending on how quickly the HTTP response arrives relative to the CD cycle.
+
+**Fix applied:** In all 14 components above: injected `ChangeDetectorRef` via `private readonly cdr = inject(ChangeDetectorRef)` and added `this.cdr.detectChanges()` as the final statement in every `next:` and `error:` callback that mutates any template-bound property.
+
+**Rule:** Every Angular component whose `.subscribe()` callback mutates a template-bound property MUST:
+1. `import { ChangeDetectorRef } from '@angular/core'`
+2. `private readonly cdr = inject(ChangeDetectorRef)` in the class body
+3. `this.cdr.detectChanges()` as the last line in both the `next:` and `error:` callbacks
+
+This applies to: page-load subscribes in `ngOnInit` / `constructor` / `ngAfterViewInit`; user-action subscribes in `save()` / `delete()` / `obsolete()` / `load()`; and all shared/child components with HTTP subscriptions. When creating a new component, treat `cdr` injection + `detectChanges()` as part of the mandatory component skeleton whenever HTTP is involved. See CLAUDE.md §Angular Change Detection Rules.
+
+---
+
 ## ERR-MES-060 — Keycloak 25 stopped auto-including `sub` in access tokens; jwt.getSubject() returns null
 **Date:** 2026-06-05  **Category:** Backend — Keycloak / JWT  **Status:** Promoted 2026-06-05
 

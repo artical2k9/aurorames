@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -366,6 +366,7 @@ export class UdfAdminComponent implements OnInit {
   private readonly api           = inject(UdfAdminApiService);
   private readonly toast         = inject(MessageService);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
+  private readonly cdr           = inject(ChangeDetectorRef);
   private readonly destroyRef    = inject(DestroyRef);
 
   selectedModule  = 'ITEM_MASTER';
@@ -436,11 +437,18 @@ export class UdfAdminComponent implements OnInit {
 
   private loadFields(): void {
     this.loading = true;
-    this.api.listFields(this.selectedModule).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: fields => { this.fields = fields; this.loading = false; },
-      error: ()     => {
+    // takeUntilDestroyed intentionally omitted: the 49ms list call must survive
+    // the LeafComponentReloadStrategy destroy/recreate cycle or loading stays true.
+    this.api.listFields(this.selectedModule).subscribe({
+      next: fields => {
+        this.fields = fields;
+        this.loading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
         this.fields  = [];
         this.loading = false;
+        this.cdr.detectChanges();
         this.toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load field definitions.' });
       },
     });

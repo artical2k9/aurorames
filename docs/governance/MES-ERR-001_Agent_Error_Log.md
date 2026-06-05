@@ -16,6 +16,13 @@
 
 <!-- Add new errors below this line. Oldest at the top, newest at the bottom. -->
 
+## ERR-MES-059 — Angular subscribe callbacks mutating template-bound properties trigger NG0100 across entire app
+**Date:** 2026-06-05  **Category:** Frontend — Angular Change Detection  **Status:** Promoted 2026-06-05
+**Symptom:** `RuntimeError: NG0100: ExpressionChangedAfterItHasBeenCheckedError` thrown in dev mode on page load and on form-save errors. Affected 14 components across BOM, ECO, Item Master, UDF, and shared features. The error surfaced incrementally — fixing one component revealed the same pattern in others, requiring 4 separate fix passes.
+**Root cause:** Angular dev mode runs change detection twice (a render pass then a `checkNoChanges` pass). When an HTTP Observable emits inside the Angular zone (e.g. from `ngOnInit`, `constructor`, `ngAfterViewInit`, or a form-submit callback), it mutates template-bound properties (`loading`, `items`, `serverError`, `parentItem`, etc.) between the two passes. Angular's second pass detects the discrepancy and throws. The pattern is latent in every component that subscribes to HTTP and mutates state in the callback; it surfaces only when a response arrives synchronously-enough to land within the same CD cycle.
+**Fix applied:** Injected `ChangeDetectorRef` into all 14 affected components and called `this.cdr.detectChanges()` at the end of every `next:` and `error:` callback that mutates any template-bound property. Full component list documented in ERR-MES-059 archive entry.
+**Rule:** Every Angular component that has a `.subscribe()` call mutating a template-bound property MUST inject `ChangeDetectorRef` and call `this.cdr.detectChanges()` at the end of both the `next:` and `error:` callbacks. This applies to page-load subscribes (`ngOnInit`, `constructor`), user-action subscribes (`save()`, `delete()`, `obsolete()`), and shared/child components. When creating any new component with an HTTP subscribe, add `cdr` injection and `detectChanges()` as a mandatory part of the component template. See CLAUDE.md §Angular Change Detection Rules.
+
 ## ERR-MES-060 — Keycloak 25 stopped auto-including `sub` in access tokens; jwt.getSubject() returns null
 **Date:** 2026-06-05  **Category:** Backend — Keycloak / JWT  **Status:** Promoted 2026-06-05
 **Symptom:** `POST /api/v1/ecos` returned 409 with `null value in column "initiated_by" violates not-null constraint`. `created_by` on the same row was `"system"`. Multiple services also at risk: `platform.user_grid_preferences.user_id NOT NULL`, `Optional.of(auth.getName())` NPE path in iam-service/platform-service JpaConfig, null actor in Envers revinfo.

@@ -176,6 +176,57 @@ The script calculates the cost of all Claude Code sessions since the branch dive
 
 ---
 
+## Angular Change Detection Rules — Mandatory for All New Components
+
+**ERR-MES-059:** Angular dev mode runs change detection twice per tick. Any `.subscribe()` callback that mutates a template-bound property between those two passes will throw `NG0100: ExpressionChangedAfterItHasBeenCheckedError`.
+
+### Rule — applies to every new Angular component that performs HTTP calls
+
+Whenever you write a `.subscribe()` call that assigns to any component property used in the template, you **must**:
+
+1. Import and inject `ChangeDetectorRef`:
+   ```typescript
+   import { ChangeDetectorRef, ... } from '@angular/core';
+   // ...
+   private readonly cdr = inject(ChangeDetectorRef);
+   ```
+
+2. Call `this.cdr.detectChanges()` as the **last line** of both the `next:` and `error:` callbacks:
+   ```typescript
+   this.api.load().subscribe({
+     next: data => {
+       this.items = data;
+       this.loading = false;
+       this.cdr.detectChanges();   // ← mandatory
+     },
+     error: () => {
+       this.items = [];
+       this.loading = false;
+       this.cdr.detectChanges();   // ← mandatory
+     },
+   });
+   ```
+
+### Where this applies
+
+| Hook / method | Required? |
+|---|---|
+| `ngOnInit` subscribe | ✅ Always |
+| `constructor` subscribe | ✅ Always |
+| `ngAfterViewInit` subscribe | ✅ Always |
+| `save()` / `create()` / `delete()` error callback | ✅ Always (sets `serverError`, `saving`) |
+| `save()` / `create()` next callback that navigates away | ✅ Still add it before `router.navigate()` |
+| `valueChanges` form subscriptions (no property mutation) | ❌ Not needed |
+
+### Pre-PR check for frontend PRs
+
+Before raising any PR that includes Angular component files:
+- Grep the PR diff for `.subscribe(` in component files
+- Confirm every `next:` and `error:` callback that assigns to `this.xxx` also ends with `this.cdr.detectChanges()`
+- If `cdr` is not injected and a subscribe exists → the component is incomplete
+
+---
+
 ## Keycloak Protocol Mapper Rules — Mandatory for All New Clients
 
 **ERR-MES-060:** Keycloak 25 stopped auto-including `sub` in access tokens. Every client added to `keycloak/mes-realm.json` **must** include an explicit `sub` mapper in its `protocolMappers` array:
@@ -210,7 +261,9 @@ new JwtClaimsExtractor(jwt).nullSafeSubject()  // sub → preferred_username →
 // Option B — inline in controllers that don't use JwtClaimsExtractor
 private static String subjectOf(Jwt jwt) {
     String sub = jwt.getSubject();
-    if (sub != null && !sub.isBlank()) return sub;
+    if (sub != null && !sub.isBlank()) {
+        return sub;
+    }
     String username = jwt.getClaimAsString("preferred_username");
     return (username != null && !username.isBlank()) ? username : "unknown";
 }

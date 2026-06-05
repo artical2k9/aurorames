@@ -1,8 +1,9 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { LucideUser, LucideLock, LucideEye, LucideEyeOff, LucideShieldCheck, LucideLoader } from '@lucide/angular';
+import { AuthSessionService } from '../auth-session.service';
 
 @Component({
   selector: 'app-login',
@@ -408,7 +409,9 @@ import { LucideUser, LucideLock, LucideEye, LucideEyeOff, LucideShieldCheck, Luc
 })
 export class LoginComponent {
   private readonly oauthService = inject(OAuthService);
-  private readonly router = inject(Router);
+  private readonly router       = inject(Router);
+  private readonly route        = inject(ActivatedRoute);
+  private readonly authSession  = inject(AuthSessionService);
 
   usernameValue = '';
   passwordValue = '';
@@ -433,7 +436,9 @@ export class LoginComponent {
         this.usernameValue.trim(),
         this.passwordValue
       );
-      await this.router.navigateByUrl('/dashboard');
+      this.authSession.startSession();
+      const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+      await this.router.navigateByUrl(returnUrl ?? '/dashboard');
     } catch {
       this.errorMessage = 'Invalid username or password. Please try again.';
     } finally {

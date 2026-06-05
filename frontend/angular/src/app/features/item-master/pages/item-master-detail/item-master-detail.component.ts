@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CardModule } from 'primeng/card';
@@ -244,11 +244,12 @@ import { StatusBadgeComponent, BreadcrumbService } from '../../../../shared/ui';
   `],
 })
 export class ItemMasterDetailComponent implements OnInit {
-  private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
-  private readonly api = inject(ItemMasterApiService);
-  private readonly udfApi = inject(UdfApiService);
+  private readonly route        = inject(ActivatedRoute);
+  private readonly router       = inject(Router);
+  private readonly api          = inject(ItemMasterApiService);
+  private readonly udfApi       = inject(UdfApiService);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
+  private readonly cdr          = inject(ChangeDetectorRef);
   item: ItemMasterDto | null = null;
   udfFields: UdfFieldDefinition[] = [];
   loading = true;
@@ -262,8 +263,12 @@ export class ItemMasterDetailComponent implements OnInit {
       { label: 'Detail' },
     ]);
     this.loadItem();
-    this.udfApi.listFields('ITEM_MASTER').subscribe(fields => {
-      this.udfFields = fields;
+    this.udfApi.listFields('ITEM_MASTER').subscribe({
+      next: fields => {
+        this.udfFields = fields ?? [];
+        this.cdr.detectChanges();
+      },
+      error: () => { this.udfFields = []; },
     });
   }
 
@@ -278,8 +283,9 @@ export class ItemMasterDetailComponent implements OnInit {
           { label: `${item.partNumber} Rev ${item.revision}` },
         ]);
         this.loading = false;
+        this.cdr.detectChanges();
       },
-      error: () => { this.item = null; this.loading = false; },
+      error: () => { this.item = null; this.loading = false; this.cdr.detectChanges(); },
     });
   }
 

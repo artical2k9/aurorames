@@ -1,5 +1,5 @@
 import {
-  Component, inject, Input, OnChanges, OnInit, SimpleChanges,
+  ChangeDetectorRef, Component, inject, Input, OnChanges, OnInit, SimpleChanges,
 } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -98,7 +98,8 @@ import { UdfApiService, UdfFieldDefinition } from './udf-api.service';
 })
 export class UdfFieldsComponent implements OnInit, OnChanges {
   private readonly udfApi = inject(UdfApiService);
-  private readonly fb    = inject(FormBuilder);
+  private readonly fb     = inject(FormBuilder);
+  private readonly cdr    = inject(ChangeDetectorRef);
 
   @Input() moduleKey!: string;
   @Input() udfGroup!: FormGroup;
@@ -111,11 +112,16 @@ export class UdfFieldsComponent implements OnInit, OnChanges {
     this.loading = true;
     this.udfApi.listFields(this.moduleKey).subscribe({
       next: fields => {
-        this.fields = fields;
+        this.fields = fields ?? [];
         this.loading = false;
         this.syncControls();
+        this.cdr.detectChanges();
       },
-      error: () => { this.loading = false; },
+      error: () => {
+        this.fields = [];
+        this.loading = false;
+        this.cdr.detectChanges();
+      },
     });
   }
 

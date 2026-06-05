@@ -1,4 +1,4 @@
-import { Component, DestroyRef, EventEmitter, inject, Input, OnInit, Output } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, EventEmitter, inject, Input, OnInit, Output } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -137,10 +137,11 @@ export class AddBomLineFormComponent implements OnInit {
   @Output() saved = new EventEmitter<BomLineDto>();
   @Output() cancelled = new EventEmitter<void>();
 
-  private readonly bomApi = inject(BomApiService);
-  private readonly itemApi = inject(ItemMasterApiService);
-  private readonly fb = inject(FormBuilder);
+  private readonly bomApi     = inject(BomApiService);
+  private readonly itemApi    = inject(ItemMasterApiService);
+  private readonly fb         = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr        = inject(ChangeDetectorRef);
 
   suggestions: ItemMasterDto[] = [];
   serverError = '';
@@ -178,7 +179,7 @@ export class AddBomLineFormComponent implements OnInit {
       distinctUntilChanged(),
       switchMap(q => this.itemApi.list({ search: q, page: 0, size: 10 })),
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(page => { this.suggestions = page.content; });
+    ).subscribe(page => { this.suggestions = page.content; this.cdr.detectChanges(); });
   }
 
   onSearch(event: { query: string }): void {
@@ -230,6 +231,7 @@ export class AddBomLineFormComponent implements OnInit {
         } else {
           this.serverError = err.error?.message ?? 'Failed to add line';
         }
+        this.cdr.detectChanges();
       },
     });
   }

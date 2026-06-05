@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -255,11 +255,12 @@ import {
   `],
 })
 export class ItemMasterEditComponent implements OnInit {
-  private readonly fb = inject(FormBuilder);
-  private readonly api = inject(ItemMasterApiService);
-  private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
+  private readonly fb            = inject(FormBuilder);
+  private readonly api           = inject(ItemMasterApiService);
+  private readonly router        = inject(Router);
+  private readonly route         = inject(ActivatedRoute);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
+  private readonly cdr           = inject(ChangeDetectorRef);
 
   item: ItemMasterDto | null = null;
   itemId!: string;
@@ -453,8 +454,9 @@ export class ItemMasterEditComponent implements OnInit {
         this.item = item;
         this.loading = false;
         this.populateForm(item);
+        this.cdr.detectChanges();
       },
-      error: () => { this.item = null; this.loading = false; },
+      error: () => { this.item = null; this.loading = false; this.cdr.detectChanges(); },
     });
   }
 
@@ -491,8 +493,9 @@ export class ItemMasterEditComponent implements OnInit {
       next: item => {
         this.item = item;
         this.obsoleting = false;
+        this.cdr.detectChanges();
       },
-      error: () => { this.obsoleting = false; },
+      error: () => { this.obsoleting = false; this.cdr.detectChanges(); },
     });
   }
 
@@ -527,6 +530,7 @@ export class ItemMasterEditComponent implements OnInit {
         if (err.status === 422 && err.error?.violations) {
           this.serverErrors = err.error.violations.map(v => `${v.field}: ${v.message}`);
         }
+        this.cdr.detectChanges();
       },
     });
   }

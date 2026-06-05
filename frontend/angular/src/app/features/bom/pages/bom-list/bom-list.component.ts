@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -113,6 +113,7 @@ export class BomListComponent implements OnInit {
   private readonly router        = inject(Router);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
   private readonly destroyRef    = inject(DestroyRef);
+  private readonly cdr           = inject(ChangeDetectorRef);
 
   itemId = '';
   parentItem: ItemMasterDto | null = null;
@@ -133,7 +134,7 @@ export class BomListComponent implements OnInit {
       { label: 'BOMs' },
     ]);
     this.itemApi.getById(this.itemId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: item => { this.parentItem = item; },
+      next: item => { this.parentItem = item; this.cdr.detectChanges(); },
       error: () => { /* parent item not found — BOM list still shows without heading */ },
     });
     this.loadBoms();
@@ -142,8 +143,8 @@ export class BomListComponent implements OnInit {
   loadBoms(): void {
     this.loading = true;
     this.bomApi.listForItem(this.itemId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: boms => { this.boms = boms; this.loading = false; },
-      error: () => { this.loading = false; },
+      next: boms => { this.boms = boms; this.loading = false; this.cdr.detectChanges(); },
+      error: () => { this.loading = false; this.cdr.detectChanges(); },
     });
   }
 
