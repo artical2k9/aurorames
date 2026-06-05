@@ -203,3 +203,19 @@ Both must be `pass` or `skipped` before merge. If `SonarCloud Code Analysis` sho
 - Skip a failing advisory check without explicitly understanding and accepting it
 
 **When a SonarCloud quality gate fails:** Enumerate every issue in the report (Vulnerabilities, Security Hotspots, Code Smells, Duplication) before writing any fix. Fix all violations in a single commit — partial fixes waste CI minutes and create PR noise.
+
+---
+
+# Compact
+
+Retain:
+- Active phase/task.
+- Completed vs pending requirements.
+- Code changes by file.
+- Architectural decisions and rationale.
+- Open defects, blockers, and rejected approaches.
+
+Discard:
+- Logs, diagnostics, tool output.
+- Intermediate investigation notes.
+- Repeated discussion and superseded plans.
