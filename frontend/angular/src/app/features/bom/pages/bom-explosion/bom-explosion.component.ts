@@ -47,6 +47,9 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             <app-status-badge [status]="bom.status" />
           </div>
           <div class="be__header-right">
+            @if (bom.status === 'RELEASED' && bom.createdBy) {
+              <span class="be__meta">Released by {{ bom.createdBy }}</span>
+            }
             @if (nodes.length > 0) {
               <span class="be__summary">{{ flatCount }} components · {{ maxDepthSeen }} level{{ maxDepthSeen !== 1 ? 's' : '' }} deep</span>
             }
@@ -165,6 +168,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     .be__link:hover { text-decoration: underline; }
     .be__revision { font-weight: 600; }
     .be__summary { font-size: 0.8125rem; color: var(--p-text-muted-color); }
+    .be__meta { font-size: 0.8125rem; color: var(--p-text-muted-color); }
 
     .be__error { margin-bottom: 0.75rem; }
 
