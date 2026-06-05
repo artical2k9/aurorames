@@ -32,7 +32,7 @@ public class UserGridPreferenceController {
             @PathVariable String moduleKey) {
 
         UUID orgId = extractOrgId(jwt);
-        String userId = jwt.getSubject();
+        String userId = subjectOf(jwt);
         return ResponseEntity.ok(service.get(orgId, userId, moduleKey));
     }
 
@@ -43,11 +43,18 @@ public class UserGridPreferenceController {
             @Valid @RequestBody UpsertUserGridPreferenceRequest request) {
 
         UUID orgId = extractOrgId(jwt);
-        String userId = jwt.getSubject();
+        String userId = subjectOf(jwt);
         return ResponseEntity.ok(service.upsert(orgId, userId, moduleKey, request.columns()));
     }
 
     private UUID extractOrgId(Jwt jwt) {
         return UUID.fromString(jwt.getClaimAsString("org_id"));
+    }
+
+    private static String subjectOf(Jwt jwt) {
+        String sub = jwt.getSubject();
+        if (sub != null && !sub.isBlank()) return sub;
+        String username = jwt.getClaimAsString("preferred_username");
+        return (username != null && !username.isBlank()) ? username : "unknown";
     }
 }
