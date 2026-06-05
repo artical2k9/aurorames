@@ -22,6 +22,26 @@ This applies to: page-load subscribes in `ngOnInit` / `constructor` / `ngAfterVi
 
 ---
 
+## ERR-MES-060 — Keycloak 25 stopped auto-including `sub` in access tokens; jwt.getSubject() returns null
+**Date:** 2026-06-05  **Category:** Backend — Keycloak / JWT  **Status:** Promoted 2026-06-05
+
+**Symptom:** `POST /api/v1/ecos` returned 409: `null value in column "initiated_by" violates not-null constraint`. The same request showed `created_by = "system"` — meaning the authenticated user's identity was lost. Analysis identified five additional at-risk call sites across engineering-service, platform-service, iam-service, lib-common-audit, and work-order-service.
+
+**Root cause:** Keycloak 25 changed default behaviour — the `sub` (subject) claim is no longer automatically included in access tokens. An explicit `oidc-usermodel-property-mapper` (property: `id`, claim name: `sub`) must be added to the client or a client scope. After an Option B realm reimport that lacked this mapper, every `jwt.getSubject()` call returned null. Code that passed null directly into `NOT NULL` columns caused 409 Conflict; code using `Optional.of(auth.getName())` without a null guard would NPE with 500 on any JPA write.
+
+**Fix applied:**
+1. Added `sub` protocol mapper to `mes-frontend` client via Keycloak admin API (live, no restart needed).
+2. Persisted the mapper to `keycloak/mes-realm.json` so it survives future realm reimports.
+3. Added `JwtClaimsExtractor.nullSafeSubject()` to lib-common-security — `sub → preferred_username → "unknown"` fallback chain.
+4. Hardened `MesRevisionListener.resolveUserId()` in lib-common-audit with the same fallback.
+5. Fixed `Optional.of(auth.getName())` NPE in iam-service and platform-service `JpaConfig`.
+6. Added `subjectOf(Jwt)` null-safe helper to work-order-service `EcoController`.
+7. Fix 5 deferred for engineering-service/platform-service controllers — source is on branch `111-engineering-service-scaffold`.
+
+**Rule:** Every Keycloak client definition in `mes-realm.json` must include an explicit `sub` mapper. Never call `jwt.getSubject()` without a null fallback chain (`sub → preferred_username → "unknown"`). Use `JwtClaimsExtractor.nullSafeSubject()` or inline the same pattern. Add a pre-PR grep check for `getSubject()` in backend diffs. See CLAUDE.md §Keycloak Protocol Mapper Rules.
+
+---
+
 ## ERR-MES-057 — Adding columns to @Audited entity without updating _aud table breaks schema-validation
 **Date:** 2026-05-31  **Category:** Backend — Hibernate Envers  **Status:** Promoted 2026-05-31
 
@@ -467,3 +487,24 @@ assertThat(body).containsKey("ADMIN");
 **Fix applied:** Pinned all `@angular/*` packages in `package.json` to the exact same version (`21.2.13`). Removed `--legacy-peer-deps`. Re-ran `npm install` which regenerated a consistent `package-lock.json`.
 
 **Rule:** Never use `npm install --legacy-peer-deps` for Angular workspace packages. Angular packages have exact cross-peer deps (`@angular/animations@X.Y.Z` requires `@angular/core@"X.Y.Z"` exactly). All `@angular/*` runtime packages must be pinned to the same exact version in `package.json`. When adding a new Angular package, verify the new package's peer dep version matches before committing the lockfile.
+
+## ERR-MES-061 — New service scaffold omitted @Audited library entity from Envers migrations
+**Date:** 2026-06-04  **Category:** Backend — Hibernate Envers  **Promoted:** 2026-06-05
+**Symptom:** All integration tests in inventory-service failed at Spring context startup on CI with `SchemaManagementException: Schema-validation: missing table [udf_field_definition_aud]`. Local `./gradlew check` passed because Testcontainers is skipped on Windows without Docker socket.
+**Root cause:** `UdfFieldDefinition` from `libs/mes-udf-lib` is `@Audited`. V005 created audit tables only for the three entities defined inside inventory-service. Pre-PR spot-check scanned only the service's own source tree, not library JAR dependencies.
+**Fix applied:** Added V010 migration creating `inventory.udf_field_definition_aud`. Proactively included `engineering.udf_field_definition_aud` in engineering-service V004.
+**Rule:** When scaffolding a new service, run `grep -rn "@Audited" libs/ --include="*.java"` to find ALL `@Audited` entities on the classpath, including those from shared libraries. Every such entity needs a `_aud` table in the service's Flyway migrations.
+
+## ERR-MES-062 — New service scaffold missing AuditorAware bean; @CreatedBy fields fail NOT NULL
+**Date:** 2026-06-05  **Category:** Backend — Spring Data / JPA Auditing  **Promoted:** 2026-06-05
+**Symptom:** Every `POST /api/v1/ecos` in CI returned 409 CONFLICT instead of 201. `DataIntegrityViolationException` on `created_by` NOT NULL constraint.
+**Root cause:** `@EnableJpaAuditing` declared on `EngineeringServiceApplication` but no `AuditorAware<String>` bean defined. Spring Data left `@CreatedBy`/`@LastModifiedBy` fields null, violating NOT NULL constraints.
+**Fix applied:** Added `AppConfig.java` with `AuditorAware<String>` bean reading `SecurityContextHolder`; fallback to `"system"`.
+**Rule:** Every service with `@EnableJpaAuditing` and `@CreatedBy`/`@LastModifiedBy` on `NOT NULL` columns MUST have an `AuditorAware<String>` bean. Add it in `AppConfig.java` in `config/`. Manifests as 409 on every create, not a startup error.
+
+## ERR-MES-063 — Missing producer serializer config; KafkaTemplate cannot serialize Map payloads
+**Date:** 2026-06-05  **Category:** Backend — Kafka  **Promoted:** 2026-06-05
+**Symptom:** `BomReleasedConsumerIT` failed with `SerializationException: Can't convert value of class java.util.HashMap to class StringSerializer`. `EcoEventPublisher` uses `KafkaTemplate<String, Map<String, Object>>`.
+**Root cause:** No `spring.kafka.producer.value-serializer` in `application.yml`. Spring Boot defaults to `StringSerializer` which cannot serialize `Map<String, Object>`.
+**Fix applied:** Added `spring.kafka.producer.value-serializer: JsonSerializer` + consumer `spring.json.value.default.type` and `spring.json.use.type.headers: false`.
+**Rule:** Any service using `KafkaTemplate` with non-String values MUST set `spring.kafka.producer.value-serializer: org.springframework.kafka.support.serializer.JsonSerializer` explicitly. The Spring Boot default is `StringSerializer`; there is no startup error, only a runtime `SerializationException`.

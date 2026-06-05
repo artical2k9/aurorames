@@ -23,12 +23,33 @@
 **Fix applied:** Injected `ChangeDetectorRef` into all 14 affected components and called `this.cdr.detectChanges()` at the end of every `next:` and `error:` callback that mutates any template-bound property. Full component list documented in ERR-MES-059 archive entry.
 **Rule:** Every Angular component that has a `.subscribe()` call mutating a template-bound property MUST inject `ChangeDetectorRef` and call `this.cdr.detectChanges()` at the end of both the `next:` and `error:` callbacks. This applies to page-load subscribes (`ngOnInit`, `constructor`), user-action subscribes (`save()`, `delete()`, `obsolete()`), and shared/child components. When creating any new component with an HTTP subscribe, add `cdr` injection and `detectChanges()` as a mandatory part of the component template. See CLAUDE.md §Angular Change Detection Rules.
 
+## ERR-MES-060 — Keycloak 25 stopped auto-including `sub` in access tokens; jwt.getSubject() returns null
+**Date:** 2026-06-05  **Category:** Backend — Keycloak / JWT  **Status:** Promoted 2026-06-05
+**Symptom:** `POST /api/v1/ecos` returned 409 with `null value in column "initiated_by" violates not-null constraint`. `created_by` on the same row was `"system"`. Multiple services also at risk: `platform.user_grid_preferences.user_id NOT NULL`, `Optional.of(auth.getName())` NPE path in iam-service/platform-service JpaConfig, null actor in Envers revinfo.
+**Root cause:** Keycloak 25 changed behaviour — `sub` is no longer automatically included in access tokens unless an explicit `oidc-usermodel-property-mapper` (user.attribute=id, claim.name=sub) is added to the client or client scope. After an Option B realm reimport without this mapper, every `jwt.getSubject()` call returned null. Code that passed null directly into NOT NULL columns caused 409; code that called `Optional.of(null)` would NPE with 500.
+**Fix applied:** (1) Added `sub` protocol mapper to `mes-frontend` client via Keycloak admin API — takes effect immediately without restart. (2) Persisted the mapper to `keycloak/mes-realm.json` so it survives future realm reimports. (3) Hardened `JwtClaimsExtractor.nullSafeSubject()` in lib-common-security with `sub → preferred_username → "unknown"` fallback chain. (4) Hardened `MesRevisionListener.resolveUserId()` in lib-common-audit with same fallback. (5) Fixed `Optional.of(auth.getName())` NPE in iam-service and platform-service JpaConfig. (6) Added `subjectOf(Jwt)` null-safe helper to work-order-service EcoController.
+**Rule:** Every Keycloak client must include an explicit `sub` mapper. Never call `jwt.getSubject()` without a null fallback chain. See CLAUDE.md §Keycloak Protocol Mapper Rules.
+
 ## ERR-MES-057 — Adding columns to @Audited entity without updating _aud table breaks schema-validation
 **Date:** 2026-05-31  **Category:** Backend — Hibernate Envers  **Status:** Promoted 2026-05-31
 **Symptom:** All integration tests failed at context startup with `SchemaManagementException: Schema-validation: missing column [bom_type] in table [work_order.bill_of_materials_aud]`. V013 added five new columns to `bill_of_materials` but left `bill_of_materials_aud` unchanged.
 **Root cause:** `BillOfMaterials` is `@Audited`. Hibernate Envers validates at startup that every column on the entity also exists in the `_aud` shadow table. V013 updated the main table and the entity/DTO correctly but did not update the audit table. Pre-PR retrospective spot-check against ERR-MES-023 (Envers category) was skipped.
 **Fix applied:** Created V014 migration adding the same five columns to `bill_of_materials_aud`.
 **Rule:** Whenever adding columns to a `@Audited` entity, always include an `ALTER TABLE <entity>_aud ADD COLUMN ...` for each new column in the same migration (or an immediately-following one). Envers schema-validation at startup enforces column parity between the main table and its `_aud` counterpart. Spot-check this via the ERR-MES-023 (Envers) category in the retrospective gate.
+
+## ERR-MES-059 — Spec cited §XI before it existed in the constitution
+**Date:** 2026-06-04  **Category:** Spec-Kit — Constitution  **Status:** Open
+**Symptom:** `/speckit-analyze` flagged CRITICAL: spec.md, plan.md, and the Jira MES-111 issue all cite "Constitution §XI (Service Boundary Integrity)" as the governing principle for the decomposition. The constitution file `.specify/memory/constitution.md` only defined §I–§X at time of writing; §XI was absent.
+**Root cause:** The spec was written with a forward reference to a principle that seemed obvious from the problem description but had never been formally ratified. The speckit workflow (specify → plan → tasks) does not validate citation correctness against the constitution file.
+**Fix applied:** Added §XI Service Boundary Integrity to the constitution (v1.2.1 → v1.3.0) in the `/speckit-analyze` remediation pass.
+**Rule:** Before citing any constitution principle (§N) in a spec or plan, verify it appears in `.specify/memory/constitution.md` by searching for the section heading. If the principle is implied but absent, propose the constitution amendment first (separate commit) before writing the spec that depends on it.
+
+## ERR-MES-060 — Flyway comment migration used a version number already taken
+**Date:** 2026-06-04  **Category:** Backend — Flyway  **Status:** Open
+**Symptom:** `/speckit-analyze` flagged HIGH: tasks.md T082 instructed creating `V002__note_domains_migrated.sql` in `work-order-service` as a comment migration. `work-order-service` already has `V002__create_item_master.sql`. Applying V002 a second time would cause a Flyway `FoundMigrationWithDuplicateVersion` or checksum error at service startup.
+**Root cause:** The task was written without checking the existing Flyway migration history of the target service. The correct next version is V015 (after the existing V014).
+**Fix applied:** T082 updated to `V015__note_domains_migrated.sql`.
+**Rule:** Before specifying a Flyway migration version number for an existing service, always check the current highest V-number in `services/<service>/src/main/resources/db/migration/`. New migrations must use `max(existing) + 1`. For new services, start at V001.
 
 ## ERR-MES-058 — Pre-PR retrospective spot-check skipped; Envers gap not caught until CI
 **Date:** 2026-05-31  **Category:** Agent Process  **Status:** Promoted 2026-05-31
@@ -64,6 +85,27 @@
 **Root cause:** `@angular/animations` was installed locally using `--legacy-peer-deps` because the patch versions didn't resolve cleanly. This pinned `21.2.0` in `package-lock.json` while all other Angular packages resolved to `21.2.13`. `npm ci` enforces strict peer dep satisfaction and rejected the mismatch.
 **Fix applied:** Pinned all `@angular/*` packages in `package.json` to the exact same version (`21.2.13`). Removed `--legacy-peer-deps`. Re-ran `npm install` which regenerated a consistent `package-lock.json`.
 **Rule:** Never use `npm install --legacy-peer-deps` for Angular workspace packages. Angular packages have exact cross-peer deps (`@angular/animations@X.Y.Z` requires `@angular/core@"X.Y.Z"` exactly). All `@angular/*` runtime packages must be pinned to the same exact version in `package.json`. When adding a new Angular package, verify `node_modules/primeng/package.json` (or the relevant pkg) shows matching peer dep versions before committing the lockfile.
+
+## ERR-MES-061 — New service scaffold omitted @Audited library entity from Envers migrations
+**Date:** 2026-06-04  **Category:** Backend — Hibernate Envers  **Status:** Promoted 2026-06-05
+**Symptom:** All integration tests in inventory-service failed at Spring context startup on CI with `SchemaManagementException: Schema-validation: missing table [udf_field_definition_aud]`. Local `./gradlew check` passed because Testcontainers is skipped on Windows without Docker socket.
+**Root cause:** `UdfFieldDefinition` from `libs/mes-udf-lib` is `@Audited`. V005 created audit tables only for the three entities defined inside inventory-service (ItemMaster, BillOfMaterials, BomLine). The pre-PR retrospective spot-checked ERR-MES-057 against entities written in the service but did not scan library dependencies for `@Audited` entities. Hibernate Envers validates ALL `@Audited` entities on the classpath, including those from transitively included JARs.
+**Fix applied:** Added V010 migration creating `inventory.udf_field_definition_aud` with all entity columns and revend/revend_tstmp (ValidityAuditStrategy). `BUILD SUCCESSFUL` confirmed locally with Docker.
+**Rule:** When scaffolding a new service, grep ALL library deps for `@Audited` (not just entities defined in the service itself): `grep -rn "@Audited" libs/ --include="*.java"`. Every `@Audited` entity reachable on the classpath needs a corresponding `_aud` table in the service's Flyway migrations. Add this step explicitly to the Envers spot-check in the pre-PR retrospective.
+
+## ERR-MES-062 — New service scaffold missing AuditorAware bean; @CreatedBy fields fail NOT NULL
+**Date:** 2026-06-05  **Category:** Backend — Spring Data / JPA Auditing  **Status:** Promoted 2026-06-05
+**Symptom:** Every `POST /api/v1/ecos` in CI returned 409 CONFLICT. `GlobalExceptionHandler` maps `DataIntegrityViolationException` to 409. The exception was a NOT NULL constraint violation on `created_by` / `modified_by` columns.
+**Root cause:** `EngineeringChangeOrder` uses `@CreatedBy` + `@LastModifiedBy` with `nullable = false`. `@EnableJpaAuditing` is present, but without an `AuditorAware<String>` bean Spring Data cannot resolve the current user; it leaves the fields null, causing the INSERT to fail. Inventory-service had this bean in `AppConfig.java`; engineering-service was missing it.
+**Fix applied:** Added `AppConfig.java` to `com.mes.engineering.config` with `AuditorAware<String>` reading from `SecurityContextHolder`; falls back to `"system"` when unauthenticated.
+**Rule:** Every new Spring Boot service that declares `@EnableJpaAuditing` and has `@CreatedBy`/`@LastModifiedBy` columns with `nullable = false` MUST have an `AuditorAware<String>` bean. Add it as `AppConfig.java` in `config/`. Failure manifests as DataIntegrityViolationException (409) on every create, not a startup error.
+
+## ERR-MES-063 — Missing producer serializer config; KafkaTemplate cannot serialize Map payloads
+**Date:** 2026-06-05  **Category:** Backend — Kafka  **Status:** Promoted 2026-06-05
+**Symptom:** `BomReleasedConsumerIT` failed with `SerializationException: Can't convert value of class java.util.HashMap to class StringSerializer`. The auto-configured `KafkaTemplate<String, Map<String, Object>>` used by `EcoEventPublisher` silently defaulted to `StringSerializer` for values.
+**Root cause:** `application.yml` had no `spring.kafka.producer` section. Spring Boot's `KafkaAutoConfiguration` defaults `value-serializer` to `StringSerializer`. `EcoEventPublisher` injects `KafkaTemplate<String, Map<String, Object>>` and calls it with `Map.of(...)`. `StringSerializer` cannot serialize `HashMap`.
+**Fix applied:** Added `spring.kafka.producer.value-serializer: JsonSerializer` and `spring.kafka.producer.key-serializer: StringSerializer` to `application.yml`. Added `spring.json.value.default.type` + `spring.json.use.type.headers=false` to consumer config so `JsonDeserializer` correctly targets `BomReleasedEvent` regardless of type headers.
+**Rule:** Any service that uses `KafkaTemplate` to produce non-String payloads MUST explicitly set `spring.kafka.producer.value-serializer: org.springframework.kafka.support.serializer.JsonSerializer`. Spring Boot does not auto-configure `JsonSerializer`; the default is `StringSerializer` which cannot handle `Map` or POJO values. This is a silent failure — no startup error, only a runtime `SerializationException` when `send()` is called.
 
 ## ERR-MES-020 — `gradlew` missing execute bit breaks Linux CI
 **Date:** 2026-05-21  **Category:** CI — Permissions  **Status:** Open

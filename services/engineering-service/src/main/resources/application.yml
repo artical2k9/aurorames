@@ -1,0 +1,87 @@
+spring:
+  application:
+    name: engineering-service
+
+  # engineering-service owns its own SecurityFilterChain (SecurityConfig). Exclude the shared lib's
+  # auto-configuration to prevent two "any request" filter chains conflicting under
+  # Spring Security 6.5+ (Spring Boot 3.5.0 added UnreachableFilterChainException enforcement).
+  autoconfigure:
+    exclude:
+      - com.mes.common.security.config.MESSecurityAutoConfiguration
+
+  datasource:
+    url: ${ENGINEERING_DB_URL:jdbc:postgresql://localhost:5432/mes?currentSchema=engineering}
+    username: ${ENGINEERING_DB_USER:engineering_user}
+    password: ${ENGINEERING_DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    schemas: engineering
+    default-schema: engineering
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: engineering
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        org.hibernate.envers.default_schema: engineering
+        org.hibernate.envers.audit_table_schema: engineering
+        envers:
+          audit_strategy: org.hibernate.envers.strategy.ValidityAuditStrategy
+          audit_strategy_validity_end_rev_field_name: REVEND
+          audit_strategy_validity_revend_timestamp_field_name: REVEND_TSTMP
+          audit_strategy_validity_store_revend_timestamp: true
+          revision_field_name: rev
+          revision_type_field_name: revtype
+
+  boot:
+    admin:
+      client:
+        url: ${ADMIN_SERVICE_URL:http://admin-service:8888}
+        instance:
+          prefer-ip: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mes}/protocol/openid-connect/certs
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: engineering-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.mes.engineering.kafka
+        # Always deserialize to BomReleasedEvent regardless of __TypeId__ header.
+        # inventory-service publishes Map payloads; use default type so the header is ignored.
+        spring.json.value.default.type: com.mes.engineering.kafka.BomReleasedEvent
+        spring.json.use.type.headers: false
+
+server:
+  port: 8097
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers
+  endpoint:
+    health:
+      show-details: when-authorized
+
+mes:
+  security:
+    webhook-token: ${MES_SECURITY_WEBHOOK_TOKEN}
+    iam-service-url: ${IAM_SERVICE_URL:http://iam-service:8085}
+    privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL_SECONDS:300}

@@ -30,3 +30,7 @@ include 'libs:lib-keycloak-audit-spi'
 // Phase 8 — Item Master & BOM Management (MES-8)
 include 'libs:mes-udf-lib'
 include 'services:work-order-service'
+
+// MES-111 — Service Decomposition
+include 'services:inventory-service'
+include 'services:engineering-service'
