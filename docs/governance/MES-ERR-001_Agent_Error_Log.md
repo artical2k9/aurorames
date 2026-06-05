@@ -16,6 +16,13 @@
 
 <!-- Add new errors below this line. Oldest at the top, newest at the bottom. -->
 
+## ERR-MES-060 — Keycloak 25 stopped auto-including `sub` in access tokens; jwt.getSubject() returns null
+**Date:** 2026-06-05  **Category:** Backend — Keycloak / JWT  **Status:** Promoted 2026-06-05
+**Symptom:** `POST /api/v1/ecos` returned 409 with `null value in column "initiated_by" violates not-null constraint`. `created_by` on the same row was `"system"`. Multiple services also at risk: `platform.user_grid_preferences.user_id NOT NULL`, `Optional.of(auth.getName())` NPE path in iam-service/platform-service JpaConfig, null actor in Envers revinfo.
+**Root cause:** Keycloak 25 changed behaviour — `sub` is no longer automatically included in access tokens unless an explicit `oidc-usermodel-property-mapper` (user.attribute=id, claim.name=sub) is added to the client or client scope. After an Option B realm reimport without this mapper, every `jwt.getSubject()` call returned null. Code that passed null directly into NOT NULL columns caused 409; code that called `Optional.of(null)` would NPE with 500.
+**Fix applied:** (1) Added `sub` protocol mapper to `mes-frontend` client via Keycloak admin API — takes effect immediately without restart. (2) Persisted the mapper to `keycloak/mes-realm.json` so it survives future realm reimports. (3) Hardened `JwtClaimsExtractor.nullSafeSubject()` in lib-common-security with `sub → preferred_username → "unknown"` fallback chain. (4) Hardened `MesRevisionListener.resolveUserId()` in lib-common-audit with same fallback. (5) Fixed `Optional.of(auth.getName())` NPE in iam-service and platform-service JpaConfig. (6) Added `subjectOf(Jwt)` null-safe helper to work-order-service EcoController.
+**Rule:** Every Keycloak client must include an explicit `sub` mapper. Never call `jwt.getSubject()` without a null fallback chain. See CLAUDE.md §Keycloak Protocol Mapper Rules.
+
 ## ERR-MES-057 — Adding columns to @Audited entity without updating _aud table breaks schema-validation
 **Date:** 2026-05-31  **Category:** Backend — Hibernate Envers  **Status:** Promoted 2026-05-31
 **Symptom:** All integration tests failed at context startup with `SchemaManagementException: Schema-validation: missing column [bom_type] in table [work_order.bill_of_materials_aud]`. V013 added five new columns to `bill_of_materials` but left `bill_of_materials_aud` unchanged.

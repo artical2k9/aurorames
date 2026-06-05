@@ -70,4 +70,30 @@ class JwtClaimsExtractorTest {
 
         assertThat(extractor.getSub()).isEqualTo("subject-xyz");
     }
+
+    @Test
+    void nullSafeSubject_subPresent_returnsSub() {
+        var extractor = new JwtClaimsExtractor(jwt(Map.of(
+                "sub", "user-uuid-123",
+                "org_id", "org-1",
+                "preferred_username", "admin@test.org")));
+
+        assertThat(extractor.nullSafeSubject()).isEqualTo("user-uuid-123");
+    }
+
+    @Test
+    void nullSafeSubject_subMissing_preferredUsernamePresent_returnsUsername() {
+        var extractor = new JwtClaimsExtractor(jwt(Map.of(
+                "org_id", "org-1",
+                "preferred_username", "admin@test.org")));
+
+        assertThat(extractor.nullSafeSubject()).isEqualTo("admin@test.org");
+    }
+
+    @Test
+    void nullSafeSubject_bothMissing_returnsUnknown() {
+        var extractor = new JwtClaimsExtractor(jwt(Map.of("org_id", "org-1")));
+
+        assertThat(extractor.nullSafeSubject()).isEqualTo("unknown");
+    }
 }

@@ -176,6 +176,54 @@ The script calculates the cost of all Claude Code sessions since the branch dive
 
 ---
 
+## Keycloak Protocol Mapper Rules — Mandatory for All New Clients
+
+**ERR-MES-060:** Keycloak 25 stopped auto-including `sub` in access tokens. Every client added to `keycloak/mes-realm.json` **must** include an explicit `sub` mapper in its `protocolMappers` array:
+
+```json
+{
+  "name": "sub",
+  "protocol": "openid-connect",
+  "protocolMapper": "oidc-usermodel-property-mapper",
+  "consentRequired": false,
+  "config": {
+    "userinfo.token.claim": "false",
+    "user.attribute": "id",
+    "id.token.claim": "true",
+    "access.token.claim": "true",
+    "claim.name": "sub",
+    "jsonType.label": "String"
+  }
+}
+```
+
+### Rule — never call `jwt.getSubject()` without a null fallback
+
+`jwt.getSubject()` returns null when the `sub` claim is missing. Any value passed to a `NOT NULL` column will cause a 409; any value passed to `Optional.of()` will NPE.
+
+**Always use the null-safe fallback chain:**
+
+```java
+// Option A — use the shared helper (lib-common-security)
+new JwtClaimsExtractor(jwt).nullSafeSubject()  // sub → preferred_username → "unknown"
+
+// Option B — inline in controllers that don't use JwtClaimsExtractor
+private static String subjectOf(Jwt jwt) {
+    String sub = jwt.getSubject();
+    if (sub != null && !sub.isBlank()) return sub;
+    String username = jwt.getClaimAsString("preferred_username");
+    return (username != null && !username.isBlank()) ? username : "unknown";
+}
+```
+
+### Pre-PR check for backend PRs
+
+Before raising any PR that includes Java service changes:
+- `grep -r "getSubject()" services/ libs/ --include="*.java"` — every match must use the null-safe pattern above.
+- `grep -r "Optional.of(auth.getName())" services/ libs/ --include="*.java"` — no matches allowed; must be `Optional.of(name != null ? name : "system")`.
+
+---
+
 ## CI Verification — Mandatory Before Merge
 
 **"CI pipeline GREEN" has a specific meaning — it cannot be approximated.**
