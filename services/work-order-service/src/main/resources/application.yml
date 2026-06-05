@@ -32,11 +32,6 @@ spring:
       resourceserver:
         jwt:
           jwk-set-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mes}/protocol/openid-connect/certs
-  kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 server:
   port: 8095
@@ -55,5 +50,3 @@ mes:
     webhook-token: ${MES_SECURITY_WEBHOOK_TOKEN}
     iam-service-url: ${IAM_SERVICE_URL:http://iam-service:8085}
     privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL_SECONDS:300}
-  bom:
-    max-depth: ${BOM_MAX_DEPTH:50}
