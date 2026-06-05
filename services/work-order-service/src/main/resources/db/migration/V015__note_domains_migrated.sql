@@ -1,0 +1,5 @@
+-- MES-111: Item Master, BOM, and ECO domains migrated to inventory-service and
+-- engineering-service. UserGridPreference migrated to platform-service.
+-- The work_order schema and all existing tables are retained for audit-trail
+-- continuity. This migration exists solely to document the decomposition milestone
+-- and prevent Flyway checksum confusion on fresh installs.
