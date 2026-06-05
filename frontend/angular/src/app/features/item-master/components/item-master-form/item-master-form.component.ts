@@ -1,5 +1,5 @@
 import {
-  Component, EventEmitter, inject, Input, OnChanges,
+  ChangeDetectorRef, Component, EventEmitter, inject, Input, OnChanges,
   OnInit, Output, SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -188,8 +188,9 @@ export class ItemMasterFormComponent implements OnInit, OnChanges {
   @Output() visibleChange = new EventEmitter<boolean>();
   @Output() saved = new EventEmitter<ItemMasterDto>();
 
-  private readonly fb = inject(FormBuilder);
+  private readonly fb  = inject(FormBuilder);
   private readonly api = inject(ItemMasterApiService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   form = this.fb.group({
     partNumber: ['', Validators.required],
@@ -302,6 +303,7 @@ export class ItemMasterFormComponent implements OnInit, OnChanges {
         verificationRequired: item.verificationRequired,
         approvedSuppliers:   (item.approvedSuppliers ?? []).join('\n'),
       });
+      this.cdr.detectChanges();
     });
   }
 
@@ -348,6 +350,7 @@ export class ItemMasterFormComponent implements OnInit, OnChanges {
         if (err.status === 422 && err.error?.violations) {
           this.serverErrors = err.error.violations.map(v => `${v.field}: ${v.message}`);
         }
+        this.cdr.detectChanges();
       },
     });
   }

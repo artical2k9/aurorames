@@ -283,8 +283,9 @@ export class ItemMasterDetailComponent implements OnInit {
           { label: `${item.partNumber} Rev ${item.revision}` },
         ]);
         this.loading = false;
+        this.cdr.detectChanges();
       },
-      error: () => { this.item = null; this.loading = false; },
+      error: () => { this.item = null; this.loading = false; this.cdr.detectChanges(); },
     });
   }
 

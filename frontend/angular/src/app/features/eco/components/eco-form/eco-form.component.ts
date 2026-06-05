@@ -1,4 +1,4 @@
-import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, inject, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -79,7 +79,8 @@ export class EcoFormComponent {
 
   private readonly ecoApi = inject(EcoApiService);
   private readonly itemApi = inject(ItemMasterApiService);
-  private readonly fb = inject(FormBuilder);
+  private readonly fb     = inject(FormBuilder);
+  private readonly cdr    = inject(ChangeDetectorRef);
 
   itemOptions: { label: string; value: string }[] = [];
   saving = false;
@@ -103,12 +104,14 @@ export class EcoFormComponent {
         label: `${i.partNumber} Rev ${i.revision}`,
         value: i.id,
       }));
+      this.cdr.detectChanges();
     });
     this.itemApi.list({ page: 0, size: 15 }).subscribe(page => {
       this.itemOptions = page.content.map(i => ({
         label: `${i.partNumber} Rev ${i.revision}`,
         value: i.id,
       }));
+      this.cdr.detectChanges();
     });
   }
 
@@ -141,6 +144,7 @@ export class EcoFormComponent {
       error: (err: { error?: { message?: string } }) => {
         this.saving = false;
         this.serverError = err.error?.message ?? 'Failed to create ECO';
+        this.cdr.detectChanges();
       },
     });
   }

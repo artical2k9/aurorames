@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -223,11 +223,12 @@ import {
   `],
 })
 export class ItemMasterCreateComponent implements OnInit {
-  private readonly fb = inject(FormBuilder);
-  private readonly api = inject(ItemMasterApiService);
-  private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
+  private readonly fb            = inject(FormBuilder);
+  private readonly api           = inject(ItemMasterApiService);
+  private readonly router        = inject(Router);
+  private readonly route         = inject(ActivatedRoute);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
+  private readonly cdr           = inject(ChangeDetectorRef);
 
   readonly uomOptions = [
     { label: 'Each (EA)',      value: 'EA' },
@@ -432,8 +433,9 @@ export class ItemMasterCreateComponent implements OnInit {
           this.buyActive  = item.makeBuyCode === 'BUY'  || item.makeBuyCode === 'EITHER';
           this.initTraceability(item.traceabilityMethod);
           this.updateShelfLifeDaysValidity();
+          this.cdr.detectChanges();
         },
-        error: () => { this.cloneLoading = false; },
+        error: () => { this.cloneLoading = false; this.cdr.detectChanges(); },
       });
     }
   }
@@ -476,6 +478,7 @@ export class ItemMasterCreateComponent implements OnInit {
         if (err.status === 422 && err.error?.violations) {
           this.serverErrors = err.error.violations.map(v => `${v.field}: ${v.message}`);
         }
+        this.cdr.detectChanges();
       },
     });
   }
