@@ -20,6 +20,7 @@ import com.mes.inventory.kafka.ItemMasterEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -181,13 +182,15 @@ public class BomService {
         return bomLineRepository.save(line);
     }
 
-    public BillOfMaterials releaseBom(UUID orgId, UUID bomId) {
+    public BillOfMaterials releaseBom(UUID orgId, UUID bomId, String releasedBy) {
         BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
         if (bom.getStatus() != BomStatus.DRAFT) {
             throw new BomConflictException("BOM is not in DRAFT status");
         }
         bom.setStatus(BomStatus.RELEASED);
+        bom.setReleasedBy(releasedBy);
+        bom.setReleasedAt(Instant.now());
         BillOfMaterials saved = bomRepository.save(bom);
         // Publish bom.released event — engineering-service consumes this to link ECO output BOMs.
         // No direct cross-service call; ecoId is forwarded in the event payload for correlation.

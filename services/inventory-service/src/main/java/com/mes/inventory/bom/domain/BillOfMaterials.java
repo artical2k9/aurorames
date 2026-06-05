@@ -68,6 +68,12 @@ public class BillOfMaterials {
     @Column(name = "custom_fields", columnDefinition = "jsonb")
     private Map<String, Object> customFields;
 
+    @Column(name = "released_by", length = 255)
+    private String releasedBy;
+
+    @Column(name = "released_at")
+    private Instant releasedAt;
+
     @CreatedBy
     @Column(name = "created_by", nullable = false, length = 255, updatable = false)
     private String createdBy;
@@ -136,6 +142,22 @@ public class BillOfMaterials {
 
     public void setEcoId(UUID ecoId) {
         this.ecoId = ecoId;
+    }
+
+    public String getReleasedBy() {
+        return releasedBy;
+    }
+
+    public void setReleasedBy(String releasedBy) {
+        this.releasedBy = releasedBy;
+    }
+
+    public Instant getReleasedAt() {
+        return releasedAt;
+    }
+
+    public void setReleasedAt(Instant releasedAt) {
+        this.releasedAt = releasedAt;
     }
 
     public String getCreatedBy() {

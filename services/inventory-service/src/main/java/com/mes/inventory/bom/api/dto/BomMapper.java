@@ -20,6 +20,8 @@ public final class BomMapper {
         dto.setStatus(bom.getStatus().name());
         dto.setDescription(bom.getDescription());
         dto.setEcoId(bom.getEcoId());
+        dto.setReleasedBy(bom.getReleasedBy());
+        dto.setReleasedAt(bom.getReleasedAt());
         dto.setCreatedBy(bom.getCreatedBy());
         dto.setCreatedAt(bom.getCreatedAt());
         dto.setReasonForRevision(bom.getReasonForRevision());

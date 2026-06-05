@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, of, switchMap } from 'rxjs';
@@ -22,7 +22,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
   selector: 'app-bom-explosion',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, RouterLink,
+    CommonModule, DatePipe, FormsModule, RouterLink,
     ButtonModule, TagModule, SelectButtonModule, SelectModule, DatePickerModule,
     MessageModule, TreeTableModule,
     StatusBadgeComponent, LucideFileDown,
@@ -47,8 +47,11 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             <app-status-badge [status]="bom.status" />
           </div>
           <div class="be__header-right">
-            @if (bom.status === 'RELEASED' && bom.createdBy) {
-              <span class="be__meta">Released by {{ bom.createdBy }}</span>
+            @if (bom.status === 'RELEASED' && bom.releasedBy) {
+              <span class="be__meta">
+                Released by {{ bom.releasedBy }}
+                @if (bom.releasedAt) { · {{ bom.releasedAt | date:'dd MMM yyyy HH:mm' }} }
+              </span>
             }
             @if (nodes.length > 0) {
               <span class="be__summary">{{ flatCount }} components · {{ maxDepthSeen }} level{{ maxDepthSeen !== 1 ? 's' : '' }} deep</span>

@@ -87,6 +87,10 @@ class BomControllerIT extends BaseIntegrationTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).extractingByKey("status").isEqualTo("RELEASED");
+        assertThat(response.getBody()).containsKey("releasedBy");
+        assertThat(response.getBody().get("releasedBy")).isNotNull();
+        assertThat(response.getBody()).containsKey("releasedAt");
+        assertThat(response.getBody().get("releasedAt")).isNotNull();
     }
 
     @Test
