@@ -172,6 +172,28 @@ class UserGridPreferenceControllerIT {
     }
 
     @Test
+    void get_with_missing_sub_falls_back_to_preferred_username() {
+        String token = buildTokenWithoutSub(ORG_A, "admin@test.org");
+
+        ResponseEntity<UserGridPreferenceDto> response = doGet("ITEM_MASTER", token);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().moduleKey()).isEqualTo("ITEM_MASTER");
+    }
+
+    @Test
+    void put_with_missing_sub_falls_back_to_preferred_username() {
+        String token = buildTokenWithoutSub(ORG_A, "editor@test.org");
+        List<ColumnPreferenceEntry> columns = List.of(new ColumnPreferenceEntry("partNumber", true, 0));
+
+        ResponseEntity<UserGridPreferenceDto> response = doPut("ITEM_MASTER",
+                new UpsertUserGridPreferenceRequest(columns), token);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
     void get_without_token_returns_401() {
         HttpHeaders headers = new HttpHeaders();
         ResponseEntity<Void> response = client.exchange(
@@ -195,6 +217,24 @@ class UserGridPreferenceControllerIT {
             return jwt.serialize();
         } catch (Exception e) {
             throw new RuntimeException("buildToken failed", e);
+        }
+    }
+
+    private String buildTokenWithoutSub(UUID orgId, String preferredUsername) {
+        try {
+            JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                    .claim("org_id", orgId.toString())
+                    .claim("preferred_username", preferredUsername)
+                    .claim("roles", List.of("USER"))
+                    .expirationTime(new Date(System.currentTimeMillis() + 3_600_000L))
+                    .build();
+            SignedJWT jwt = new SignedJWT(
+                    new JWSHeader.Builder(JWSAlgorithm.RS256).keyID("test-key").build(),
+                    claims);
+            jwt.sign(new RSASSASigner(TEST_RSA_KEY));
+            return jwt.serialize();
+        } catch (Exception e) {
+            throw new RuntimeException("buildTokenWithoutSub failed", e);
         }
     }
 
