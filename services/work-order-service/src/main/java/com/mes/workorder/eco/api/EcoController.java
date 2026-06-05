@@ -76,7 +76,9 @@ public class EcoController {
 
     private static String subjectOf(Jwt jwt) {
         String sub = jwt.getSubject();
-        if (sub != null && !sub.isBlank()) return sub;
+        if (sub != null && !sub.isBlank()) {
+            return sub;
+        }
         String username = jwt.getClaimAsString("preferred_username");
         return (username != null && !username.isBlank()) ? username : "unknown";
     }

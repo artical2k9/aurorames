@@ -20,10 +20,14 @@ public class MesRevisionListener implements RevisionListener {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth instanceof JwtAuthenticationToken jwtAuth) {
             String sub = jwtAuth.getToken().getSubject();
-            if (sub != null && !sub.isBlank()) return sub;
+            if (sub != null && !sub.isBlank()) {
+                return sub;
+            }
             // sub missing (Keycloak 25+ without explicit sub mapper) — fall back to preferred_username
             String username = jwtAuth.getToken().getClaimAsString("preferred_username");
-            if (username != null && !username.isBlank()) return username;
+            if (username != null && !username.isBlank()) {
+                return username;
+            }
         }
         String serviceIdentity = ServiceIdentityContext.get();
         if (serviceIdentity != null && !serviceIdentity.isBlank()) {
