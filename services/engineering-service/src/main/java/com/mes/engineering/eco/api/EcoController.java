@@ -50,7 +50,7 @@ public class EcoController {
             @Valid @RequestBody CreateEcoRequest request) {
 
         var orgId = JwtClaimsExtractor.orgId(jwt);
-        var dto = ecoService.create(orgId, request, jwt.getSubject());
+        var dto = ecoService.create(orgId, request, subjectOf(jwt));
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}").buildAndExpand(dto.getId()).toUri();
         return ResponseEntity.created(location).body(dto);
@@ -71,6 +71,15 @@ public class EcoController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID ecoId) {
 
-        return ecoService.approve(JwtClaimsExtractor.orgId(jwt), ecoId, jwt.getSubject());
+        return ecoService.approve(JwtClaimsExtractor.orgId(jwt), ecoId, subjectOf(jwt));
+    }
+
+    private static String subjectOf(Jwt jwt) {
+        String sub = jwt.getSubject();
+        if (sub != null && !sub.isBlank()) {
+            return sub;
+        }
+        String username = jwt.getClaimAsString("preferred_username");
+        return (username != null && !username.isBlank()) ? username : "unknown";
     }
 }
