@@ -19,7 +19,6 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -28,7 +27,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,14 +34,9 @@ import java.util.UUID;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
-@EmbeddedKafka(partitions = 1,
-        topics = {"iam.privilege-changes", "work-order.item-master.events",
-                  "work-order.bom.events", "work-order.eco.events"},
-        bootstrapServersProperty = "spring.kafka.bootstrap-servers")
 @Import(BaseIntegrationTest.TestSecurityConfig.class)
 public abstract class BaseIntegrationTest {
 
-    // Generated once per JVM; all subclass test classes share the same key pair.
     static final RSAKey TEST_RSA_KEY;
 
     static {
@@ -57,8 +50,6 @@ public abstract class BaseIntegrationTest {
     @TestConfiguration
     static class TestSecurityConfig {
 
-        // Overrides the auto-configured JwtDecoder so tokens signed with TEST_RSA_KEY
-        // validate without contacting a real Keycloak issuer URI.
         @Bean
         @Primary
         JwtDecoder testJwtDecoder() {
@@ -69,8 +60,6 @@ public abstract class BaseIntegrationTest {
             }
         }
 
-        // Replaces CaffeinePrivilegeCache so tests never call the IAM service.
-        // Mirrors the privilege grants in Flyway V007 exactly.
         @Bean
         @Primary
         PrivilegeCache testPrivilegeCache() {
@@ -87,10 +76,6 @@ public abstract class BaseIntegrationTest {
         }
     }
 
-    // No @Container — started once in static initializer so the Testcontainers JUnit 5
-    // extension never stops/restarts it between test classes. A @Container static field
-    // is stopped in afterAll() per class, which changes the port and breaks the cached
-    // Spring context's HikariCP pool (ERR-MES-040). Ryuk cleans up on JVM exit.
     protected static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")
             .withDatabaseName("mes")
             .withUsername("work_order_user")
@@ -102,18 +87,11 @@ public abstract class BaseIntegrationTest {
 
     @DynamicPropertySource
     static void props(DynamicPropertyRegistry registry) {
-        // Mirror the production deployment order: IAM service runs its Flyway migrations
-        // first, creating iam.privilege / iam.role / iam.role_privilege.  The work-order
-        // service then runs its own migrations (including V007 which INSERTs into iam.*).
-        // Without this step the test container starts empty and V007 fails with 42P01.
         bootstrapIamSchema();
 
-        registry.add("mes.bom.max-depth", () -> "3");
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
-        // Use jwk-set-uri so Spring does not attempt OIDC discovery at startup.
-        // Actual JWT validation is handled by the @Primary testJwtDecoder bean.
         registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
                 () -> "http://localhost:1/jwks");
         registry.add("mes.security.iam-service-url", () -> "http://localhost:1");
@@ -121,9 +99,6 @@ public abstract class BaseIntegrationTest {
     }
 
     private static void bootstrapIamSchema() {
-        // IAM migration SQL files are copied to iam-bootstrap/ in the test classpath
-        // by the processTestResources Gradle task in work-order-service/build.gradle.
-        // This avoids filesystem path resolution issues across environments.
         Flyway.configure()
                 .dataSource(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword())
                 .schemas("iam")
@@ -132,11 +107,6 @@ public abstract class BaseIntegrationTest {
                 .migrate();
     }
 
-    /**
-     * Builds a self-signed JWT accepted by testJwtDecoder.
-     * A random UUID subject is generated per call so tests that create multiple users
-     * (e.g. differentJwtSubHasIndependentConfig) receive independent identities.
-     */
     protected static String buildToken(String orgId, List<String> roles) {
         try {
             JWTClaimsSet claims = new JWTClaimsSet.Builder()
@@ -163,18 +133,5 @@ public abstract class BaseIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(token);
         return new HttpEntity<>(body, headers);
-    }
-
-    protected static Map<String, Object> baseItemRequest(String partNumber, String revision) {
-        return new HashMap<>(Map.of(
-                "partNumber", partNumber,
-                "revision", revision,
-                "description", "Test item",
-                "unitOfMeasure", "EA",
-                "cageCode", "CAGE01",
-                "classification", "FABRICATED",
-                "makeBuyCode", "MAKE",
-                "traceabilityMethod", "SERIAL"
-        ));
     }
 }
