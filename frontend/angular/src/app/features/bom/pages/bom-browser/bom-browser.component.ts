@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, DestroyRef, inject } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -142,6 +142,7 @@ export class BomBrowserComponent implements AfterViewInit {
   private readonly itemApi    = inject(ItemMasterApiService);
   private readonly router     = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr        = inject(ChangeDetectorRef);
 
   constructor() {
     inject(BreadcrumbService).set([{ label: 'BOMs' }]);
@@ -189,10 +190,12 @@ export class BomBrowserComponent implements AfterViewInit {
           this.items = result.content;
           this.totalRecords = result.totalElements;
           this.loading = false;
+          this.cdr.detectChanges();
         },
         error: () => {
           this.error = 'Failed to load items. Please try again.';
           this.loading = false;
+          this.cdr.detectChanges();
         },
       });
   }
