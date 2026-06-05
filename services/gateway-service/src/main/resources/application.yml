@@ -39,10 +39,40 @@ spring:
             - Path=/api/audit/**
           filters:
             - StripPrefix=2
+        - id: inventory-service-item-master
+          uri: ${INVENTORY_SERVICE_URL:http://inventory-service:8096}
+          predicates:
+            - Path=/api/v1/item-master/**
+          filters:
+            - StripPrefix=0
+        - id: inventory-service-boms
+          uri: ${INVENTORY_SERVICE_URL:http://inventory-service:8096}
+          predicates:
+            - Path=/api/v1/boms/**
+          filters:
+            - StripPrefix=0
+        - id: inventory-service-udf
+          uri: ${INVENTORY_SERVICE_URL:http://inventory-service:8096}
+          predicates:
+            - Path=/api/v1/udf/**
+          filters:
+            - StripPrefix=0
+        - id: engineering-service-ecos
+          uri: ${ENGINEERING_SERVICE_URL:http://engineering-service:8097}
+          predicates:
+            - Path=/api/v1/ecos/**
+          filters:
+            - StripPrefix=0
+        - id: platform-service-preferences
+          uri: ${PLATFORM_SERVICE_URL:http://platform-service:8090}
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - StripPrefix=0
         - id: work-order-service
           uri: ${WORK_ORDER_SERVICE_URL:http://work-order-service:8095}
           predicates:
-            - Path=/api/v1/**
+            - Path=/api/v1/work-orders/**
           filters:
             - StripPrefix=0
 

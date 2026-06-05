@@ -24,6 +24,9 @@ dependencies {
     // ── Kafka — privilege cache invalidation (via lib-common-security) ────────
     implementation 'org.springframework.kafka:spring-kafka'
 
+    // ── JSONB support (UserGridPreference.columnConfig) ──────────────────────
+    implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.9.0'
+
     // ── API documentation ─────────────────────────────────────────────────────
     implementation libs.springdoc.openapi.webmvc
 

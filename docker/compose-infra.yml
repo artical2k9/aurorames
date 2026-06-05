@@ -154,6 +154,8 @@ services:
       PLATFORM_SERVICE_URL: http://platform-service:8090
       AUDIT_SERVICE_URL: http://audit-service:8091
       WORK_ORDER_SERVICE_URL: http://work-order-service:8095
+      INVENTORY_SERVICE_URL: http://inventory-service:8096
+      ENGINEERING_SERVICE_URL: http://engineering-service:8097
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
       - "${GATEWAY_PORT:-8082}:8082"
