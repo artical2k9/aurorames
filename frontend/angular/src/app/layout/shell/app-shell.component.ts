@@ -56,7 +56,7 @@ interface NavItem {
     LucidePencilRuler, LucideBlocks, LucideSettings, LucideLifeBuoy,
     LucidePanelLeftOpen, LucidePanelLeftClose,
     LucideUserCog, LucideList, LucideLayoutGrid, LucideBell, LucideLogOut,
-    LucideDatabase, LucideSlidersHorizontal, LucideChevronDown,
+    LucideDatabase, LucideSlidersHorizontal, LucideChevronDown, LucideHammer,
     ThemeToggleComponent,
   ],
   template: `
