@@ -129,7 +129,7 @@ export class BomListComponent implements OnInit {
   ngOnInit(): void {
     this.itemId = this.route.snapshot.paramMap.get('itemId') ?? '';
     this.breadcrumbSvc.set([
-      { label: 'Master Data' },
+      { label: 'Engineering' },
       { label: 'Item Master', route: ['/item-master'] },
       { label: 'BOMs' },
     ]);

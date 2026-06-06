@@ -22,6 +22,7 @@ import {
   LucideDatabase,
   LucideSlidersHorizontal,
   LucideChevronDown,
+  LucideHammer,
 } from '@lucide/angular';
 import { ThemeToggleComponent } from '../../shared/theme';
 import { ThemeService } from '../../shared/theme';
@@ -29,7 +30,7 @@ import { BreadcrumbComponent, BreadcrumbService } from '../../shared/ui';
 
 const NAV_COLLAPSED_KEY = 'aurora-mes-nav-collapsed';
 
-type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf';
+type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering';
 
 interface ChildNavItem {
   label: string;
@@ -142,6 +143,7 @@ interface NavItem {
                         (click)="toggleGroup(item.label)">
                   <span class="shell__nav-icon">
                     @switch (item.iconKey) {
+                      @case ('engineering') { <svg lucideHammer   [size]="18" [strokeWidth]="2"></svg> }
                       @case ('master-data') { <svg lucideDatabase [size]="18" [strokeWidth]="2"></svg> }
                     }
                   </span>
@@ -162,8 +164,10 @@ interface NavItem {
                          [title]="child.label">
                         <span class="shell__nav-icon">
                           @switch (child.iconKey) {
-                            @case ('item-master') { <svg lucidePackage          [size]="15" [strokeWidth]="2"></svg> }
+                            @case ('item-master') { <svg lucidePackage           [size]="15" [strokeWidth]="2"></svg> }
                             @case ('udf')         { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                            @case ('bom')         { <svg lucideListTree          [size]="15" [strokeWidth]="2"></svg> }
+                            @case ('eco')         { <svg lucidePencilRuler       [size]="15" [strokeWidth]="2"></svg> }
                           }
                         </span>
                         <span class="shell__nav-label">{{ child.label }}</span>
@@ -265,8 +269,15 @@ export class AppShellComponent implements OnInit {
 
   readonly navItems: NavItem[] = [
     { label: 'Dashboard',   iconKey: 'dashboard',   path: '/dashboard' },
-    { label: 'BOM',         iconKey: 'bom',         path: '/bom' },
-    { label: 'ECO',         iconKey: 'eco',         path: '/ecos' },
+    {
+      label:    'Engineering',
+      iconKey:  'engineering',
+      path:     '',
+      children: [
+        { label: 'BOM', iconKey: 'bom', path: '/item-master' },
+        { label: 'ECO', iconKey: 'eco', path: '/ecos' },
+      ],
+    },
     { label: 'Work Orders', iconKey: 'work-orders', path: '/work-orders', disabled: true },
     {
       label:    'Master Data',
@@ -279,7 +290,7 @@ export class AppShellComponent implements OnInit {
     },
   ];
 
-  expandedGroups = new Set<string>(['Master Data']);
+  expandedGroups = new Set<string>(['Engineering', 'Master Data']);
 
   isGroupExpanded(label: string): boolean {
     return this.expandedGroups.has(label);

@@ -122,7 +122,7 @@ export class EcoListComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.breadcrumbSvc.set([
-      { label: 'Home' },
+      { label: 'Engineering' },
       { label: 'Engineering Change Orders' },
     ]);
   }

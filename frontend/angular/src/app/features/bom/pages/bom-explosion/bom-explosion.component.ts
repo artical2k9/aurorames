@@ -240,7 +240,7 @@ export class BomExplosionComponent implements OnInit {
   ngOnInit(): void {
     this.bomId = this.route.snapshot.paramMap.get('bomId') ?? '';
     this.breadcrumbSvc.set([
-      { label: 'Master Data' },
+      { label: 'Engineering' },
       { label: 'Item Master', route: ['/item-master'] },
       { label: 'BOMs' },
       { label: 'Explosion' },
@@ -258,7 +258,7 @@ export class BomExplosionComponent implements OnInit {
         this.parentItem = item;
         this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.bomRevision, value: r.id }));
         this.breadcrumbSvc.set([
-          { label: 'Master Data' },
+          { label: 'Engineering' },
           { label: 'Item Master', route: ['/item-master'] },
           { label: item.partNumber, route: ['/item-master', bom.parentItemId, 'boms'] },
           { label: 'Rev ' + bom.bomRevision, route: ['/boms', this.bomId] },
