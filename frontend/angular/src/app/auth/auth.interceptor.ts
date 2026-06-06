@@ -24,9 +24,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       // refreshOnce() is shared — concurrent 401s from multiple in-flight
       // requests all subscribe to the same observable and hit the token
       // endpoint exactly once.
+      // The returned token comes directly from the TokenResponse so we never
+      // race against the library's internal storage write.
       return authSession.refreshOnce().pipe(
-        switchMap(() => {
-          const newToken = oauth.getAccessToken();
+        switchMap((newToken) => {
           const retryReq = newToken
             ? req.clone({ setHeaders: { Authorization: `Bearer ${newToken}` } })
             : req;

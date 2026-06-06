@@ -21,7 +21,7 @@ export class AuthSessionService {
 
   private refreshTimer?: ReturnType<typeof setTimeout>;
   // Shared observable: multiple callers (e.g. concurrent 401s) share one refresh call.
-  private refreshOnce$: Observable<void> | null = null;
+  private refreshOnce$: Observable<string> | null = null;
 
   constructor() {
     // Cross-tab coordination: when any tab stores a new access_token in localStorage
@@ -86,18 +86,20 @@ export class AuthSessionService {
    * simultaneously (e.g. several concurrent API calls all receive 401) they all
    * receive the same observable and the network call is made exactly once.
    */
-  refreshOnce(): Observable<void> {
+  // Returns the new access_token string so callers never have to re-read from
+  // storage (avoids a race with the library's internal storeAccessTokenResponse).
+  refreshOnce(): Observable<string> {
     if (!this.refreshOnce$) {
       localStorage.setItem(REFRESH_LOCK_KEY, String(Date.now()));
 
       this.refreshOnce$ = from(this.oauth.refreshToken()).pipe(
-        map(() => void 0),
+        map((response: Record<string, unknown>) => (response['access_token'] as string) ?? ''),
         catchError((err) => throwError(() => err)),
         finalize(() => { this.refreshOnce$ = null; }),
         shareReplay(1),
       );
     }
-    return this.refreshOnce$;
+    return this.refreshOnce$ as Observable<string>;
   }
 
   // ── private ────────────────────────────────────────────────────────────────
