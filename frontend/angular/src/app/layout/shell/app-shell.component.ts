@@ -23,6 +23,10 @@ import {
   LucideSlidersHorizontal,
   LucideChevronDown,
   LucideHammer,
+  LucideFactory,
+  LucideBoxes,
+  LucideArchive,
+  LucideClipboardCheck,
 } from '@lucide/angular';
 import { ThemeToggleComponent } from '../../shared/theme';
 import { ThemeService } from '../../shared/theme';
@@ -30,12 +34,13 @@ import { BreadcrumbComponent, BreadcrumbService } from '../../shared/ui';
 
 const NAV_COLLAPSED_KEY = 'aurora-mes-nav-collapsed';
 
-type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering';
+type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering' | 'production' | 'materials' | 'inventory' | 'receiving';
 
 interface ChildNavItem {
   label: string;
   iconKey: NavIconKey;
   path: string;
+  disabled?: boolean;
 }
 
 interface NavItem {
@@ -57,6 +62,7 @@ interface NavItem {
     LucidePanelLeftOpen, LucidePanelLeftClose,
     LucideUserCog, LucideList, LucideLayoutGrid, LucideBell, LucideLogOut,
     LucideDatabase, LucideSlidersHorizontal, LucideChevronDown, LucideHammer,
+    LucideFactory, LucideBoxes, LucideArchive, LucideClipboardCheck,
     ThemeToggleComponent,
   ],
   template: `
@@ -147,7 +153,9 @@ interface NavItem {
                   <span class="shell__nav-icon">
                     @switch (item.iconKey) {
                       @case ('engineering') { <svg lucideHammer   [size]="18" [strokeWidth]="2"></svg> }
+                      @case ('production')  { <svg lucideFactory  [size]="18" [strokeWidth]="2"></svg> }
                       @case ('master-data') { <svg lucideDatabase [size]="18" [strokeWidth]="2"></svg> }
+                      @case ('materials')   { <svg lucideBoxes    [size]="18" [strokeWidth]="2"></svg> }
                     }
                   </span>
                   @if (!collapsed) {
@@ -160,21 +168,41 @@ interface NavItem {
                 @if (!collapsed && isGroupExpanded(item.label)) {
                   <div class="shell__nav-children">
                     @for (child of item.children; track child.label) {
-                      <a class="shell__nav-item shell__nav-item--child"
-                         [routerLink]="child.path"
-                         routerLinkActive="shell__nav-item--active"
-                         [routerLinkActiveOptions]="{ exact: false }"
-                         [title]="child.label">
-                        <span class="shell__nav-icon">
-                          @switch (child.iconKey) {
-                            @case ('item-master') { <svg lucidePackage           [size]="15" [strokeWidth]="2"></svg> }
-                            @case ('udf')         { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
-                            @case ('bom')         { <svg lucideListTree          [size]="15" [strokeWidth]="2"></svg> }
-                            @case ('eco')         { <svg lucidePencilRuler       [size]="15" [strokeWidth]="2"></svg> }
-                          }
+                      @if (child.disabled) {
+                        <span class="shell__nav-item shell__nav-item--child shell__nav-item--disabled" [title]="child.label">
+                          <span class="shell__nav-icon">
+                            @switch (child.iconKey) {
+                              @case ('item-master')  { <svg lucidePackage           [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('bom')          { <svg lucideListTree          [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('eco')          { <svg lucidePencilRuler       [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('work-orders')  { <svg lucideBlocks            [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('inventory')    { <svg lucideArchive           [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('receiving')    { <svg lucideClipboardCheck    [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('udf')          { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                            }
+                          </span>
+                          <span class="shell__nav-label">{{ child.label }}</span>
                         </span>
-                        <span class="shell__nav-label">{{ child.label }}</span>
-                      </a>
+                      } @else {
+                        <a class="shell__nav-item shell__nav-item--child"
+                           [routerLink]="child.path"
+                           routerLinkActive="shell__nav-item--active"
+                           [routerLinkActiveOptions]="{ exact: false }"
+                           [title]="child.label">
+                          <span class="shell__nav-icon">
+                            @switch (child.iconKey) {
+                              @case ('item-master')  { <svg lucidePackage           [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('bom')          { <svg lucideListTree          [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('eco')          { <svg lucidePencilRuler       [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('work-orders')  { <svg lucideBlocks            [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('inventory')    { <svg lucideArchive           [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('receiving')    { <svg lucideClipboardCheck    [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('udf')          { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                            }
+                          </span>
+                          <span class="shell__nav-label">{{ child.label }}</span>
+                        </a>
+                      }
                     }
                   </div>
                 }
@@ -250,18 +278,29 @@ interface NavItem {
                 @if (!collapsed && isGroupExpanded(item.label)) {
                   <div class="shell__nav-children">
                     @for (child of item.children; track child.label) {
-                      <a class="shell__nav-item shell__nav-item--child"
-                         [routerLink]="child.path"
-                         routerLinkActive="shell__nav-item--active"
-                         [routerLinkActiveOptions]="{ exact: false }"
-                         [title]="child.label">
-                        <span class="shell__nav-icon">
-                          @switch (child.iconKey) {
-                            @case ('udf') { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
-                          }
+                      @if (child.disabled) {
+                        <span class="shell__nav-item shell__nav-item--child shell__nav-item--disabled" [title]="child.label">
+                          <span class="shell__nav-icon">
+                            @switch (child.iconKey) {
+                              @case ('udf') { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                            }
+                          </span>
+                          <span class="shell__nav-label">{{ child.label }}</span>
                         </span>
-                        <span class="shell__nav-label">{{ child.label }}</span>
-                      </a>
+                      } @else {
+                        <a class="shell__nav-item shell__nav-item--child"
+                           [routerLink]="child.path"
+                           routerLinkActive="shell__nav-item--active"
+                           [routerLinkActiveOptions]="{ exact: false }"
+                           [title]="child.label">
+                          <span class="shell__nav-icon">
+                            @switch (child.iconKey) {
+                              @case ('udf') { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                            }
+                          </span>
+                          <span class="shell__nav-label">{{ child.label }}</span>
+                        </a>
+                      }
                     }
                   </div>
                 }
@@ -307,7 +346,7 @@ export class AppShellComponent implements OnInit {
   notificationCount = 0;
 
   readonly navItems: NavItem[] = [
-    { label: 'Dashboard',   iconKey: 'dashboard',   path: '/dashboard' },
+    { label: 'Dashboard', iconKey: 'dashboard', path: '/dashboard' },
     {
       label:    'Engineering',
       iconKey:  'engineering',
@@ -317,7 +356,14 @@ export class AppShellComponent implements OnInit {
         { label: 'ECO', iconKey: 'eco', path: '/ecos' },
       ],
     },
-    { label: 'Work Orders', iconKey: 'work-orders', path: '/work-orders', disabled: true },
+    {
+      label:    'Production',
+      iconKey:  'production',
+      path:     '',
+      children: [
+        { label: 'Work Orders', iconKey: 'work-orders', path: '/work-orders', disabled: true },
+      ],
+    },
     {
       label:    'Master Data',
       iconKey:  'master-data',
@@ -326,9 +372,18 @@ export class AppShellComponent implements OnInit {
         { label: 'Item Master', iconKey: 'item-master', path: '/item-master' },
       ],
     },
+    {
+      label:    'Materials',
+      iconKey:  'materials',
+      path:     '',
+      children: [
+        { label: 'Inventory',            iconKey: 'inventory', path: '/inventory',  disabled: true },
+        { label: 'Receiving Inspection', iconKey: 'receiving', path: '/receiving',  disabled: true },
+      ],
+    },
   ];
 
-  expandedGroups = new Set<string>(['Engineering', 'Master Data', 'Settings']);
+  expandedGroups = new Set<string>(['Engineering', 'Production', 'Master Data', 'Materials', 'Settings']);
 
   isGroupExpanded(label: string): boolean {
     return this.expandedGroups.has(label);
