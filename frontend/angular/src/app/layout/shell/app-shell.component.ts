@@ -19,6 +19,7 @@ import {
   LucideLayoutGrid,
   LucideBell,
   LucideLogOut,
+  LucideDatabase,
   LucideSlidersHorizontal,
   LucideChevronDown,
   LucideHammer,
@@ -29,7 +30,7 @@ import { BreadcrumbComponent, BreadcrumbService } from '../../shared/ui';
 
 const NAV_COLLAPSED_KEY = 'aurora-mes-nav-collapsed';
 
-type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'udf' | 'engineering';
+type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering';
 
 interface ChildNavItem {
   label: string;
@@ -55,7 +56,7 @@ interface NavItem {
     LucidePencilRuler, LucideBlocks, LucideSettings, LucideLifeBuoy,
     LucidePanelLeftOpen, LucidePanelLeftClose,
     LucideUserCog, LucideList, LucideLayoutGrid, LucideBell, LucideLogOut,
-    LucideSlidersHorizontal, LucideChevronDown, LucideHammer,
+    LucideDatabase, LucideSlidersHorizontal, LucideChevronDown, LucideHammer,
     ThemeToggleComponent,
   ],
   template: `
@@ -145,7 +146,8 @@ interface NavItem {
                         (click)="toggleGroup(item.label)">
                   <span class="shell__nav-icon">
                     @switch (item.iconKey) {
-                      @case ('engineering') { <svg lucideHammer [size]="18" [strokeWidth]="2"></svg> }
+                      @case ('engineering') { <svg lucideHammer   [size]="18" [strokeWidth]="2"></svg> }
+                      @case ('master-data') { <svg lucideDatabase [size]="18" [strokeWidth]="2"></svg> }
                     }
                   </span>
                   @if (!collapsed) {
@@ -316,10 +318,17 @@ export class AppShellComponent implements OnInit {
       ],
     },
     { label: 'Work Orders', iconKey: 'work-orders', path: '/work-orders', disabled: true },
-    { label: 'Item Master', iconKey: 'item-master', path: '/item-master' },
+    {
+      label:    'Master Data',
+      iconKey:  'master-data',
+      path:     '',
+      children: [
+        { label: 'Item Master', iconKey: 'item-master', path: '/item-master' },
+      ],
+    },
   ];
 
-  expandedGroups = new Set<string>(['Engineering', 'Settings']);
+  expandedGroups = new Set<string>(['Engineering', 'Master Data', 'Settings']);
 
   isGroupExpanded(label: string): boolean {
     return this.expandedGroups.has(label);
