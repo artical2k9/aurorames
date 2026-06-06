@@ -19,7 +19,6 @@ import {
   LucideLayoutGrid,
   LucideBell,
   LucideLogOut,
-  LucideDatabase,
   LucideSlidersHorizontal,
   LucideChevronDown,
   LucideHammer,
@@ -30,7 +29,7 @@ import { BreadcrumbComponent, BreadcrumbService } from '../../shared/ui';
 
 const NAV_COLLAPSED_KEY = 'aurora-mes-nav-collapsed';
 
-type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering';
+type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'udf' | 'engineering';
 
 interface ChildNavItem {
   label: string;
@@ -56,7 +55,7 @@ interface NavItem {
     LucidePencilRuler, LucideBlocks, LucideSettings, LucideLifeBuoy,
     LucidePanelLeftOpen, LucidePanelLeftClose,
     LucideUserCog, LucideList, LucideLayoutGrid, LucideBell, LucideLogOut,
-    LucideDatabase, LucideSlidersHorizontal, LucideChevronDown, LucideHammer,
+    LucideSlidersHorizontal, LucideChevronDown, LucideHammer,
     ThemeToggleComponent,
   ],
   template: `
@@ -146,8 +145,7 @@ interface NavItem {
                         (click)="toggleGroup(item.label)">
                   <span class="shell__nav-icon">
                     @switch (item.iconKey) {
-                      @case ('engineering') { <svg lucideHammer   [size]="18" [strokeWidth]="2"></svg> }
-                      @case ('master-data') { <svg lucideDatabase [size]="18" [strokeWidth]="2"></svg> }
+                      @case ('engineering') { <svg lucideHammer [size]="18" [strokeWidth]="2"></svg> }
                     }
                   </span>
                   @if (!collapsed) {
@@ -228,22 +226,58 @@ interface NavItem {
 
         <nav class="shell__nav shell__nav--bottom" aria-label="Settings and help">
           @for (item of navItemsBottom; track item.label) {
-            <span class="shell__nav-item shell__nav-item--disabled" [title]="item.label">
-              <span class="shell__nav-icon">
-                @switch (item.iconKey) {
-                  @case ('dashboard')   { <svg lucideLayoutDashboard [size]="18" [strokeWidth]="2"></svg> }
-                  @case ('item-master') { <svg lucidePackage         [size]="18" [strokeWidth]="2"></svg> }
-                  @case ('bom')         { <svg lucideListTree        [size]="18" [strokeWidth]="2"></svg> }
-                  @case ('eco')         { <svg lucidePencilRuler     [size]="18" [strokeWidth]="2"></svg> }
-                  @case ('work-orders') { <svg lucideBlocks          [size]="18" [strokeWidth]="2"></svg> }
-                  @case ('settings')    { <svg lucideSettings        [size]="18" [strokeWidth]="2"></svg> }
-                  @case ('help')        { <svg lucideLifeBuoy        [size]="18" [strokeWidth]="2"></svg> }
+            @if (item.children) {
+              <!-- ── Settings group (expandable) ── -->
+              <div class="shell__nav-group">
+                <button class="shell__nav-item shell__nav-group-hdr"
+                        [class.shell__nav-group-hdr--open]="isGroupExpanded(item.label)"
+                        [title]="item.label"
+                        (click)="toggleGroup(item.label)">
+                  <span class="shell__nav-icon">
+                    @switch (item.iconKey) {
+                      @case ('settings') { <svg lucideSettings [size]="18" [strokeWidth]="2"></svg> }
+                    }
+                  </span>
+                  @if (!collapsed) {
+                    <span class="shell__nav-label">{{ item.label }}</span>
+                    <svg lucideChevronDown [size]="14" [strokeWidth]="2"
+                         class="shell__nav-chevron"
+                         [class.shell__nav-chevron--open]="isGroupExpanded(item.label)"></svg>
+                  }
+                </button>
+                @if (!collapsed && isGroupExpanded(item.label)) {
+                  <div class="shell__nav-children">
+                    @for (child of item.children; track child.label) {
+                      <a class="shell__nav-item shell__nav-item--child"
+                         [routerLink]="child.path"
+                         routerLinkActive="shell__nav-item--active"
+                         [routerLinkActiveOptions]="{ exact: false }"
+                         [title]="child.label">
+                        <span class="shell__nav-icon">
+                          @switch (child.iconKey) {
+                            @case ('udf') { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                          }
+                        </span>
+                        <span class="shell__nav-label">{{ child.label }}</span>
+                      </a>
+                    }
+                  </div>
+                }
+              </div>
+            } @else {
+              <!-- ── Flat disabled bottom item ── -->
+              <span class="shell__nav-item shell__nav-item--disabled" [title]="item.label">
+                <span class="shell__nav-icon">
+                  @switch (item.iconKey) {
+                    @case ('settings') { <svg lucideSettings [size]="18" [strokeWidth]="2"></svg> }
+                    @case ('help')     { <svg lucideLifeBuoy [size]="18" [strokeWidth]="2"></svg> }
+                  }
+                </span>
+                @if (!collapsed) {
+                  <span class="shell__nav-label">{{ item.label }}</span>
                 }
               </span>
-              @if (!collapsed) {
-                <span class="shell__nav-label">{{ item.label }}</span>
-              }
-            </span>
+            }
           }
         </nav>
       </aside>
@@ -282,18 +316,10 @@ export class AppShellComponent implements OnInit {
       ],
     },
     { label: 'Work Orders', iconKey: 'work-orders', path: '/work-orders', disabled: true },
-    {
-      label:    'Master Data',
-      iconKey:  'master-data',
-      path:     '',
-      children: [
-        { label: 'Item Master',         iconKey: 'item-master', path: '/item-master' },
-        { label: 'User-Defined Fields', iconKey: 'udf',         path: '/master-data/udf' },
-      ],
-    },
+    { label: 'Item Master', iconKey: 'item-master', path: '/item-master' },
   ];
 
-  expandedGroups = new Set<string>(['Engineering', 'Master Data']);
+  expandedGroups = new Set<string>(['Engineering', 'Settings']);
 
   isGroupExpanded(label: string): boolean {
     return this.expandedGroups.has(label);
@@ -309,7 +335,14 @@ export class AppShellComponent implements OnInit {
   }
 
   readonly navItemsBottom: NavItem[] = [
-    { label: 'Settings', iconKey: 'settings', path: '/settings' },
+    {
+      label:    'Settings',
+      iconKey:  'settings',
+      path:     '',
+      children: [
+        { label: 'User-Defined Fields', iconKey: 'udf', path: '/master-data/udf' },
+      ],
+    },
   ];
 
   ngOnInit(): void {
