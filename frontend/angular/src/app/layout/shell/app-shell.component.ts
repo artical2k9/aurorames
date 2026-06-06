@@ -107,10 +107,13 @@ interface NavItem {
           <div class="shell__user-name">{{ userName }}</div>
           <div class="shell__user-email">{{ userEmail }}</div>
           <hr class="shell__user-divider" />
-          <button class="shell__user-menu-item" (click)="avatarMenu.hide()">
+          <a class="shell__user-menu-item"
+             href="https://artical.atlassian.net/wiki/spaces/AMES/overview"
+             target="_blank" rel="noopener noreferrer"
+             (click)="avatarMenu.hide()">
             <svg lucideLifeBuoy [size]="15" [strokeWidth]="1.75"></svg>
             Help
-          </button>
+          </a>
           <hr class="shell__user-divider" />
           <button class="shell__user-logout" (click)="logout(); avatarMenu.hide()">
             <svg lucideLogOut [size]="15" [strokeWidth]="1.75"></svg>
