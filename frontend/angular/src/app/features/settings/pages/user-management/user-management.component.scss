@@ -1,0 +1,169 @@
+.um {
+  padding: 1.5rem;
+  max-width: 1100px;
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+.um__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.um__title {
+  margin: 0 0 0.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--p-text-color);
+}
+
+.um__subtitle {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--p-text-muted-color);
+}
+
+// ── Status chip ───────────────────────────────────────────────────────────────
+.um__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+
+  &--active::before  { background: #22C55E; }
+  &--disabled::before { background: #94A3B8; }
+  &--active  { color: #16A34A; }
+  &--disabled { color: #94A3B8; }
+}
+
+// ── Role tags ─────────────────────────────────────────────────────────────────
+.um__role-tag {
+  margin: 0 0.25rem 0.25rem 0;
+  font-size: 0.6875rem !important;
+}
+
+// ── Row actions ───────────────────────────────────────────────────────────────
+.um__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.um__action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--p-text-muted-color);
+  transition: background 120ms ease, color 120ms ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--aurora-brand-primary) 10%, transparent);
+    color: var(--aurora-brand-primary);
+  }
+
+  &--danger:hover {
+    background: color-mix(in srgb, #EF4444 10%, transparent);
+    color: #EF4444;
+  }
+}
+
+// ── Inline deactivate confirm ─────────────────────────────────────────────────
+.um__confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--p-text-color);
+  white-space: nowrap;
+}
+
+.um__confirm-btn {
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--aurora-border-subtle);
+  background: transparent;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 120ms ease;
+
+  &--yes {
+    color: #EF4444;
+    border-color: #EF4444;
+    &:hover { background: color-mix(in srgb, #EF4444 8%, transparent); }
+  }
+
+  &--no {
+    color: var(--p-text-muted-color);
+    &:hover { background: var(--aurora-bg-surface, var(--p-surface-100)); }
+  }
+}
+
+// ── Dialog form ───────────────────────────────────────────────────────────────
+.um__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.um__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+
+  label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--p-text-color);
+  }
+
+  input { width: 100%; }
+}
+
+.um__field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.um__readonly-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  background: var(--aurora-bg-surface, var(--p-surface-50));
+  border: 1px solid var(--aurora-border-subtle);
+  font-size: 0.875rem;
+  color: var(--p-text-color);
+}
+
+.um__readonly-email {
+  font-size: 0.8125rem;
+  color: var(--p-text-muted-color);
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+.um__empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--p-text-muted-color);
+  font-size: 0.875rem;
+}

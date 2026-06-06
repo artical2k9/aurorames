@@ -27,6 +27,7 @@ import {
   LucideBoxes,
   LucideArchive,
   LucideClipboardCheck,
+  LucideUsers,
 } from '@lucide/angular';
 import { ThemeToggleComponent } from '../../shared/theme';
 import { ThemeService } from '../../shared/theme';
@@ -34,7 +35,7 @@ import { BreadcrumbComponent, BreadcrumbService } from '../../shared/ui';
 
 const NAV_COLLAPSED_KEY = 'aurora-mes-nav-collapsed';
 
-type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering' | 'production' | 'materials' | 'inventory' | 'receiving';
+type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering' | 'production' | 'materials' | 'inventory' | 'receiving' | 'users';
 
 interface ChildNavItem {
   label: string;
@@ -62,7 +63,7 @@ interface NavItem {
     LucidePanelLeftOpen, LucidePanelLeftClose,
     LucideUserCog, LucideList, LucideLayoutGrid, LucideBell, LucideLogOut,
     LucideDatabase, LucideSlidersHorizontal, LucideChevronDown, LucideHammer,
-    LucideFactory, LucideBoxes, LucideArchive, LucideClipboardCheck,
+    LucideFactory, LucideBoxes, LucideArchive, LucideClipboardCheck, LucideUsers,
     ThemeToggleComponent,
   ],
   template: `
@@ -282,7 +283,8 @@ interface NavItem {
                         <span class="shell__nav-item shell__nav-item--child shell__nav-item--disabled" [title]="child.label">
                           <span class="shell__nav-icon">
                             @switch (child.iconKey) {
-                              @case ('udf') { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('users') { <svg lucideUsers              [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('udf')   { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
                             }
                           </span>
                           <span class="shell__nav-label">{{ child.label }}</span>
@@ -295,7 +297,8 @@ interface NavItem {
                            [title]="child.label">
                           <span class="shell__nav-icon">
                             @switch (child.iconKey) {
-                              @case ('udf') { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('users') { <svg lucideUsers              [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('udf')   { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
                             }
                           </span>
                           <span class="shell__nav-label">{{ child.label }}</span>
@@ -404,6 +407,7 @@ export class AppShellComponent implements OnInit {
       iconKey:  'settings',
       path:     '',
       children: [
+        { label: 'User Management',   iconKey: 'users', path: '/settings/users' },
         { label: 'User-Defined Fields', iconKey: 'udf', path: '/master-data/udf' },
       ],
     },
