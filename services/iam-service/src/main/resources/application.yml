@@ -59,6 +59,7 @@ keycloak:
 mes:
   security:
     iam-service-url: ${IAM_SERVICE_URL:http://localhost:8085}
+    webhook-token: ${IAM_WEBHOOK_TOKEN:dev-webhook-secret-change-in-production}
     privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL:60}
     privilege-changes-topic: iam.privilege-changes
 
