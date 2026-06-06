@@ -288,7 +288,7 @@ export class BomAuthoringComponent implements OnInit {
   ngOnInit(): void {
     this.bomId = this.route.snapshot.paramMap.get('bomId') ?? '';
     this.breadcrumbSvc.set([
-      { label: 'Materials' },
+      { label: 'Master Data' },
       { label: 'Item Master', route: ['/item-master'] },
       { label: 'BOMs' },
       { label: 'Authoring' },
@@ -316,7 +316,7 @@ export class BomAuthoringComponent implements OnInit {
         this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.bomRevision, value: r.id }));
         this.loading = false;
         this.breadcrumbSvc.set([
-          { label: 'Materials' },
+          { label: 'Master Data' },
           { label: 'Item Master', route: ['/item-master'] },
           { label: item.partNumber, route: ['/item-master', bom.parentItemId, 'boms'] },
           { label: 'Rev ' + bom.bomRevision },
