@@ -1,5 +1,5 @@
 import {
-  AfterViewInit, Component, DestroyRef, inject, OnInit, ViewChild,
+  AfterViewInit, ChangeDetectorRef, Component, DestroyRef, inject, OnInit, ViewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AsyncPipe, CommonModule } from '@angular/common';
@@ -237,6 +237,7 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
   private readonly router         = inject(Router);
   private readonly messageService = inject(MessageService);
   private readonly destroyRef     = inject(DestroyRef);
+  private readonly cdr            = inject(ChangeDetectorRef);
   readonly gridPreference         = inject(GridPreferenceService);
   private readonly breadcrumbSvc  = inject(BreadcrumbService);
 
@@ -448,9 +449,11 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
         this.rows = page.content;
         this.totalRecords = page.totalElements;
         this.loading = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.loading = false;
+        this.cdr.detectChanges();
       },
     });
   }
