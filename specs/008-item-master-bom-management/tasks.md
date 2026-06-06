@@ -522,6 +522,7 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 - [~] T205 Apply same `[lazyLoadOnInit]="false"` fix to all remaining lazy tables: `ItemMasterListComponent` and `EcoListComponent`; remove `cdr.detectChanges()` anti-pattern from both (Zone.js handles CD; calling `detectChanges` inside an HTTP callback can cause nested CD); add `ngAfterViewInit → setTimeout` initial load to both; add missing `takeUntilDestroyed` to `EcoListComponent` subscriptions; remove `fetchRows()` call from `EcoListComponent.ngOnInit` (was double-loading alongside PrimeNG's auto-emit)
 - [X] T210 Add Keycloak `sub` protocol mapper to `mes-frontend` client — Keycloak 25 stopped auto-including `sub` in access tokens; added `oidc-usermodel-property-mapper` (user.attribute=id, claim.name=sub) live via admin API and persisted to `keycloak/mes-realm.json`; root cause of 409 on ECO create (`initiated_by NOT NULL` received null from `jwt.getSubject()`) (ERR-MES-060)
 - [X] T211 Promote ERR-MES-059 (NG0100 subscribe pattern) and add Angular Change Detection Rules to `CLAUDE.md`; add sub-claim defect to error log as ERR-MES-060 precursor; document `cdr.detectChanges()` as mandatory in all subscribe callbacks
+- [X] T212 Fix Settings nav item always-visible — add `min-height: 0; overflow-y: auto` to `.shell__nav` and `flex-shrink: 0` to `.shell__nav--bottom` in `app-shell.component.scss` so the main nav scrolls internally and the Settings bottom nav is never pushed off-screen by tall content
 
 ---
 
