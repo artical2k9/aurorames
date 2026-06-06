@@ -145,7 +145,10 @@ export class BomBrowserComponent implements AfterViewInit {
   private readonly cdr        = inject(ChangeDetectorRef);
 
   constructor() {
-    inject(BreadcrumbService).set([{ label: 'BOMs' }]);
+    inject(BreadcrumbService).set([
+      { label: 'Engineering' },
+      { label: 'BOMs' },
+    ]);
   }
 
   items: ItemMasterDto[] = [];
