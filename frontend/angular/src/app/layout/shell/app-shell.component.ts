@@ -274,7 +274,7 @@ export class AppShellComponent implements OnInit {
       iconKey:  'engineering',
       path:     '',
       children: [
-        { label: 'BOM', iconKey: 'bom', path: '/item-master' },
+        { label: 'BOM', iconKey: 'bom', path: '/bom' },
         { label: 'ECO', iconKey: 'eco', path: '/ecos' },
       ],
     },
