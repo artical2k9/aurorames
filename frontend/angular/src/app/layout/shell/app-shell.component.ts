@@ -409,6 +409,7 @@ export class AppShellComponent implements OnInit {
       children: [
         { label: 'User Management',   iconKey: 'users', path: '/settings/users' },
         { label: 'User-Defined Fields', iconKey: 'udf', path: '/master-data/udf' },
+        { label: 'Units of Measure',  iconKey: 'uom',  path: '/settings/uom' },
       ],
     },
   ];
