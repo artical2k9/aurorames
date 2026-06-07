@@ -56,13 +56,13 @@ public class KeycloakTokenClient {
             restTemplate.postForEntity(tokenEndpoint, new HttpEntity<>(form, headers), String.class);
             // HTTP 200 → credentials valid but password is permanent — no change required
             throw new InvalidCredentialsException();
-        } catch (HttpClientErrorException.Unauthorized e) {
+        } catch (HttpClientErrorException e) {
+            // KC returns 400 (RFC 6749 compliant) or 401 for invalid_grant.
+            // Distinguish by body, not by status code.
             String body = e.getResponseBodyAsString();
             if (body != null && body.contains("Account is not fully set up")) {
                 return true;
             }
-            throw new InvalidCredentialsException();
-        } catch (HttpClientErrorException e) {
             throw new InvalidCredentialsException();
         }
     }
