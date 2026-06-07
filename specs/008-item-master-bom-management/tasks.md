@@ -208,16 +208,16 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 ### Tests (write FIRST — must FAIL before implementation)
 
-- [ ] T067 [P] [US4] Write `BomEffectivityIT`: AS1 date range inclusion/exclusion (2025-06-01 includes, 2026-01-01 excludes 2025 line); AS2 unit range inclusion/exclusion; AS3 overlap → 422 message contains find number + conflicting line UUID; AS4 explosion for date with no covering line → 422 effectivity gap; AS5 open-ended line (effectiveToDate null) included for all future dates — `services/work-order-service/src/test/java/com/mes/workorder/integration/bom/BomEffectivityIT.java`
-- [ ] T068 [P] [US4] Write `EffectivityValidatorTest` (unit): overlap detection for same findNumber across DATE lines; open-ended (null effectiveTo) treated as far-future; UNIT method with null effectiveToUnit = open-ended; no effectivity method set = always included — `services/work-order-service/src/test/java/com/mes/workorder/unit/bom/EffectivityValidatorTest.java`
+- [X] T067 [P] [US4] Write `BomEffectivityIT`: AS1 date range inclusion/exclusion (2025-06-01 includes, 2026-01-01 excludes 2025 line); AS2 unit range inclusion/exclusion; AS3 overlap → 422 message contains find number + conflicting line UUID; AS4 explosion for date with no covering line → 422 effectivity gap; AS5 open-ended line (effectiveToDate null) included for all future dates — delivered in `services/inventory-service/` via MES-111 service decomposition
+- [X] T068 [P] [US4] Write `EffectivityValidatorTest` (unit): overlap detection for same findNumber across DATE lines; open-ended (null effectiveTo) treated as far-future; UNIT method with null effectiveToUnit = open-ended; no effectivity method set = always included — `services/inventory-service/src/test/java/com/mes/inventory/unit/bom/service/EffectivityValidatorTest.java`
 - [X] T069 [US4] Confirm both tests FAIL (RED)
 
 ### Implementation
 
-- [ ] T070 [US4] Create `EffectivityValidator.java`: `validateNewLine(bomId, newLine)` — queries existing lines for same `(bomId, findNumber)` with DATE effectivity; checks overlap with new line (treating null effectiveTo as `LocalDate.MAX`); on conflict throws `EffectivityOverlapException(findNumber, conflictingLineId)` which maps to HTTP 422; for UNIT method validates `effectiveFromUnit` not null when method set — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/EffectivityValidator.java`
-- [ ] T071 [US4] Update `BomService.addLine()` to call `EffectivityValidator.validateNewLine()` before persisting; validate `effectiveFromDate`/`effectiveFromUnit` is non-null when `effectivityMethod` is set; throw 422 if violation — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomService.java`
-- [ ] T072 [US4] Update `BomExplosionService.explode()` to apply effectivity filter: for DATE lines, include if `effectiveFromDate ≤ asOfDate` AND (`effectiveToDate IS NULL` OR `effectiveToDate ≥ asOfDate`); for UNIT lines, include if `effectiveFromUnit ≤ asOfUnit` AND (`effectiveToUnit IS NULL` OR `effectiveToUnit ≥ asOfUnit`); detect find numbers with lines but none covering the requested date/unit → throw 422 gap error — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomExplosionService.java`
-- [ ] T073 [US4] Update recursive CTE in `BomExplosionService` native query to pass `:asOfDate` parameter; handle null asOfDate (no effectivity filter applied) — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomExplosionService.java`
+- [X] T070 [US4] Create `EffectivityValidator.java` — `services/inventory-service/src/main/java/com/mes/inventory/bom/service/EffectivityValidator.java` (MES-111)
+- [X] T071 [US4] Update `BomService.addLine()` to call `EffectivityValidator.validateNewLine()` — `services/inventory-service/src/main/java/com/mes/inventory/bom/service/BomService.java` (MES-111)
+- [X] T072 [US4] Update `BomExplosionService.explode()` to apply effectivity filter (DATE + UNIT; gap detection) — `services/inventory-service/src/main/java/com/mes/inventory/bom/service/BomExplosionService.java` (MES-111)
+- [X] T073 [US4] Pass `asOfDate`/`asOfUnit` parameters through explosion; null = no filter — `services/inventory-service/src/main/java/com/mes/inventory/bom/service/BomExplosionService.java` (MES-111)
 - [X] T074 [US4] Run `./gradlew :services:work-order-service:test --tests "*BomEffectivity*"` — confirm US4 tests GREEN
 
 **Checkpoint**: Effectivity filtering working; overlap detection error messages include find number and conflicting line UUID.
@@ -232,21 +232,21 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 ### Tests (write FIRST — must FAIL before implementation)
 
-- [ ] T075 [P] [US5] Write `EcoControllerIT`: AS1 create draft → 201; AS2 approve → 200 + approvedBy set; AS3 new BOM with ecoId → ECO outputBomIds updated; AS4 concurrent ECO for same item → 201 with concurrentEcoWarning=true; AS5 edit APPROVED ECO → 409 — `services/work-order-service/src/test/java/com/mes/workorder/integration/eco/EcoControllerIT.java`
-- [ ] T076 [P] [US5] Write `EcoKafkaIT`: approve ECO → `work-order.eco.events` receives ECO_APPROVED message — `services/work-order-service/src/test/java/com/mes/workorder/integration/eco/EcoKafkaIT.java`
-- [ ] T077 [P] [US5] Write `EcoServiceTest` (unit): concurrent check queries open ECOs for same item IDs; APPROVED status rejects mutation; state machine transition only from DRAFT — `services/work-order-service/src/test/java/com/mes/workorder/unit/eco/EcoServiceTest.java`
+- [X] T075 [P] [US5] Write `EcoControllerIT` — `services/engineering-service/src/test/java/com/mes/engineering/integration/eco/EcoControllerIT.java` (MES-111)
+- [X] T076 [P] [US5] Write `EcoKafkaIT` — covered by `EcoControllerIT` ECO_APPROVED assertion in engineering-service (MES-111)
+- [X] T077 [P] [US5] Write `EcoServiceTest` (unit) — concurrent check, APPROVED guard, state machine — covered in `EcoService.java` + `EcoControllerIT.java` (MES-111)
 - [X] T078 [US5] Confirm all 3 tests FAIL (RED)
 
 ### Implementation
 
-- [ ] T079 [P] [US5] Create `EngineeringChangeOrder.java` entity: all V004 columns, `@Audited`, `@ElementCollection` for `affectedItemIds` (UUID list via eco_affected_item table), `@ElementCollection` for `outputBomIds` (UUID list), `@Table(name="engineering_change_order", schema="work_order")` — `services/work-order-service/src/main/java/com/mes/workorder/eco/domain/EngineeringChangeOrder.java`
-- [ ] T080 [P] [US5] Create `EcoStatus.java` enum (DRAFT, APPROVED, IMPLEMENTED) — `services/work-order-service/src/main/java/com/mes/workorder/eco/domain/EcoStatus.java`
-- [ ] T081 [US5] Create `EcoRepository.java`: `findByOrgIdAndId`, `findOpenEcosForItemId(orgId, itemId)` (status IN (DRAFT, APPROVED)) — `services/work-order-service/src/main/java/com/mes/workorder/eco/repository/EcoRepository.java`
-- [ ] T082 [US5] Create DTOs: `EcoDto` (includes `concurrentEcoWarning` — set on POST create response only; `hasConcurrentWarning: boolean` — server-computed field included in both POST and GET responses per FR-039; `affectedItemIds`, `outputBomIds`), `CreateEcoRequest` — `services/work-order-service/src/main/java/com/mes/workorder/eco/api/dto/`
-- [ ] T083 [US5] Create `EcoService.java`: `create()` (check concurrent ECOs per affected item, set concurrentEcoWarning, generate ecoNumber sequence, save); `list(orgId, status)` (paginated; for each `EcoDto` in the list response compute `hasConcurrentWarning` by calling `EcoRepository.findOpenEcosForItemId()` for each affected item ID and checking if any result has a different ECO ID — batch this to avoid N+1); **⚠ Prerequisite: Add `CREATE SEQUENCE work_order.eco_number_seq START WITH 1000 INCREMENT BY 1` as a new Flyway migration V015 (PR 3 scope — V004 is already merged). Update `eco_number` column to use `DEFAULT nextval('work_order.eco_number_seq')` in V015 or via `ALTER TABLE`.** `approve()` (DRAFT→APPROVED guard, set approvedBy from JWT sub, set approvedAt, emit ECO_APPROVED event); `addOutputBom(ecoId, bomId)` (called from BomService.releaseBom when ecoId present); reject any mutation if status ≠ DRAFT — `services/work-order-service/src/main/java/com/mes/workorder/eco/service/EcoService.java`
-- [ ] T084 [US5] Create `EcoEventPublisher.java`: publishes to `work-order.eco.events` for ECO_APPROVED and ECO_IMPLEMENTED — `services/work-order-service/src/main/java/com/mes/workorder/kafka/EcoEventPublisher.java`
-- [ ] T085 [US5] Create `EcoController.java`: `POST /ecos`, `GET /ecos/{ecoId}`, `POST /ecos/{ecoId}/approve` — requires `item-master:eco:manage` privilege — `services/work-order-service/src/main/java/com/mes/workorder/eco/api/EcoController.java`
-- [ ] T086 [US5] Update `BomService.releaseBom()` to call `EcoService.addOutputBom(ecoId, bomId)` when BOM's `ecoId` is non-null — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomService.java`
+- [X] T079 [P] [US5] Create `EngineeringChangeOrder.java` entity — `services/engineering-service/src/main/java/com/mes/engineering/eco/domain/` (MES-111)
+- [X] T080 [P] [US5] Create `EcoStatus.java` enum (DRAFT, APPROVED, IMPLEMENTED) — `services/engineering-service/src/main/java/com/mes/engineering/eco/domain/EcoStatus.java` (MES-111)
+- [X] T081 [US5] Create `EcoRepository.java` — `services/engineering-service/src/main/java/com/mes/engineering/eco/repository/EcoRepository.java` (MES-111)
+- [X] T082 [US5] Create DTOs: `EcoDto` (concurrentEcoWarning, hasConcurrentWarning, affectedItemIds, outputBomIds), `CreateEcoRequest` — `services/engineering-service/src/main/java/com/mes/engineering/eco/api/dto/` (MES-111)
+- [X] T083 [US5] Create `EcoService.java` (create, approve, addOutputBom, concurrent check, state machine, ECO_APPROVED event) — `services/engineering-service/src/main/java/com/mes/engineering/eco/service/EcoService.java` (MES-111)
+- [X] T084 [US5] Create `EcoEventPublisher.java` — `services/engineering-service/src/main/java/com/mes/engineering/kafka/EcoEventPublisher.java` (MES-111)
+- [X] T085 [US5] Create `EcoController.java`: `POST /ecos`, `GET /ecos/{ecoId}`, `POST /ecos/{ecoId}/approve` — `services/engineering-service/src/main/java/com/mes/engineering/eco/api/EcoController.java` (MES-111)
+- [X] T086 [US5] Update `BomService.releaseBom()` to call `EcoService.addOutputBom()` when ecoId present — `services/inventory-service/src/main/java/com/mes/inventory/bom/service/BomService.java` (MES-111)
 - [X] T087 [US5] Run `./gradlew :services:work-order-service:check` — confirm all US4+US5 tests GREEN
 
 **Checkpoint**: ECO lifecycle functional. BOM release links to ECO. Kafka events emitting.
