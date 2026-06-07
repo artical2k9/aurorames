@@ -2,7 +2,7 @@ import { Injectable, NgZone, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
 import {
-  Observable, catchError, finalize, from, map, shareReplay, throwError,
+  EMPTY, Observable, catchError, finalize, firstValueFrom, from, map, shareReplay, tap, throwError,
 } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -44,20 +44,32 @@ export class AuthSessionService {
    * Called by APP_INITIALIZER on every page load.
    * If a valid session exists in localStorage, restarts the refresh cycle so a
    * page refresh does not force the user to re-authenticate.
+   *
+   * Returns a Promise so the APP_INITIALIZER can await it — this guarantees the
+   * access token is valid before Angular activates any routes and components fire
+   * their first API calls.
    */
-  restoreSession(): void {
+  async restoreSession(): Promise<void> {
     if (!this.isSessionValid()) {
       return;
     }
     if (!this.oauth.hasValidAccessToken() && this.oauth.getRefreshToken()) {
-      // Access token expired during the page-reload gap — refresh immediately.
-      this.refreshOnce().subscribe({
-        next:  () => this.scheduleRefresh(),
-        error: () => this.endSession(),
-      });
-    } else {
-      this.scheduleRefresh();
+      // Access token expired during the page-reload gap — refresh immediately and
+      // block until the new token is stored so the first component API calls go
+      // out with a valid Bearer header instead of triggering a 401→refresh cycle.
+      await firstValueFrom(
+        this.refreshOnce().pipe(
+          tap(() => this.scheduleRefresh()),
+          catchError(() => {
+            this.endSession();
+            return EMPTY;
+          }),
+        ),
+        { defaultValue: undefined },
+      );
+      return;
     }
+    this.scheduleRefresh();
   }
 
   /**
@@ -93,7 +105,8 @@ export class AuthSessionService {
       localStorage.setItem(REFRESH_LOCK_KEY, String(Date.now()));
 
       this.refreshOnce$ = from(this.oauth.refreshToken()).pipe(
-        map((response: Record<string, unknown>) => (response['access_token'] as string) ?? ''),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        map((response: any) => (response['access_token'] as string) ?? ''),
         catchError((err) => throwError(() => err)),
         finalize(() => { this.refreshOnce$ = null; }),
         shareReplay(1),

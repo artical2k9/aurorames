@@ -68,7 +68,10 @@ function initializeOAuth(oauthService: OAuthService, authSession: AuthSessionSer
     await oauthService.loadDiscoveryDocument().catch(() => false);
     // Restore an existing session from localStorage so page refreshes do not
     // force re-authentication while the session is still within its timeout window.
-    authSession.restoreSession();
+    // Awaited so the token is valid before Angular activates routes — prevents
+    // components from firing API calls with an expired token and triggering a
+    // redundant 401→refresh cycle on every page reload.
+    await authSession.restoreSession();
   };
 }
 
