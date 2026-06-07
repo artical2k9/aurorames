@@ -8,5 +8,6 @@ public record UserResponse(
         String firstName,
         String lastName,
         boolean enabled,
-        List<String> roles
+        List<String> roles,
+        boolean passwordChangeRequired
 ) {}

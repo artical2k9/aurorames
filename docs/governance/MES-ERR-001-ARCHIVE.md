@@ -508,3 +508,30 @@ assertThat(body).containsKey("ADMIN");
 **Root cause:** No `spring.kafka.producer.value-serializer` in `application.yml`. Spring Boot defaults to `StringSerializer` which cannot serialize `Map<String, Object>`.
 **Fix applied:** Added `spring.kafka.producer.value-serializer: JsonSerializer` + consumer `spring.json.value.default.type` and `spring.json.use.type.headers: false`.
 **Rule:** Any service using `KafkaTemplate` with non-String values MUST set `spring.kafka.producer.value-serializer: org.springframework.kafka.support.serializer.JsonSerializer` explicitly. The Spring Boot default is `StringSerializer`; there is no startup error, only a runtime `SerializationException`.
+
+---
+
+## ERR-MES-071 — Optional DTO field missing @Size constraint — validation gap vs sibling DTO
+**Date:** 2026-06-07  **Category:** Backend — Validation  **Promoted:** 2026-06-07
+**Symptom:** `CreateUserRequest.initialPassword` had no `@Size(min=8,max=72)` constraint. An admin could set a 1-character initial password via the create-user endpoint, bypassing the 8-character minimum that `SetPasswordRequest` enforces for admin password resets and `ChangeTemporaryPasswordRequest` enforces for self-service.
+**Root cause:** When extending an existing DTO with optional fields that correspond to fields already validated in sibling DTOs (`SetPasswordRequest`, `ChangeTemporaryPasswordRequest`), the constraint was not ported. The field being nullable (`@Nullable`) gave the false impression that no further constraints were needed; Jakarta Bean Validation skips `@Size` on null values automatically, so `@Nullable @Size(min=8,max=72)` is both safe and correct.
+**Fix applied:** Added `@Nullable @Size(min = 8, max = 72)` to `initialPassword` in `CreateUserRequest.java`.
+**Rule:** When adding an optional field to a DTO that represents the same semantic value as a required field in a sibling DTO, port ALL validation constraints from the sibling to the optional field. Bean Validation skips `@Size`/`@Pattern`/etc. on null values, so constraints on nullable fields are safe and only fire when the field is present.
+
+---
+
+## ERR-MES-072 — IT test for public endpoint missing assumeTrue guard despite reaching KC
+**Date:** 2026-06-07  **Category:** Testing — Testcontainers  **Promoted:** 2026-06-07
+**Symptom:** `PublicAuthControllerIT.changeTemporaryPassword_unknownUser_returns400` had no `assumeTrue(KEYCLOAK.isRunning())` guard. The request body is structurally valid (all fields non-blank, newPassword ≥ 8 chars), so it passes Spring `@Valid` and reaches `UserService.changeTemporaryPassword()`, which calls `KeycloakTokenClient` — a live HTTP call to KC. Without Docker, `RestTemplate.postForEntity()` throws an unchecked network exception not caught by `HttpClientErrorException`, causing the test to fail with 500 rather than 400.
+**Root cause:** The test looked like a "validation-only" scenario because its assertion was HTTP 400, but the request passes all Bean Validation constraints. The actual 400 comes from KC returning an error, not from `@Valid` rejection. Tests for public endpoints that send structurally valid payloads must be treated as KC-dependent even when the _expected_ response is an error.
+**Fix applied:** Added `assumeTrue(KEYCLOAK.isRunning(), "Docker not available")` as the first statement in the test method.
+**Rule:** For public endpoints where KC is involved in the error path: if a test sends a structurally valid request body (passes `@Valid`) and expects an error response, the error comes from KC — not from Spring validation. That test is KC-dependent and requires `assumeTrue(KEYCLOAK.isRunning())`.
+
+---
+
+## ERR-MES-073 — Controller duplicating GlobalExceptionHandler catch creates inconsistent response shapes
+**Date:** 2026-06-07  **Category:** Backend — API Design  **Promoted:** 2026-06-07
+**Symptom:** `PublicAuthController.changeTemporaryPassword` caught `InvalidCredentialsException` locally and returned `Map.of("message","...")` (shape: `{"message":"..."}`) while `GlobalExceptionHandler` returns `ErrorResponse("invalid_credentials", ...)` (shape: `{"code":"...","message":"..."}`). The two response shapes differ. If the local catch were ever removed, clients would silently get a different JSON structure.
+**Root cause:** The controller was written to have explicit control over the error body, not realizing that `GlobalExceptionHandler` already mapped `InvalidCredentialsException` → HTTP 400 with a consistent `ErrorResponse`. The result was redundant handling with divergent shapes.
+**Fix applied:** Removed the `try/catch` from `PublicAuthController`. Return type changed from `ResponseEntity<?>` to `ResponseEntity<Void>`. `GlobalExceptionHandler` handles all `InvalidCredentialsException` cases uniformly.
+**Rule:** Never catch exceptions in a controller that are already mapped by `GlobalExceptionHandler`. Add exception mappings exclusively to `GlobalExceptionHandler` so all endpoints share the same response shape. If a controller needs a different response body for a specific exception, override the handler only via `@ExceptionHandler` on that specific controller class — not via inline try/catch.

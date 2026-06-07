@@ -2,6 +2,7 @@ package com.mes.iam.api;
 
 import com.mes.common.security.annotation.RequiresPrivilege;
 import com.mes.iam.api.dto.CreateUserRequest;
+import com.mes.iam.api.dto.SetPasswordRequest;
 import com.mes.iam.api.dto.UpdateUserRolesRequest;
 import com.mes.iam.api.dto.UserResponse;
 import com.mes.iam.service.UserService;
@@ -45,8 +46,19 @@ public class UserController {
                                                     Principal principal) {
         UserResponse user = userService.createUser(
                 request.email(), request.firstName(), request.lastName(),
-                orgId(principal), request.roles());
+                orgId(principal), request.roles(),
+                request.initialPassword(), request.temporaryPassword());
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
+    }
+
+    @PutMapping("/{userId}/password")
+    @RequiresPrivilege("iam:users:create")
+    public ResponseEntity<Void> resetUserPassword(@PathVariable String userId,
+                                                   @Valid @RequestBody SetPasswordRequest request,
+                                                   Principal principal) {
+        userService.resetUserPassword(userId, orgId(principal),
+                request.newPassword(), request.temporary());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{userId}")

@@ -397,9 +397,51 @@ registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
 **Fix applied:** Replaced `toBeTrue()` with `toBe(true)`, `toBeFalse()` with `toBe(false)`, and `spyOn(obj, 'method')` with `vi.spyOn(obj, 'method')` (with `import { vi } from 'vitest'` at the top of the file). Also replaced `HttpClientTestingModule` + `HttpTestingController` approach with synchronous `vi.fn().mockReturnValue(of(...))` service mocks to avoid async HTTP timing issues with `detectChanges()`.
 **Rule:** Before writing Angular specs, check `angular.json` for `"builder": "@angular/build:vitest"` (Vitest) vs `"@angular/build:karma"` (Jasmine/Karma). In a Vitest project: use `toBe(true)` not `toBeTrue()`; use `toBe(false)` not `toBeFalse()`; import `vi` from `'vitest'` and use `vi.spyOn()` not the global `spyOn()`. For components with HTTP calls, prefer `vi.fn().mockReturnValue(of(...))` service mocks over `HttpTestingController` — synchronous `of()` observables avoid NG0100 from async state changes during `detectChanges()`.
 
+## ERR-MES-069 — `@ConditionalOnMissingBean` in `@Import`-ed config crashes IT ApplicationContext
+**Date:** 2026-06-07  **Category:** Testing — Spring Boot Conditional  **Status:** Promoted 2026-06-07
+**Symptom:** 32 IT tests failed with `ApplicationContext failure threshold (1) exceeded`. Root error was `NimbusJwtDecoder.withJwkSetUri("")` — decoder built with the empty string set by the test's `@DynamicPropertySource`.
+**Root cause:** `@ConditionalOnMissingBean(JwtDecoder.class)` was placed on a `@Bean` method in `MESSecurityAutoConfiguration`, which is loaded via `@Import` (not Spring Boot auto-configuration). In `@Import`-ed classes the condition is evaluated before the test's `@TestConfiguration` beans are registered, so the condition evaluated `true` and tried to build a `NimbusJwtDecoder` using the empty `jwk-set-uri` string — crashing the context.
+**Fix applied:** Removed the explicit `JwtDecoder` bean from `MESSecurityAutoConfiguration`. Servlet services get correct dual-property (`jwk-set-uri` + `issuer-uri`) handling from Spring Boot's own `OAuth2ResourceServerAutoConfiguration`, which processes after all user beans and honours `@ConditionalOnMissingBean` reliably.
+**Rule:** Never add `@ConditionalOnMissingBean`-guarded beans to `@Import`-ed `@Configuration` classes. `@ConditionalOnMissingBean` is designed for auto-configuration classes (loaded via `spring.factories` / `AutoConfiguration.imports`) where ordering is guaranteed. In manually `@Import`-ed classes the condition races against test overrides and is unreliable.
+
+## ERR-MES-070 — Private method with branches in controller causes SonarCloud coverage gap
+**Date:** 2026-06-07  **Category:** CI — SonarCloud / Coverage  **Status:** Promoted 2026-06-07
+**Symptom:** SonarCloud quality gate failed at 73.3% new-code coverage (threshold 80%). The gap was a private static `subjectOf(Jwt jwt)` method in `BomController` with 3 branches — only the happy-path branch was exercised by IT tests.
+**Root cause:** Private methods in controllers cannot be tested independently. The IT tests always built tokens with a valid `sub` claim, leaving 2 of 3 branches (null-sub and both-missing fallbacks) uncovered. The same logic already existed as `JwtClaimsExtractor.nullSafeSubject()` in `lib-common-security` with full unit-test coverage.
+**Fix applied:** Replaced the private method with `JwtClaimsExtractor.nullSafeSubject(jwt)` from the UDF extractor (consistent static API), which delegates to the already-covered shared helper.
+**Rule:** Before writing a private helper method with branching logic in a controller, grep `libs/` for an equivalent tested utility. If one exists, delegate to it — the shared helper's tests cover all branches. If none exists, put the new logic in a `final` utility class with dedicated unit tests, not as a private method inside the controller.
+
 ## ERR-MES-019 — ESLint flat config rejects `processor: angular.processInlineTemplates`
 **Date:** 2026-05-20  **Category:** Frontend — ESLint  **Status:** Promoted 2026-05-20
 **Symptom:** `ng lint` failed: `Config (unnamed): Key "processor": Expected an object or a string.` when `processor: angular.processInlineTemplates` was set in `eslint.config.js`.
 **Root cause:** ESLint v9 flat config requires the `processor` field to be either a registered string (`"plugin/name"`) or a plain object with `preprocess`/`postprocess` methods. `angular.processInlineTemplates` as exported by `@angular-eslint/eslint-plugin` v21 is neither — ESLint rejects it.
 **Fix applied:** Removed the `processor` line entirely. All project components use `templateUrl`, so inline template extraction is not needed; external `.html` files are linted in the separate HTML config block.
 **Rule:** In Angular ESLint flat config, do not set `processor: angular.processInlineTemplates` — it is rejected. The inline template processor is only needed for components with inline `template:` strings; if all components use `templateUrl`, omit the processor entirely.
+
+## ERR-MES-071 — Optional DTO field missing @Size — validation gap vs sibling DTO
+**Date:** 2026-06-07  **Category:** Backend — Validation  **Status:** Promoted 2026-06-07
+**Symptom:** `initialPassword` in `CreateUserRequest` had no `@Size(min=8,max=72)`, allowing a 1-character initial password despite `SetPasswordRequest` enforcing 8 chars for the same semantic value.
+**Root cause:** Nullable optional fields on extended DTOs are easy to omit constraints from. Jakarta Bean Validation skips `@Size` on null automatically, so `@Nullable @Size(min=8,max=72)` is safe.
+**Fix applied:** Added `@Nullable @Size(min = 8, max = 72)` to `initialPassword` in `CreateUserRequest.java`.
+**Rule:** Port ALL constraints from sibling validated DTOs when adding optional fields of the same semantic type. See ERR-MES-071 archive entry.
+
+## ERR-MES-072 — IT test for public endpoint missing assumeTrue despite KC-dependent error path
+**Date:** 2026-06-07  **Category:** Testing — Testcontainers  **Status:** Promoted 2026-06-07
+**Symptom:** `changeTemporaryPassword_unknownUser_returns400` failed with 500 (not 400) when Docker unavailable — the valid payload bypassed `@Valid` and reached `KeycloakTokenClient` which threw an unchecked network exception.
+**Root cause:** The expected 400 comes from KC, not Spring validation. Tests that send structurally valid bodies to public KC-backed endpoints are KC-dependent even when the assertion is an error.
+**Fix applied:** Added `assumeTrue(KEYCLOAK.isRunning(), "Docker not available")` to the test.
+**Rule:** For public endpoints with KC in the error path: if the test body passes `@Valid`, add `assumeTrue`. See ERR-MES-072 archive entry.
+
+## ERR-MES-073 — Controller duplicating GlobalExceptionHandler catch creates divergent response shapes
+**Date:** 2026-06-07  **Category:** Backend — API Design  **Status:** Promoted 2026-06-07
+**Symptom:** `PublicAuthController` returned `{"message":"..."}` for `InvalidCredentialsException`; `GlobalExceptionHandler` returns `{"code":"...","message":"..."}`. Inconsistent shapes for same exception.
+**Root cause:** Inline `try/catch` in controller duplicated handling already present in `GlobalExceptionHandler`.
+**Fix applied:** Removed try/catch from `PublicAuthController`; `GlobalExceptionHandler` handles all cases.
+**Rule:** Never catch exceptions inline in a controller that are already mapped by `GlobalExceptionHandler`. See ERR-MES-073 archive entry.
+
+## ERR-MES-074 — IT test delegates token-building to another class whose RSA key differs from its own @Primary JwtDecoder
+**Date:** 2026-06-07  **Category:** Testing — Spring Security / JWT  **Status:** Open
+**Symptom:** `UserPasswordControllerIT` and `PublicAuthControllerIT` produced 401 UNAUTHORIZED on every authenticated request in CI. `resetPassword_differentOrg_returns404()` returned 401 instead of 404; `createUser()` helper got null body → NPE in 6 other tests.
+**Root cause:** Each IT class generates its own `static final RSAKey TEST_RSA_KEY` and registers a `@Primary JwtDecoder` using that key. Both classes delegated to `UserControllerIT.buildToken("SYSTEM_ADMIN")`, a static method that signs with `UserControllerIT.TEST_RSA_KEY` — a different key. Tokens signed with key A, decoded with key B → signature verification fails → 401.
+**Fix applied:** Added a local `buildToken(String role)` static method to each class that signs with the class's own `TEST_RSA_KEY`. Removed the delegation to `UserControllerIT.buildToken()`.
+**Rule:** Every IT class that has its own `TEST_RSA_KEY` must have its own `buildToken()` that uses that key. Never delegate token-building to another IT class's static method — the implicit key dependency is invisible at call-site review and only fails at runtime.

@@ -1,8 +1,10 @@
 package com.mes.iam.service;
 
 import com.mes.iam.api.dto.UserResponse;
+import com.mes.iam.exception.InvalidCredentialsException;
 import com.mes.iam.exception.UserNotFoundException;
 import com.mes.iam.keycloak.KeycloakAdminClient;
+import com.mes.iam.keycloak.KeycloakTokenClient;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.stereotype.Service;
 
@@ -14,16 +16,24 @@ import java.util.UUID;
 public class UserService {
 
     private final KeycloakAdminClient keycloakAdminClient;
+    private final KeycloakTokenClient keycloakTokenClient;
 
-    public UserService(KeycloakAdminClient keycloakAdminClient) {
+    public UserService(KeycloakAdminClient keycloakAdminClient,
+                       KeycloakTokenClient keycloakTokenClient) {
         this.keycloakAdminClient = keycloakAdminClient;
+        this.keycloakTokenClient = keycloakTokenClient;
     }
 
     public UserResponse createUser(String email, String firstName, String lastName,
-                                    UUID orgId, List<String> roles) {
+                                    UUID orgId, List<String> roles,
+                                    String initialPassword, boolean temporaryPassword) {
         String userId = keycloakAdminClient.createUser(email, firstName, lastName, orgId);
         keycloakAdminClient.assignUserRoles(userId, roles);
-        keycloakAdminClient.sendPasswordEmail(userId);
+        if (initialPassword != null && !initialPassword.isBlank()) {
+            keycloakAdminClient.setPassword(userId, initialPassword, temporaryPassword);
+        } else {
+            keycloakAdminClient.sendPasswordEmail(userId);
+        }
         UserRepresentation u = keycloakAdminClient.findUserById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
         return toResponse(u, roles);
@@ -57,6 +67,32 @@ public class UserService {
         keycloakAdminClient.deactivateUser(userId);
     }
 
+    public void resetUserPassword(String userId, UUID callerOrgId,
+                                   String newPassword, boolean temporary) {
+        UserRepresentation u = keycloakAdminClient.findUserById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        verifyOrgOwnership(u, callerOrgId);
+        keycloakAdminClient.setPassword(userId, newPassword, temporary);
+        if (!temporary) {
+            keycloakAdminClient.clearRequiredActions(userId);
+        }
+    }
+
+    public void changeTemporaryPassword(String username, String currentPassword,
+                                         String newPassword) {
+        // Verify current password — throws InvalidCredentialsException on failure
+        keycloakTokenClient.verifyTemporaryPasswordCredentials(username, currentPassword);
+
+        // Find the user by email (KC username = email)
+        UserRepresentation u = keycloakAdminClient.findUserByEmail(username)
+                .orElseThrow(InvalidCredentialsException::new);
+
+        keycloakAdminClient.setPassword(u.getId(), newPassword, false);
+        keycloakAdminClient.clearRequiredActions(u.getId());
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
     private static void verifyOrgOwnership(UserRepresentation u, UUID callerOrgId) {
         String userOrgId = Optional.ofNullable(u.getAttributes())
                 .map(attrs -> attrs.get("org_id"))
@@ -69,12 +105,15 @@ public class UserService {
     }
 
     private static UserResponse toResponse(UserRepresentation u, List<String> roles) {
+        boolean passwordChangeRequired = u.getRequiredActions() != null
+                && u.getRequiredActions().contains("UPDATE_PASSWORD");
         return new UserResponse(
                 u.getId(),
                 u.getEmail(),
                 u.getFirstName(),
                 u.getLastName(),
                 Boolean.TRUE.equals(u.isEnabled()),
-                roles);
+                roles,
+                passwordChangeRequired);
     }
 }

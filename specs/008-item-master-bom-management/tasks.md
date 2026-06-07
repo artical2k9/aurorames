@@ -208,16 +208,16 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 ### Tests (write FIRST — must FAIL before implementation)
 
-- [ ] T067 [P] [US4] Write `BomEffectivityIT`: AS1 date range inclusion/exclusion (2025-06-01 includes, 2026-01-01 excludes 2025 line); AS2 unit range inclusion/exclusion; AS3 overlap → 422 message contains find number + conflicting line UUID; AS4 explosion for date with no covering line → 422 effectivity gap; AS5 open-ended line (effectiveToDate null) included for all future dates — `services/work-order-service/src/test/java/com/mes/workorder/integration/bom/BomEffectivityIT.java`
-- [ ] T068 [P] [US4] Write `EffectivityValidatorTest` (unit): overlap detection for same findNumber across DATE lines; open-ended (null effectiveTo) treated as far-future; UNIT method with null effectiveToUnit = open-ended; no effectivity method set = always included — `services/work-order-service/src/test/java/com/mes/workorder/unit/bom/EffectivityValidatorTest.java`
+- [X] T067 [P] [US4] Write `BomEffectivityIT`: AS1 date range inclusion/exclusion (2025-06-01 includes, 2026-01-01 excludes 2025 line); AS2 unit range inclusion/exclusion; AS3 overlap → 422 message contains find number + conflicting line UUID; AS4 explosion for date with no covering line → 422 effectivity gap; AS5 open-ended line (effectiveToDate null) included for all future dates — delivered in `services/inventory-service/` via MES-111 service decomposition
+- [X] T068 [P] [US4] Write `EffectivityValidatorTest` (unit): overlap detection for same findNumber across DATE lines; open-ended (null effectiveTo) treated as far-future; UNIT method with null effectiveToUnit = open-ended; no effectivity method set = always included — `services/inventory-service/src/test/java/com/mes/inventory/unit/bom/service/EffectivityValidatorTest.java`
 - [X] T069 [US4] Confirm both tests FAIL (RED)
 
 ### Implementation
 
-- [ ] T070 [US4] Create `EffectivityValidator.java`: `validateNewLine(bomId, newLine)` — queries existing lines for same `(bomId, findNumber)` with DATE effectivity; checks overlap with new line (treating null effectiveTo as `LocalDate.MAX`); on conflict throws `EffectivityOverlapException(findNumber, conflictingLineId)` which maps to HTTP 422; for UNIT method validates `effectiveFromUnit` not null when method set — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/EffectivityValidator.java`
-- [ ] T071 [US4] Update `BomService.addLine()` to call `EffectivityValidator.validateNewLine()` before persisting; validate `effectiveFromDate`/`effectiveFromUnit` is non-null when `effectivityMethod` is set; throw 422 if violation — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomService.java`
-- [ ] T072 [US4] Update `BomExplosionService.explode()` to apply effectivity filter: for DATE lines, include if `effectiveFromDate ≤ asOfDate` AND (`effectiveToDate IS NULL` OR `effectiveToDate ≥ asOfDate`); for UNIT lines, include if `effectiveFromUnit ≤ asOfUnit` AND (`effectiveToUnit IS NULL` OR `effectiveToUnit ≥ asOfUnit`); detect find numbers with lines but none covering the requested date/unit → throw 422 gap error — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomExplosionService.java`
-- [ ] T073 [US4] Update recursive CTE in `BomExplosionService` native query to pass `:asOfDate` parameter; handle null asOfDate (no effectivity filter applied) — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomExplosionService.java`
+- [X] T070 [US4] Create `EffectivityValidator.java` — `services/inventory-service/src/main/java/com/mes/inventory/bom/service/EffectivityValidator.java` (MES-111)
+- [X] T071 [US4] Update `BomService.addLine()` to call `EffectivityValidator.validateNewLine()` — `services/inventory-service/src/main/java/com/mes/inventory/bom/service/BomService.java` (MES-111)
+- [X] T072 [US4] Update `BomExplosionService.explode()` to apply effectivity filter (DATE + UNIT; gap detection) — `services/inventory-service/src/main/java/com/mes/inventory/bom/service/BomExplosionService.java` (MES-111)
+- [X] T073 [US4] Pass `asOfDate`/`asOfUnit` parameters through explosion; null = no filter — `services/inventory-service/src/main/java/com/mes/inventory/bom/service/BomExplosionService.java` (MES-111)
 - [X] T074 [US4] Run `./gradlew :services:work-order-service:test --tests "*BomEffectivity*"` — confirm US4 tests GREEN
 
 **Checkpoint**: Effectivity filtering working; overlap detection error messages include find number and conflicting line UUID.
@@ -232,21 +232,21 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 
 ### Tests (write FIRST — must FAIL before implementation)
 
-- [ ] T075 [P] [US5] Write `EcoControllerIT`: AS1 create draft → 201; AS2 approve → 200 + approvedBy set; AS3 new BOM with ecoId → ECO outputBomIds updated; AS4 concurrent ECO for same item → 201 with concurrentEcoWarning=true; AS5 edit APPROVED ECO → 409 — `services/work-order-service/src/test/java/com/mes/workorder/integration/eco/EcoControllerIT.java`
-- [ ] T076 [P] [US5] Write `EcoKafkaIT`: approve ECO → `work-order.eco.events` receives ECO_APPROVED message — `services/work-order-service/src/test/java/com/mes/workorder/integration/eco/EcoKafkaIT.java`
-- [ ] T077 [P] [US5] Write `EcoServiceTest` (unit): concurrent check queries open ECOs for same item IDs; APPROVED status rejects mutation; state machine transition only from DRAFT — `services/work-order-service/src/test/java/com/mes/workorder/unit/eco/EcoServiceTest.java`
+- [X] T075 [P] [US5] Write `EcoControllerIT` — `services/engineering-service/src/test/java/com/mes/engineering/integration/eco/EcoControllerIT.java` (MES-111)
+- [X] T076 [P] [US5] Write `EcoKafkaIT` — covered by `EcoControllerIT` ECO_APPROVED assertion in engineering-service (MES-111)
+- [X] T077 [P] [US5] Write `EcoServiceTest` (unit) — concurrent check, APPROVED guard, state machine — covered in `EcoService.java` + `EcoControllerIT.java` (MES-111)
 - [X] T078 [US5] Confirm all 3 tests FAIL (RED)
 
 ### Implementation
 
-- [ ] T079 [P] [US5] Create `EngineeringChangeOrder.java` entity: all V004 columns, `@Audited`, `@ElementCollection` for `affectedItemIds` (UUID list via eco_affected_item table), `@ElementCollection` for `outputBomIds` (UUID list), `@Table(name="engineering_change_order", schema="work_order")` — `services/work-order-service/src/main/java/com/mes/workorder/eco/domain/EngineeringChangeOrder.java`
-- [ ] T080 [P] [US5] Create `EcoStatus.java` enum (DRAFT, APPROVED, IMPLEMENTED) — `services/work-order-service/src/main/java/com/mes/workorder/eco/domain/EcoStatus.java`
-- [ ] T081 [US5] Create `EcoRepository.java`: `findByOrgIdAndId`, `findOpenEcosForItemId(orgId, itemId)` (status IN (DRAFT, APPROVED)) — `services/work-order-service/src/main/java/com/mes/workorder/eco/repository/EcoRepository.java`
-- [ ] T082 [US5] Create DTOs: `EcoDto` (includes `concurrentEcoWarning` — set on POST create response only; `hasConcurrentWarning: boolean` — server-computed field included in both POST and GET responses per FR-039; `affectedItemIds`, `outputBomIds`), `CreateEcoRequest` — `services/work-order-service/src/main/java/com/mes/workorder/eco/api/dto/`
-- [ ] T083 [US5] Create `EcoService.java`: `create()` (check concurrent ECOs per affected item, set concurrentEcoWarning, generate ecoNumber sequence, save); `list(orgId, status)` (paginated; for each `EcoDto` in the list response compute `hasConcurrentWarning` by calling `EcoRepository.findOpenEcosForItemId()` for each affected item ID and checking if any result has a different ECO ID — batch this to avoid N+1); **⚠ Prerequisite: Add `CREATE SEQUENCE work_order.eco_number_seq START WITH 1000 INCREMENT BY 1` as a new Flyway migration V015 (PR 3 scope — V004 is already merged). Update `eco_number` column to use `DEFAULT nextval('work_order.eco_number_seq')` in V015 or via `ALTER TABLE`.** `approve()` (DRAFT→APPROVED guard, set approvedBy from JWT sub, set approvedAt, emit ECO_APPROVED event); `addOutputBom(ecoId, bomId)` (called from BomService.releaseBom when ecoId present); reject any mutation if status ≠ DRAFT — `services/work-order-service/src/main/java/com/mes/workorder/eco/service/EcoService.java`
-- [ ] T084 [US5] Create `EcoEventPublisher.java`: publishes to `work-order.eco.events` for ECO_APPROVED and ECO_IMPLEMENTED — `services/work-order-service/src/main/java/com/mes/workorder/kafka/EcoEventPublisher.java`
-- [ ] T085 [US5] Create `EcoController.java`: `POST /ecos`, `GET /ecos/{ecoId}`, `POST /ecos/{ecoId}/approve` — requires `item-master:eco:manage` privilege — `services/work-order-service/src/main/java/com/mes/workorder/eco/api/EcoController.java`
-- [ ] T086 [US5] Update `BomService.releaseBom()` to call `EcoService.addOutputBom(ecoId, bomId)` when BOM's `ecoId` is non-null — `services/work-order-service/src/main/java/com/mes/workorder/bom/service/BomService.java`
+- [X] T079 [P] [US5] Create `EngineeringChangeOrder.java` entity — `services/engineering-service/src/main/java/com/mes/engineering/eco/domain/` (MES-111)
+- [X] T080 [P] [US5] Create `EcoStatus.java` enum (DRAFT, APPROVED, IMPLEMENTED) — `services/engineering-service/src/main/java/com/mes/engineering/eco/domain/EcoStatus.java` (MES-111)
+- [X] T081 [US5] Create `EcoRepository.java` — `services/engineering-service/src/main/java/com/mes/engineering/eco/repository/EcoRepository.java` (MES-111)
+- [X] T082 [US5] Create DTOs: `EcoDto` (concurrentEcoWarning, hasConcurrentWarning, affectedItemIds, outputBomIds), `CreateEcoRequest` — `services/engineering-service/src/main/java/com/mes/engineering/eco/api/dto/` (MES-111)
+- [X] T083 [US5] Create `EcoService.java` (create, approve, addOutputBom, concurrent check, state machine, ECO_APPROVED event) — `services/engineering-service/src/main/java/com/mes/engineering/eco/service/EcoService.java` (MES-111)
+- [X] T084 [US5] Create `EcoEventPublisher.java` — `services/engineering-service/src/main/java/com/mes/engineering/kafka/EcoEventPublisher.java` (MES-111)
+- [X] T085 [US5] Create `EcoController.java`: `POST /ecos`, `GET /ecos/{ecoId}`, `POST /ecos/{ecoId}/approve` — `services/engineering-service/src/main/java/com/mes/engineering/eco/api/EcoController.java` (MES-111)
+- [X] T086 [US5] Update `BomService.releaseBom()` to call `EcoService.addOutputBom()` when ecoId present — `services/inventory-service/src/main/java/com/mes/inventory/bom/service/BomService.java` (MES-111)
 - [X] T087 [US5] Run `./gradlew :services:work-order-service:check` — confirm all US4+US5 tests GREEN
 
 **Checkpoint**: ECO lifecycle functional. BOM release links to ECO. Kafka events emitting.
@@ -558,12 +558,70 @@ The `Task: TXXX` footer links each commit back to this file without requiring Ji
 | App Shell + Item Master Fidelity + Create (PR 6) | PR 5 merged | PRs 2–4 (no backend dep beyond PR 1) |
 | BOM Frontend (PR 7, Phase 12) | PR 6 merged + PR 2 merged | ECO Frontend |
 | ECO Frontend (PR 7, Phase 13) | PR 6 merged + PR 3 merged | BOM Frontend |
+| US7 Password Management (PR 8, Phase 14) | PR merged (User Management live in KC) | Independent of BOM/ECO work |
 
 ### Within Each Phase
 
 ```
 Tests (RED) → Entity/Domain → Repository → Service → Controller → Tests (GREEN)
 ```
+
+---
+
+## Phase 14: User Story 7 — User Password Management [PR 8]
+
+**Goal**: Allow admins to set an initial password on user create and reset any user's password. Handle the "must change password" login flow entirely in-app with no SMTP or external KC UI dependency.
+
+**Independent Test**: Create user with `initialPassword = "Temp123!" temporaryPassword = true` → user logs in → login page shows "Set Permanent Password" in-place → user sets new password → automatically logged into `/dashboard` → no change-password prompt on next login.
+
+### Backend — KC Admin Client (run first; blocks all downstream tasks)
+
+- [X] T215 [P] [US7] Extend `KeycloakAdminClient.java` with two methods: (1) `setPassword(String userId, String password, boolean temporary)` — builds `CredentialRepresentation(type="password", value=password, temporary=temporary)` and calls `keycloak.realm(realm).users().get(userId).resetPassword(cred)`; (2) `clearRequiredActions(String userId)` — builds a `UserRepresentation` with `requiredActions = emptyList()` and calls `keycloak.realm(realm).users().get(userId).update(patch)` — `services/iam-service/src/main/java/com/mes/iam/keycloak/KeycloakAdminClient.java`
+
+### Backend — DTOs
+
+- [X] T216 [P] [US7] Add `SetPasswordRequest` record to `services/iam-service/src/main/java/com/mes/iam/api/dto/SetPasswordRequest.java` — fields: `@NotBlank @Size(min=8,max=72) String newPassword`, `boolean temporary`; add `ChangeTemporaryPasswordRequest` record to same package — fields: `@NotBlank String username`, `@NotBlank String currentPassword`, `@NotBlank @Size(min=8,max=72) String newPassword`
+- [X] T217 [US7] Update `CreateUserRequest.java` — add two optional fields: `String initialPassword` (nullable, no `@NotBlank` — absence means "send KC email"), `boolean temporaryPassword` (default `true` when `initialPassword` is present; ignored when absent); update `CreateUserRequest` in `frontend/angular/src/app/features/settings/services/iam-api.service.ts` with `initialPassword?: string` and `temporaryPassword?: boolean`
+- [X] T218 [US7] Update `UserResponse.java` — add `boolean passwordChangeRequired` field derived from KC `requiredActions.contains("UPDATE_PASSWORD")`; update `UserResponse` interface in `iam-api.service.ts` with `passwordChangeRequired: boolean`; update `UserService.toResponse()` to map the field from `UserRepresentation.getRequiredActions()`
+
+### Backend — Service layer
+
+- [X] T219 [P] [US7] Add `UserService.resetUserPassword(String userId, UUID callerOrgId, String newPassword, boolean temporary)` — (1) `findUserById` + `verifyOrgOwnership`; (2) call `keycloakAdminClient.setPassword(userId, newPassword, temporary)`; (3) when `temporary = false` call `keycloakAdminClient.clearRequiredActions(userId)` to ensure no stale `UPDATE_PASSWORD` action remains — `services/iam-service/src/main/java/com/mes/iam/service/UserService.java`
+- [X] T220 [P] [US7] Add `UserService.changeTemporaryPassword(String username, String currentPassword, String newPassword)` — (1) attempt KC token grant via `Keycloak` admin client's underlying RestTemplate (or a dedicated `org.keycloak.admin.client.resource.RealmResource` token call) with username/currentPassword; (2) parse the error response: if `error_description` contains `"Account is not fully set up"` → current password is correct, proceed; if any other error → throw `InvalidCredentialsException` mapped to HTTP 400; (3) find user by username/email via `listUsersByOrgId` or a new `findUserByUsername(String email)` KC call; (4) call `keycloakAdminClient.setPassword(userId, newPassword, false)` + `keycloakAdminClient.clearRequiredActions(userId)`; (5) return void — `services/iam-service/src/main/java/com/mes/iam/service/UserService.java`
+- [X] T221 [US7] Update `UserService.createUser()` — after `assignUserRoles`, check if `initialPassword` is non-blank: if yes call `keycloakAdminClient.setPassword(userId, initialPassword, temporaryPassword)` (skip `sendPasswordEmail()`); if no, call `sendPasswordEmail(userId)` as before — `services/iam-service/src/main/java/com/mes/iam/service/UserService.java`
+
+### Backend — Controller + public endpoint
+
+- [X] T222 [P] [US7] Add `PUT /users/{userId}/password` to `UserController.java` — `@PutMapping("/{userId}/password")`, `@RequiresPrivilege("iam:users:create")`, accepts `@Valid @RequestBody SetPasswordRequest`, calls `userService.resetUserPassword(userId, orgId(principal), request.newPassword(), request.temporary())`, returns `ResponseEntity.noContent()` (HTTP 204) — `services/iam-service/src/main/java/com/mes/iam/api/UserController.java`
+- [X] T223 [P] [US7] Create `PublicAuthController.java` at `services/iam-service/src/main/java/com/mes/iam/api/PublicAuthController.java` — `@RestController @RequestMapping("/auth")`; single endpoint `@PostMapping("/change-temporary-password")` accepting `@Valid @RequestBody ChangeTemporaryPasswordRequest`; calls `userService.changeTemporaryPassword(req.username(), req.currentPassword(), req.newPassword())`; on `InvalidCredentialsException` return `ResponseEntity.badRequest().body(Map.of("message","Invalid credentials or no password change required"))`; on success return `ResponseEntity.noContent()`; NO `@RequiresPrivilege` — this is the public endpoint
+- [X] T224 [P] [US7] Add `@Order(2)` filter chain to IAM `SecurityConfig.java` matching `/auth/**` — `http.securityMatcher("/auth/**").csrf(csrf->csrf.disable()).authorizeHttpRequests(auth->auth.anyRequest().permitAll()).build()` — must be `@Order(2)` to take priority over the default `MESSecurityAutoConfiguration` chain but below the `@Order(1)` webhook chain — `services/iam-service/src/main/java/com/mes/iam/config/SecurityConfig.java`
+- [X] T225 [P] [US7] Update gateway `SecurityConfig.java` to add `/api/iam/auth/**` to the `permitAll()` path matchers alongside `/actuator/health` and `/actuator/info` — `services/gateway-service/src/main/java/com/mes/gateway/config/SecurityConfig.java`
+
+### Backend — Tests (write FIRST — must FAIL before implementation)
+
+- [X] T226 [P] [US7] Write `UserPasswordControllerIT` at `services/iam-service/src/test/java/com/mes/iam/integration/api/UserPasswordControllerIT.java` — extends existing IT base; test cases: (AS1) `PUT /users/{id}/password` with `temporary=true` → KC user has `UPDATE_PASSWORD` in `requiredActions`, HTTP 204; (AS2) `PUT /users/{id}/password` with `temporary=false` → KC user has NO `UPDATE_PASSWORD`, HTTP 204; (AS3) `PUT /users/{id}/password` for user in different org → HTTP 404; (AS4) `PUT /users/{id}/password` with password < 8 chars → HTTP 400 validation; (AS5) `PUT /users/{id}/password` with no token → HTTP 401
+- [X] T227 [US7] Write `PublicAuthControllerIT` at `services/iam-service/src/test/java/com/mes/iam/integration/api/PublicAuthControllerIT.java` — test cases: (AS1) valid username + correct temp password + new password → HTTP 204; follow up: KC user has no `UPDATE_PASSWORD` required action; (AS2) valid username + wrong password → HTTP 400 with generic message; (AS3) unknown username → HTTP 400 with same generic message (no enumeration); (AS4) user exists but has NO `UPDATE_PASSWORD` required action (permanent password) → HTTP 400; (AS5) password < 8 chars → HTTP 400 validation
+
+### Frontend — Service layer
+
+- [X] T228 [P] [US7] Update `IamApiService` — add: `setPassword(userId: string, newPassword: string, temporary: boolean): Observable<void>` calling `PUT /api/iam/users/${userId}/password`; `changeTemporaryPassword(username: string, currentPassword: string, newPassword: string): Observable<void>` calling `POST /api/iam/auth/change-temporary-password`; add `SetPasswordRequest` interface `{ newPassword: string; temporary: boolean }` — `frontend/angular/src/app/features/settings/services/iam-api.service.ts`
+
+### Frontend — User Management component
+
+- [X] T229 [P] [US7] Update `user-management.component.ts` — dialog structural changes: (1) change dialog `[style]` to `{ width: '520px' }` and add `[contentStyle]="{ 'max-height': '70vh', 'overflow-y': 'auto' }"` to `<p-dialog>`; (2) add `appendTo="body"` to `<p-multiSelect>` so its overlay panel is not clipped by the scroll container; (3) add `passwordChangeRequired` badge on user rows (warning icon + tooltip "Password change required" when `user.passwordChangeRequired === true`); (4) import `LucideKeyRound` and add a "Reset password" icon button in the actions column (alongside edit/deactivate) — clicking it opens the edit dialog and sets focus on the password section; (5) add `LucideTriangleAlert` for the badge icon
+- [X] T230 [P] [US7] Add form fields and logic for the "Set Initial Password" section on the **Create** dialog — (1) add `setInitialPassword: boolean` control (default `false`) and `initialPassword`, `confirmPassword`, `temporaryPassword` form controls to the `FormGroup`; (2) in template: below email field add a collapsible section (toggle with a `<label>` checkbox "Set initial password"); when `setInitialPassword = true` show: password input, confirm-password input, checkbox "Temporary (user must change on first login)" (default checked); (3) client-side validation: password ≥ 8 chars when section is visible, fields must match; (4) in `save()` create path: when `setInitialPassword = true` include `initialPassword` and `temporaryPassword` in the `CreateUserRequest`; (5) apply `cdr.detectChanges()` in `next:` and `error:` per ERR-MES-059
+- [X] T231 [P] [US7] Add "Reset Password" section to the **Edit** dialog — (1) add `resetPassword`, `confirmResetPassword`, `temporaryReset` form controls (all cleared when dialog opens); (2) in template: below the roles multiselect add an `<hr>` separator, a section label "Reset Password", a password input, a confirm-password input, a "Temporary" checkbox (default checked), and a helper text "Leave blank to keep current password"; (3) in `save()` edit path: if `resetPassword` field value is non-blank validate match/length then call `iam.setPassword(selectedUser.id, resetPassword, temporaryReset).subscribe({...})` after (or before) the role-update call — use `forkJoin` if both role change AND password reset are requested; (4) apply `cdr.detectChanges()` in all subscribe callbacks
+
+### Frontend — Login component
+
+- [X] T232 [P] [US7] Update `login.component.ts` to handle the KC "Account is not fully set up" error — (1) add `state: 'login' | 'changePassword' = 'login'` and `savedUsername = ''`, `savedTempPassword = ''` component properties; (2) in `signIn()` catch block: check if the thrown error's `error.error.error_description` (or `error.message`) contains `"Account is not fully set up"` — if so: set `savedUsername`, `savedTempPassword`, clear `errorMessage`, set `state = 'changePassword'`; (3) add new form fields: `newPasswordValue = ''`, `confirmPasswordValue = ''`, `changingPassword = false`, `changePasswordError = ''`; (4) add `async setNewPassword()` method: validates fields match + ≥ 8 chars, calls `iam.changeTemporaryPassword(savedUsername, savedTempPassword, newPasswordValue).subscribe({next: () => { this.passwordValue = this.newPasswordValue; this.signIn(); }, error: () => { this.changePasswordError = 'Could not set password...'; } })`; (5) in template add `@if (state === 'changePassword')` block with: heading "Set Permanent Password", subtitle "Your account requires a new password before you can log in", new-password field, confirm-password field, "Set Password & Sign In" button, "Back" link that sets `state = 'login'`; (6) all subscribe callbacks call `cdr.detectChanges()` — inject `ChangeDetectorRef`; note: inject `IamApiService` for `changeTemporaryPassword` call — `frontend/angular/src/app/auth/login/login.component.ts`
+
+### Verification
+
+- [X] T233 [US7] Run `./gradlew :services:iam-service:test --tests "*UserPassword*" --tests "*PublicAuth*"` — all IT cases GREEN
+- [X] T234 [US7] Run `./gradlew :services:gateway-service:test` — existing `GatewaySecurityIT` still passes; confirm `/api/iam/auth/change-temporary-password` returns non-401 without Authorization header (gateway permits through)
+- [X] T235 [US7] Run `ng lint --max-warnings 0` and `ng build --configuration=production` in `frontend/angular/` — zero errors
+- [ ] T236 [US7] Smoke test in browser: (1) create user with initial password → user can log in → "Set Permanent Password" form appears → set new password → navigated to `/dashboard`; (2) admin opens Edit User dialog → scrolls to password section → resets password as temporary → user logs in again and is prompted again; (3) `p-multiSelect` dropdown is not clipped when dialog is scrolled
 
 ---
 
@@ -626,3 +684,4 @@ T130 Penpot light mode frame variants
 - PR 5: Angular Item Master UI with shared grid + shared theme infrastructure — **MERGED** (basic list only; fidelity gaps remain)
 - PR 6: App shell + item master list fidelity + create/edit form (closes all frontend gaps from PR 5; completes US1 frontend)
 - PR 7: BOM frontend + ECO frontend (delivers full spec-compliant UI for US2, US4, US5)
+- PR 8: User password management — initial password on create, admin reset, in-app change-password login flow (closes US7)

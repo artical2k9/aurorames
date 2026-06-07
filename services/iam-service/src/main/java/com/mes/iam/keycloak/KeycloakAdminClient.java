@@ -3,6 +3,7 @@ package com.mes.iam.keycloak;
 import com.mes.iam.exception.DuplicateEmailException;
 import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.Keycloak;
+import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
@@ -154,6 +155,26 @@ public class KeycloakAdminClient {
         UserRepresentation patch = new UserRepresentation();
         patch.setEnabled(false);
         keycloak.realm(realm).users().get(userId).update(patch);
+    }
+
+    public void setPassword(String userId, String password, boolean temporary) {
+        CredentialRepresentation cred = new CredentialRepresentation();
+        cred.setType(CredentialRepresentation.PASSWORD);
+        cred.setValue(password);
+        cred.setTemporary(temporary);
+        keycloak.realm(realm).users().get(userId).resetPassword(cred);
+    }
+
+    public void clearRequiredActions(String userId) {
+        UserRepresentation patch = new UserRepresentation();
+        patch.setRequiredActions(List.of());
+        keycloak.realm(realm).users().get(userId).update(patch);
+    }
+
+    public Optional<UserRepresentation> findUserByEmail(String email) {
+        List<UserRepresentation> users = keycloak.realm(realm).users()
+                .searchByUsername(email, true);
+        return users.isEmpty() ? Optional.empty() : Optional.of(users.get(0));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

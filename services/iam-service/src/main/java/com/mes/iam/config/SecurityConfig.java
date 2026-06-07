@@ -31,4 +31,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
                 .build();
     }
+
+    /**
+     * Public chain for /auth/** — unauthenticated endpoints used before a session exists
+     * (e.g. change-temporary-password on first login). Must be @Order(2) to take priority
+     * over the MESSecurityAutoConfiguration catch-all chain.
+     */
+    @Bean
+    @Order(2)
+    public SecurityFilterChain publicAuthSecurityFilterChain(HttpSecurity http) throws Exception {
+        return http
+                .securityMatcher("/auth/**")
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .build();
+    }
 }

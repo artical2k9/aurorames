@@ -1,14 +1,16 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
-import { LucideUser, LucideLock, LucideEye, LucideEyeOff, LucideShieldCheck, LucideLoader } from '@lucide/angular';
+import { LucideUser, LucideLock, LucideEye, LucideEyeOff, LucideShieldCheck, LucideLoader, LucideKeyRound } from '@lucide/angular';
 import { AuthSessionService } from '../auth-session.service';
+import { IamApiService } from '../../features/settings/services/iam-api.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, LucideUser, LucideLock, LucideEye, LucideEyeOff, LucideShieldCheck, LucideLoader],
+  imports: [FormsModule, LucideUser, LucideLock, LucideEye, LucideEyeOff,
+            LucideShieldCheck, LucideLoader, LucideKeyRound],
   template: `
     <div class="login-page">
 
@@ -23,71 +25,127 @@ import { AuthSessionService } from '../auth-session.service';
             <p class="login-subtitle">Aerospace-Grade Manufacturing Intelligence</p>
           </div>
 
-          <form class="login-form" (ngSubmit)="signIn()">
+          <!-- ── Sign-in form ─────────────────────────────────────── -->
+          @if (state === 'login') {
+            <form class="login-form" (ngSubmit)="signIn()">
 
-            <div class="field-group">
-              <label class="field-label" for="username">Username</label>
-              <div class="field-wrap">
-                <svg lucideUser class="field-icon" [size]="18" [strokeWidth]="1.5"></svg>
-                <input id="username" type="text" class="field-input"
-                       placeholder="Enter your username"
-                       [(ngModel)]="usernameValue" name="username"
-                       autocomplete="username" />
+              <div class="field-group">
+                <label class="field-label" for="username">Username</label>
+                <div class="field-wrap">
+                  <svg lucideUser class="field-icon" [size]="18" [strokeWidth]="1.5"></svg>
+                  <input id="username" type="text" class="field-input"
+                         placeholder="Enter your username"
+                         [(ngModel)]="usernameValue" name="username"
+                         autocomplete="username" />
+                </div>
               </div>
-            </div>
 
-            <div class="field-group">
-              <label class="field-label" for="password">Password</label>
-              <div class="field-wrap">
-                <svg lucideLock class="field-icon" [size]="18" [strokeWidth]="1.5"></svg>
-                <input id="password" [type]="showPassword ? 'text' : 'password'" class="field-input"
-                       placeholder="Enter your password"
-                       [(ngModel)]="passwordValue" name="password"
-                       autocomplete="current-password" />
-                <button type="button" class="field-eye"
-                        [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
-                        (click)="showPassword = !showPassword">
-                  @if (showPassword) {
-                    <svg lucideEyeOff [size]="18" [strokeWidth]="1.5"></svg>
-                  } @else {
-                    <svg lucideEye [size]="18" [strokeWidth]="1.5"></svg>
-                  }
-                </button>
+              <div class="field-group">
+                <label class="field-label" for="password">Password</label>
+                <div class="field-wrap">
+                  <svg lucideLock class="field-icon" [size]="18" [strokeWidth]="1.5"></svg>
+                  <input id="password" [type]="showPassword ? 'text' : 'password'" class="field-input"
+                         placeholder="Enter your password"
+                         [(ngModel)]="passwordValue" name="password"
+                         autocomplete="current-password" />
+                  <button type="button" class="field-eye"
+                          [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+                          (click)="showPassword = !showPassword">
+                    @if (showPassword) {
+                      <svg lucideEyeOff [size]="18" [strokeWidth]="1.5"></svg>
+                    } @else {
+                      <svg lucideEye [size]="18" [strokeWidth]="1.5"></svg>
+                    }
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div class="login-options">
-              <label class="remember-label">
-                <input type="checkbox" class="remember-check"
-                       [(ngModel)]="rememberMe" name="remember" />
-                <span>Remember me</span>
-              </label>
-              <a class="forgot-link" href="#" (click)="$event.preventDefault()">Forgot password?</a>
-            </div>
+              <div class="login-options">
+                <label class="remember-label">
+                  <input type="checkbox" class="remember-check"
+                         [(ngModel)]="rememberMe" name="remember" />
+                  <span>Remember me</span>
+                </label>
+                <a class="forgot-link" href="#" (click)="$event.preventDefault()">Forgot password?</a>
+              </div>
 
-            @if (errorMessage) {
-              <div class="login-error" role="alert">{{ errorMessage }}</div>
-            }
-
-            <button type="submit" class="btn-primary" [disabled]="isLoading">
-              @if (isLoading) {
-                <svg lucideLoader class="btn-spinner" [size]="18" [strokeWidth]="2"></svg>
-                Signing in…
-              } @else {
-                Sign In
+              @if (errorMessage) {
+                <div class="login-error" role="alert">{{ errorMessage }}</div>
               }
+
+              <button type="submit" class="btn-primary" [disabled]="isLoading">
+                @if (isLoading) {
+                  <svg lucideLoader class="btn-spinner" [size]="18" [strokeWidth]="2"></svg>
+                  Signing in…
+                } @else {
+                  Sign In
+                }
+              </button>
+
+            </form>
+
+            <div class="login-divider">
+              <span>or continue with</span>
+            </div>
+
+            <button type="button" class="btn-sso" (click)="signInSSO()">
+              <svg lucideShieldCheck [size]="18" [strokeWidth]="1.5"></svg>
+              SSO / SAML
             </button>
+          }
 
-          </form>
+          <!-- ── Change temporary password form ───────────────────── -->
+          @if (state === 'changePassword') {
+            <form class="login-form" (ngSubmit)="setNewPassword()">
 
-          <div class="login-divider">
-            <span>or continue with</span>
-          </div>
+              <div class="cpw-hint">
+                <svg lucideKeyRound [size]="18" [strokeWidth]="1.5" class="cpw-hint-icon"></svg>
+                Your account requires a new password before you can sign in.
+              </div>
 
-          <button type="button" class="btn-sso" (click)="signInSSO()">
-            <svg lucideShieldCheck [size]="18" [strokeWidth]="1.5"></svg>
-            SSO / SAML
-          </button>
+              <div class="field-group">
+                <label class="field-label" for="newPassword">New Password</label>
+                <div class="field-wrap">
+                  <svg lucideLock class="field-icon" [size]="18" [strokeWidth]="1.5"></svg>
+                  <input id="newPassword" type="password" class="field-input"
+                         placeholder="Min 8 characters"
+                         [(ngModel)]="newPasswordValue" name="newPassword"
+                         autocomplete="new-password" />
+                </div>
+              </div>
+
+              <div class="field-group">
+                <label class="field-label" for="confirmNewPassword">Confirm New Password</label>
+                <div class="field-wrap">
+                  <svg lucideLock class="field-icon" [size]="18" [strokeWidth]="1.5"></svg>
+                  <input id="confirmNewPassword" type="password" class="field-input"
+                         placeholder="Repeat new password"
+                         [(ngModel)]="confirmPasswordValue" name="confirmNewPassword"
+                         autocomplete="new-password" />
+                </div>
+              </div>
+
+              @if (changePasswordError) {
+                <div class="login-error" role="alert">{{ changePasswordError }}</div>
+              }
+
+              <button type="submit" class="btn-primary" [disabled]="changingPassword">
+                @if (changingPassword) {
+                  <svg lucideLoader class="btn-spinner" [size]="18" [strokeWidth]="2"></svg>
+                  Setting password…
+                } @else {
+                  Set Password &amp; Sign In
+                }
+              </button>
+
+              <button type="button" class="btn-back"
+                      [disabled]="changingPassword"
+                      (click)="backToLogin()">
+                ← Back to sign in
+              </button>
+
+            </form>
+          }
 
           <p class="login-footer">© 2024 Aurora MES. All rights reserved.</p>
 
@@ -386,6 +444,42 @@ import { AuthSessionService } from '../auth-session.service';
       }
     }
 
+    /* ── Change-password hint ────────────────────────────────────────────────── */
+    .cpw-hint {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.625rem;
+      padding: 0.75rem 0.875rem;
+      background: rgba(37, 99, 235, 0.1);
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      color: #93C5FD;
+      line-height: 1.45;
+    }
+
+    .cpw-hint-icon {
+      flex-shrink: 0;
+      color: #3B82F6;
+      margin-top: 1px;
+    }
+
+    /* ── Back link ───────────────────────────────────────────────────────────── */
+    .btn-back {
+      width: 100%;
+      background: none;
+      border: none;
+      padding: 0.5rem;
+      color: #3B82F6;
+      font-size: 0.875rem;
+      cursor: pointer;
+      text-align: center;
+      transition: color 120ms ease;
+
+      &:hover:not(:disabled) { color: #60A5FA; }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+
     /* ── Footer ──────────────────────────────────────────────────────────────── */
     .login-footer {
       margin: 1.5rem 0 0;
@@ -412,13 +506,29 @@ export class LoginComponent {
   private readonly router       = inject(Router);
   private readonly route        = inject(ActivatedRoute);
   private readonly authSession  = inject(AuthSessionService);
+  private readonly iam          = inject(IamApiService);
+  private readonly cdr          = inject(ChangeDetectorRef);
+
+  // ── Login state ──────────────────────────────────────────────────────────
+  state: 'login' | 'changePassword' = 'login';
 
   usernameValue = '';
   passwordValue = '';
-  showPassword = false;
-  rememberMe = false;
-  isLoading = false;
-  errorMessage = '';
+  showPassword  = false;
+  rememberMe    = false;
+  isLoading     = false;
+  errorMessage  = '';
+
+  // ── Change-password state ─────────────────────────────────────────────────
+  newPasswordValue    = '';
+  confirmPasswordValue = '';
+  changingPassword    = false;
+  changePasswordError = '';
+
+  // Saved from the failed login attempt to re-authenticate after password set
+  private savedUsername    = '';
+  private savedTempPassword = '';
+  private returnUrl        = '';
 
   async signIn(): Promise<void> {
     this.errorMessage = '';
@@ -437,16 +547,72 @@ export class LoginComponent {
         this.passwordValue
       );
       this.authSession.startSession();
-      const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-      await this.router.navigateByUrl(returnUrl ?? '/dashboard');
-    } catch {
-      this.errorMessage = 'Invalid username or password. Please try again.';
+      const url = this.returnUrl || this.route.snapshot.queryParamMap.get('returnUrl');
+      await this.router.navigateByUrl(url ?? '/dashboard');
+    } catch (err: unknown) {
+      // Detect KC "Account is not fully set up" → switch to change-password flow
+      type ErrShape = { error?: { error_description?: string }; params?: { error_description?: string } };
+      const e = err as ErrShape;
+      const description = e?.error?.error_description ?? e?.params?.error_description;
+      if (description?.includes('Account is not fully set up')) {
+        this.savedUsername    = this.usernameValue.trim();
+        this.savedTempPassword = this.passwordValue;
+        this.returnUrl        = this.route.snapshot.queryParamMap.get('returnUrl') ?? '';
+        this.state            = 'changePassword';
+        this.errorMessage     = '';
+      } else {
+        this.errorMessage = 'Invalid username or password. Please try again.';
+      }
     } finally {
       this.isLoading = false;
+      this.cdr.detectChanges();
     }
+  }
+
+  setNewPassword(): void {
+    this.changePasswordError = '';
+    if (!this.newPasswordValue || this.newPasswordValue.length < 8) {
+      this.changePasswordError = 'Password must be at least 8 characters.';
+      return;
+    }
+    if (this.newPasswordValue !== this.confirmPasswordValue) {
+      this.changePasswordError = 'Passwords do not match.';
+      return;
+    }
+    this.changingPassword = true;
+    this.iam.changeTemporaryPassword({
+      username:        this.savedUsername,
+      currentPassword: this.savedTempPassword,
+      newPassword:     this.newPasswordValue,
+    }).subscribe({
+      next: () => {
+        // Password changed — now sign in with the new password
+        this.passwordValue    = this.newPasswordValue;
+        this.usernameValue    = this.savedUsername;
+        this.changingPassword = false;
+        this.state            = 'login';
+        this.cdr.detectChanges();
+        this.signIn();
+      },
+      error: () => {
+        this.changePasswordError =
+          'Could not set password. Please try again or contact your administrator.';
+        this.changingPassword = false;
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  backToLogin(): void {
+    this.state            = 'login';
+    this.changePasswordError = '';
+    this.newPasswordValue    = '';
+    this.confirmPasswordValue = '';
+    this.cdr.detectChanges();
   }
 
   signInSSO(): void {
     this.oauthService.initLoginFlow();
   }
+
 }
