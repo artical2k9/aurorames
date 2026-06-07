@@ -121,8 +121,28 @@ class PublicAuthControllerIT {
         UserControllerIT.enableUnmanagedAttributes(kcAdmin);
         UserControllerIT.ensureRealmRole(kcAdmin, "SYSTEM_ADMIN");
         createDirectGrantClient(kcAdmin);
-        adminToken = UserControllerIT.buildToken("SYSTEM_ADMIN");
+        adminToken = buildToken("SYSTEM_ADMIN");
         kcAdmin.close();
+    }
+
+    static String buildToken(String role) {
+        try {
+            com.nimbusds.jwt.JWTClaimsSet claims = new com.nimbusds.jwt.JWTClaimsSet.Builder()
+                    .issuer(TEST_ISSUER)
+                    .subject("test-user")
+                    .claim("org_id", SYSTEM_ORG_ID.toString())
+                    .claim("roles", List.of(role))
+                    .expirationTime(new java.util.Date(System.currentTimeMillis() + 3_600_000L))
+                    .build();
+            com.nimbusds.jwt.SignedJWT jwt = new com.nimbusds.jwt.SignedJWT(
+                    new com.nimbusds.jose.JWSHeader.Builder(
+                            com.nimbusds.jose.JWSAlgorithm.RS256).keyID("test-key").build(),
+                    claims);
+            jwt.sign(new com.nimbusds.jose.crypto.RSASSASigner(TEST_RSA_KEY));
+            return jwt.serialize();
+        } catch (Exception e) {
+            throw new RuntimeException("buildToken failed", e);
+        }
     }
 
     // ── AS1: valid username + correct temp password + new password → HTTP 204;
