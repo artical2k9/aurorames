@@ -95,6 +95,12 @@ export const routes: Routes = [
           import('./features/settings/pages/user-management/user-management.component')
             .then(m => m.UserManagementComponent),
       },
+      {
+        path: 'settings/uom',
+        loadComponent: () =>
+          import('./features/settings/pages/uom-management/uom-management.component')
+            .then(m => m.UomManagementComponent),
+      },
     ],
   },
 ];

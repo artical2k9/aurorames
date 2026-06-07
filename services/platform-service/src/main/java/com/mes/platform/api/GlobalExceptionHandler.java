@@ -1,5 +1,7 @@
 package com.mes.platform.api;
 
+import com.mes.platform.uom.service.UomConflictException;
+import com.mes.platform.uom.service.UomNotFoundException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,10 +18,17 @@ public class GlobalExceptionHandler {
 
     record ErrorResponse(String error, String message) {}
 
-    @ExceptionHandler({NoSuchElementException.class, EmptyResultDataAccessException.class})
+    @ExceptionHandler({NoSuchElementException.class, EmptyResultDataAccessException.class,
+                       UomNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleNotFound(Exception ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse("not_found", ex.getMessage()));
+    }
+
+    @ExceptionHandler(UomConflictException.class)
+    public ResponseEntity<ErrorResponse> handleConflict(UomConflictException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("conflict", ex.getMessage()));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)

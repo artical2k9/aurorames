@@ -34,4 +34,15 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:postgresql'
+    testImplementation libs.caffeine
+}
+
+test {
+    // docker-java defaults to API v1.32; Docker Desktop 29.x requires min v1.40.
+    // testcontainers.properties supplies the host (tcp://localhost:2375).
+    systemProperty 'api.version', '1.41'
+    def dockerHost = System.getenv('DOCKER_HOST')
+    if (dockerHost) {
+        environment 'DOCKER_HOST', dockerHost
+    }
 }
