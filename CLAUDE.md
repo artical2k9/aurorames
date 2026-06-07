@@ -416,6 +416,62 @@ Before raising any PR that adds private methods to a controller:
 
 ---
 
+## IT Class RSA Key Isolation — Mandatory
+
+**ERR-MES-074:** Each IT class generates its own `static final RSAKey TEST_RSA_KEY` and registers a `@Primary JwtDecoder` backed by that key. Delegating `buildToken()` to another IT class's static method signs with a **different** RSA key — the decoder rejects every token with 401. This failure is invisible to static analysis and only surfaces at runtime.
+
+### Rule — every IT class must define its own `buildToken()`
+
+Every `@SpringBootTest` IT class that declares a `static final RSAKey TEST_RSA_KEY` **must** include its own `static String buildToken(String role)` method that signs with that class's own key:
+
+```java
+static String buildToken(String role) {
+    try {
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .issuer(TEST_ISSUER).subject("test-user")
+                .claim("org_id", SYSTEM_ORG_ID.toString())
+                .claim("roles", List.of(role))
+                .expirationTime(new Date(System.currentTimeMillis() + 3_600_000L))
+                .build();
+        SignedJWT jwt = new SignedJWT(
+                new JWSHeader.Builder(JWSAlgorithm.RS256).keyID("test-key").build(), claims);
+        jwt.sign(new RSASSASigner(TEST_RSA_KEY));   // ← THIS class's key
+        return jwt.serialize();
+    } catch (Exception e) { throw new RuntimeException("buildToken failed", e); }
+}
+```
+
+**Never** call `AnotherITClass.buildToken(role)` — that method signs with a different key than this class's `@Primary JwtDecoder` expects.
+
+### Pre-PR check for new IT classes
+
+Before raising any PR that adds a new `@SpringBootTest` IT class with JWT authentication:
+- Confirm the class has its own `TEST_RSA_KEY` and its own `buildToken()`.
+- Search for any `OtherClass.buildToken(` calls — replace every cross-class delegation.
+
+---
+
+## Keycloak `invalid_grant` HTTP Status — Mandatory for ROPC Clients
+
+**ERR-MES-075:** KC returns HTTP 400 for `invalid_grant` per RFC 6749 §5.2. Some KC versions return 401 instead. Catching only `HttpClientErrorException.Unauthorized` (HTTP 401) misses the 400 case — the "Account is not fully set up" body never matches, the exception propagates as wrong credentials.
+
+### Rule — check body content, not HTTP status, for `invalid_grant` detection
+
+```java
+} catch (HttpClientErrorException e) {         // ← catch the PARENT (all 4xx)
+    // KC returns 400 (RFC 6749) or 401 for invalid_grant depending on version.
+    String body = e.getResponseBodyAsString();
+    if (body != null && body.contains("Account is not fully set up")) {
+        return true;   // correct temp password, UPDATE_PASSWORD action pending
+    }
+    throw new InvalidCredentialsException();    // wrong password / unknown user
+}
+```
+
+**Never** use `catch (HttpClientErrorException.Unauthorized e)` to detect `invalid_grant` — it misses HTTP 400 responses from RFC-compliant KC versions.
+
+---
+
 # Compact
 
 Retain:

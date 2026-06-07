@@ -57,3 +57,5 @@
 | ERR-MES-071 | 2026-06-07 | Backend — Validation | Optional DTO fields that mirror required fields in sibling DTOs must carry the same `@Size`/`@Pattern` constraints — Bean Validation skips them on null safely |
 | ERR-MES-072 | 2026-06-07 | Testing — Testcontainers | Public endpoint IT tests with structurally valid bodies reach KC even when expecting an error response — always add `assumeTrue(KC.isRunning())` if the error path hits KC |
 | ERR-MES-073 | 2026-06-07 | Backend — API Design | Never catch exceptions inline in a controller already mapped by `GlobalExceptionHandler` — creates divergent response shapes between the inline handler and the global handler |
+| ERR-MES-074 | 2026-06-07 | Testing — Spring Security / JWT | Every IT class with its own `TEST_RSA_KEY` must define its own `buildToken()` using that key — delegating to another class's static method signs with the wrong key → 401 |
+| ERR-MES-075 | 2026-06-07 | Backend — Keycloak / HTTP | KC returns HTTP 400 (RFC 6749) for `invalid_grant`, not always 401 — catch `HttpClientErrorException` (parent) and check body content; never match on `.Unauthorized` |

@@ -4,6 +4,40 @@
 
 ---
 
+## ERR-MES-074 — IT class delegates buildToken() to sibling class; wrong RSA key signs tokens
+**Date:** 2026-06-07  **Category:** Testing — Spring Security / JWT  **Status:** Promoted 2026-06-07
+
+**Symptom:** `UserPasswordControllerIT` and `PublicAuthControllerIT` returned HTTP 401 UNAUTHORIZED on every authenticated request in CI. `resetPassword_differentOrg_returns404()` received 401 instead of 404. The `createUser()` helper in each class received a null body on its `UserResponse` exchange → NPE in 6 downstream tests. All 10 new IT tests failed in CI but passed locally when Testcontainers was skipped (Docker not accessible before api.version fix).
+
+**Root cause:** Each IT class generates its own `static final RSAKey TEST_RSA_KEY` and registers a `@Primary JwtDecoder` bean that validates tokens using that class's public key. Both `UserPasswordControllerIT` and `PublicAuthControllerIT` delegated token generation to `UserControllerIT.buildToken(String role)` — a static method that signs tokens with `UserControllerIT.TEST_RSA_KEY`. The Spring context for each class loads its own `@Primary JwtDecoder` backed by its own `TEST_RSA_KEY`. Token signed with `UserControllerIT.TEST_RSA_KEY` ≠ `UserPasswordControllerIT.TEST_RSA_KEY` → signature verification fails → 401 for every request.
+
+The delegation was invisible at call-site review: `UserControllerIT.buildToken("SYSTEM_ADMIN")` looks like a simple utility call. The implicit RSA key dependency only surfaces at runtime when the `JwtDecoder` rejects the token.
+
+**Fix applied:** Added a local `static String buildToken(String role)` method to both `UserPasswordControllerIT` and `PublicAuthControllerIT`. Each method signs with the class's own `TEST_RSA_KEY`. The cross-class delegation was removed.
+
+**Why the audit missed it:** IT tests were skipped locally (Docker not accessible before the api.version fix was applied). The audit was run as a code review against source files — there was no runtime execution to surface the 401. The key mismatch is a runtime failure, not a static analysis issue.
+
+**Rule:** Every IT class that declares its own `static final RSAKey TEST_RSA_KEY` must define its own `static String buildToken(String role)` that signs with `this` class's key. Never delegate to another IT class's `buildToken()` static method — the calling class's `@Primary JwtDecoder` is backed by its own distinct RSA key, and a cross-class delegation silently signs tokens with the wrong key. The delegation compiles and the call-site looks correct; the failure is invisible until runtime.
+
+---
+
+## ERR-MES-075 — KeycloakTokenClient matched invalid_grant on HTTP status code; KC returns 400 (RFC 6749), not always 401
+**Date:** 2026-06-07  **Category:** Backend — Keycloak / HTTP  **Status:** Promoted 2026-06-07
+
+**Symptom:** After the Docker api.version fix made IT tests run locally, `PublicAuthControllerIT` AS1 (valid temp credentials + correct temp password → expected 204) failed with HTTP 400. The test setup correctly configured a user with `UPDATE_PASSWORD` required action and set a temporary password. The service returned 400 (InvalidCredentialsException) instead of 204.
+
+**Root cause:** `KeycloakTokenClient.verifyTemporaryPasswordCredentials()` sent an ROPC token request with the user's credentials. KC returns `{"error":"invalid_grant","error_description":"Account is not fully set up"}` when a user has `UPDATE_PASSWORD` as a required action — meaning the password is correct but KC blocks token issuance until the user changes it. This is the expected signal that distinguishes "correct temporary password" from "wrong password".
+
+The catch clause was `catch (HttpClientErrorException.Unauthorized e)` — which matches only HTTP 401. RFC 6749 §5.2 specifies HTTP 400 for `invalid_grant` errors. The Testcontainers KC version followed the RFC and returned HTTP 400. The `HttpClientErrorException.Unauthorized` catch did not fire; the exception propagated to the parent `HttpClientErrorException` catch which threw `InvalidCredentialsException` → controller returned 400.
+
+Production KC instances on other versions may return either 400 or 401, making status-code matching fragile across KC versions.
+
+**Fix applied:** Changed the catch clause from `HttpClientErrorException.Unauthorized` to `HttpClientErrorException` (the parent, matching all 4xx responses). The discriminator moved from HTTP status to response body: `if (body != null && body.contains("Account is not fully set up")) { return true; }`. Any other 4xx body (wrong password, unknown user, account locked) falls through to `throw new InvalidCredentialsException()`.
+
+**Rule:** When calling the KC token endpoint to verify user credentials, never match KC error responses by HTTP status code alone. `invalid_grant` errors may arrive as HTTP 400 or 401 depending on KC version and configuration. Always catch `HttpClientErrorException` (the Spring parent class for all 4xx errors) and inspect the response body to distinguish error types. Specifically: `body.contains("Account is not fully set up")` is the signal for "correct password, UPDATE_PASSWORD pending"; any other body indicates wrong credentials.
+
+---
+
 ## ERR-MES-059 — Angular subscribe callbacks mutating template-bound properties trigger NG0100 across entire app
 **Date:** 2026-06-05  **Category:** Frontend — Angular Change Detection  **Status:** Promoted 2026-06-05
 
