@@ -44,6 +44,7 @@ dependencies {
 
     // ── Tests ─────────────────────────────────────────────────────────────────
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation project(':libs:lib-common-security')
 }
 
 apply plugin: 'maven-publish'

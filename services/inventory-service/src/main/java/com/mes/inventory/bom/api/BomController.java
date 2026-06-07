@@ -78,7 +78,8 @@ public class BomController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID bomId) {
 
-        return BomMapper.toDto(bomService.releaseBom(JwtClaimsExtractor.orgId(jwt), bomId, subjectOf(jwt)));
+        return BomMapper.toDto(bomService.releaseBom(JwtClaimsExtractor.orgId(jwt), bomId,
+                JwtClaimsExtractor.nullSafeSubject(jwt)));
     }
 
     @GetMapping("/{bomId}/lines")
@@ -189,14 +190,5 @@ public class BomController {
                         "attachment; filename=\"bom-" + bomId + ".csv\"")
                 .contentType(MediaType.parseMediaType("text/csv"))
                 .body(csv);
-    }
-
-    private static String subjectOf(Jwt jwt) {
-        String sub = jwt.getSubject();
-        if (sub != null && !sub.isBlank()) {
-            return sub;
-        }
-        String username = jwt.getClaimAsString("preferred_username");
-        return (username != null && !username.isBlank()) ? username : "unknown";
     }
 }
