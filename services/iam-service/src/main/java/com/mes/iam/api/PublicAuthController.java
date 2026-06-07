@@ -1,7 +1,6 @@
 package com.mes.iam.api;
 
 import com.mes.iam.api.dto.ChangeTemporaryPasswordRequest;
-import com.mes.iam.exception.InvalidCredentialsException;
 import com.mes.iam.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -9,8 +8,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
@@ -23,15 +20,10 @@ public class PublicAuthController {
     }
 
     @PostMapping("/change-temporary-password")
-    public ResponseEntity<?> changeTemporaryPassword(
+    public ResponseEntity<Void> changeTemporaryPassword(
             @Valid @RequestBody ChangeTemporaryPasswordRequest request) {
-        try {
-            userService.changeTemporaryPassword(
-                    request.username(), request.currentPassword(), request.newPassword());
-            return ResponseEntity.noContent().build();
-        } catch (InvalidCredentialsException e) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("message", "Invalid credentials or no password change required"));
-        }
+        userService.changeTemporaryPassword(
+                request.username(), request.currentPassword(), request.newPassword());
+        return ResponseEntity.noContent().build();
     }
 }

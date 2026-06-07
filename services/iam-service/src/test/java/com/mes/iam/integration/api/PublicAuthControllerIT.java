@@ -94,7 +94,6 @@ class PublicAuthControllerIT {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
-        registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri", () -> "");
         registry.add("keycloak.admin.server-url", KEYCLOAK::getAuthServerUrl);
         registry.add("keycloak.admin.realm", () -> TEST_REALM);
         registry.add("keycloak.admin.username", KEYCLOAK::getAdminUsername);
@@ -164,6 +163,7 @@ class PublicAuthControllerIT {
     // ── AS3: unknown username → HTTP 400 (same generic message — no enumeration) ──────
     @Test
     void changeTemporaryPassword_unknownUser_returns400() {
+        assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
         ChangeTemporaryPasswordRequest req = new ChangeTemporaryPasswordRequest(
                 "nobody-" + UUID.randomUUID() + "@test.com", "SomePass1!", "NewPerm1!");
 

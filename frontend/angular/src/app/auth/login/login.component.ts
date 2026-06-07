@@ -551,7 +551,9 @@ export class LoginComponent {
       await this.router.navigateByUrl(url ?? '/dashboard');
     } catch (err: unknown) {
       // Detect KC "Account is not fully set up" → switch to change-password flow
-      const description = this.extractErrorDescription(err);
+      type ErrShape = { error?: { error_description?: string }; params?: { error_description?: string } };
+      const e = err as ErrShape;
+      const description = e?.error?.error_description ?? e?.params?.error_description;
       if (description?.includes('Account is not fully set up')) {
         this.savedUsername    = this.usernameValue.trim();
         this.savedTempPassword = this.passwordValue;
@@ -613,16 +615,4 @@ export class LoginComponent {
     this.oauthService.initLoginFlow();
   }
 
-  private extractErrorDescription(err: unknown): string | undefined {
-    if (err && typeof err === 'object') {
-      const e = err as Record<string, unknown>;
-      // angular-oauth2-oidc wraps the response in e.error or e.params
-      const body = e['error'] as Record<string, unknown> | undefined
-                ?? e['params'] as Record<string, unknown> | undefined;
-      if (body && typeof body['error_description'] === 'string') {
-        return body['error_description'];
-      }
-    }
-    return undefined;
-  }
 }
