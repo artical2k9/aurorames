@@ -4,6 +4,7 @@ import com.mes.iam.api.dto.ErrorResponse;
 import com.mes.iam.exception.ActiveRoleAssignmentsException;
 import com.mes.iam.exception.DuplicateEmailException;
 import com.mes.iam.exception.DuplicateRoleNameException;
+import com.mes.iam.exception.InvalidCredentialsException;
 import com.mes.iam.exception.PrivilegeNotFoundException;
 import com.mes.iam.exception.RoleNotFoundException;
 import com.mes.iam.exception.SystemRoleException;
@@ -58,6 +59,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleActiveAssignments(ActiveRoleAssignmentsException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse("conflict", ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCredentials(InvalidCredentialsException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("invalid_credentials", ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

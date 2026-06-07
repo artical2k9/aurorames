@@ -12,11 +12,14 @@ import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { MessageModule } from 'primeng/message';
 import { SkeletonModule } from 'primeng/skeleton';
+import { CheckboxModule } from 'primeng/checkbox';
 import { MessageService } from 'primeng/api';
 import {
   LucidePencil,
   LucideUserPlus,
   LucideUserX,
+  LucideKeyRound,
+  LucideTriangleAlert,
 } from '@lucide/angular';
 import { BreadcrumbService } from '../../../../shared/ui';
 import {
@@ -35,8 +38,9 @@ interface RoleOption { label: string; value: string; }
     CommonModule, ReactiveFormsModule,
     TableModule, DialogModule, ButtonModule,
     MultiSelectModule, InputTextModule, TagModule,
-    ToastModule, MessageModule, SkeletonModule,
+    ToastModule, MessageModule, SkeletonModule, CheckboxModule,
     LucidePencil, LucideUserPlus, LucideUserX,
+    LucideKeyRound, LucideTriangleAlert,
   ],
   providers: [MessageService],
   template: `
@@ -74,13 +78,20 @@ interface RoleOption { label: string; value: string; }
               <th>Email</th>
               <th>Roles</th>
               <th>Status</th>
-              <th style="width:6rem">Actions</th>
+              <th style="width:8rem">Actions</th>
             </tr>
           </ng-template>
 
           <ng-template pTemplate="body" let-user>
             <tr>
-              <td>{{ user.firstName }} {{ user.lastName }}</td>
+              <td>
+                {{ user.firstName }} {{ user.lastName }}
+                @if (user.passwordChangeRequired) {
+                  <svg lucideTriangleAlert [size]="13" [strokeWidth]="2"
+                       class="um__pw-badge"
+                       title="Password change required"></svg>
+                }
+              </td>
               <td>{{ user.email }}</td>
               <td>
                 @for (role of user.roles; track role) {
@@ -99,8 +110,12 @@ interface RoleOption { label: string; value: string; }
               </td>
               <td>
                 <div class="um__actions">
-                  <button class="um__action-btn" title="Edit roles" (click)="openEdit(user)">
+                  <button class="um__action-btn" title="Edit user" (click)="openEdit(user)">
                     <svg lucidePencil [size]="14" [strokeWidth]="2"></svg>
+                  </button>
+                  <button class="um__action-btn" title="Reset password"
+                          (click)="openEdit(user, true)">
+                    <svg lucideKeyRound [size]="14" [strokeWidth]="2"></svg>
                   </button>
                   @if (user.enabled) {
                     @if (pendingDeactivateId === user.id) {
@@ -135,12 +150,15 @@ interface RoleOption { label: string; value: string; }
 
       <!-- ── Create / Edit dialog ──────────────────────────────── -->
       <p-dialog [(visible)]="dialogVisible"
-                [header]="editMode ? 'Edit User Roles' : 'Add User'"
+                [header]="editMode ? 'Edit User' : 'Add User'"
                 [modal]="true"
                 [closable]="!saving"
-                [style]="{ width: '480px' }">
+                [style]="{ width: '520px' }"
+                [contentStyle]="{ 'max-height': '70vh', 'overflow-y': 'auto' }">
 
         <form [formGroup]="form" class="um__form">
+
+          <!-- ── Identity fields (create only) ──────────────────── -->
           @if (!editMode) {
             <div class="um__field-row">
               <div class="um__field">
@@ -166,6 +184,7 @@ interface RoleOption { label: string; value: string; }
             </div>
           }
 
+          <!-- ── Roles ───────────────────────────────────────────── -->
           <div class="um__field">
             <label for="roles">Roles</label>
             <p-multiSelect id="roles"
@@ -175,8 +194,82 @@ interface RoleOption { label: string; value: string; }
                            optionValue="value"
                            placeholder="Select roles…"
                            [filter]="true"
+                           appendTo="body"
                            styleClass="w-full" />
           </div>
+
+          <!-- ── Set initial password (create only) ─────────────── -->
+          @if (!editMode) {
+            <div class="um__field">
+              <label class="um__checkbox-label">
+                <p-checkbox formControlName="setInitialPassword"
+                            [binary]="true"
+                            inputId="setInitialPassword" />
+                <span>Set initial password</span>
+              </label>
+            </div>
+
+            @if (form.value.setInitialPassword) {
+              <div class="um__field">
+                <label for="initialPassword">Initial Password *</label>
+                <input pInputText id="initialPassword" type="password"
+                       formControlName="initialPassword"
+                       placeholder="Min 8 characters"
+                       [class.ng-invalid]="isInvalid('initialPassword')" />
+              </div>
+              <div class="um__field">
+                <label for="confirmPassword">Confirm Password *</label>
+                <input pInputText id="confirmPassword" type="password"
+                       formControlName="confirmPassword"
+                       placeholder="Repeat password"
+                       [class.ng-invalid]="isInvalid('confirmPassword') || passwordMismatch" />
+                @if (passwordMismatch) {
+                  <span class="um__field-error">Passwords do not match</span>
+                }
+              </div>
+              <div class="um__field">
+                <label class="um__checkbox-label">
+                  <p-checkbox formControlName="temporaryPassword"
+                              [binary]="true"
+                              inputId="temporaryPassword" />
+                  <span>Temporary — user must change on first login</span>
+                </label>
+              </div>
+            }
+          }
+
+          <!-- ── Reset password section (edit only) ─────────────── -->
+          @if (editMode) {
+            <hr class="um__divider" />
+            <p class="um__section-label">Reset Password</p>
+            <div class="um__field">
+              <label for="resetPassword">New Password</label>
+              <input pInputText id="resetPassword" type="password"
+                     formControlName="resetPassword"
+                     placeholder="Leave blank to keep current password"
+                     [class.ng-invalid]="isInvalid('resetPassword')" />
+            </div>
+            @if (form.value.resetPassword) {
+              <div class="um__field">
+                <label for="confirmResetPassword">Confirm New Password</label>
+                <input pInputText id="confirmResetPassword" type="password"
+                       formControlName="confirmResetPassword"
+                       placeholder="Repeat new password"
+                       [class.ng-invalid]="resetPasswordMismatch" />
+                @if (resetPasswordMismatch) {
+                  <span class="um__field-error">Passwords do not match</span>
+                }
+              </div>
+              <div class="um__field">
+                <label class="um__checkbox-label">
+                  <p-checkbox formControlName="temporaryReset"
+                              [binary]="true"
+                              inputId="temporaryReset" />
+                  <span>Temporary — user must change on first login</span>
+                </label>
+              </div>
+            }
+          }
 
           @if (serverError) {
             <p-message severity="error" [text]="serverError" />
@@ -186,7 +279,7 @@ interface RoleOption { label: string; value: string; }
         <ng-template pTemplate="footer">
           <p-button label="Cancel" severity="secondary" size="small"
                     [disabled]="saving" (onClick)="closeDialog()" />
-          <p-button [label]="editMode ? 'Save Roles' : 'Create User'" size="small"
+          <p-button [label]="editMode ? 'Save' : 'Create User'" size="small"
                     [loading]="saving" (onClick)="save()" />
         </ng-template>
       </p-dialog>
@@ -213,11 +306,31 @@ export class UserManagementComponent implements OnInit {
   pendingDeactivateId: string | null = null;
 
   form: FormGroup = this.fb.group({
-    firstName: ['', Validators.required],
-    lastName:  ['', Validators.required],
-    email:     ['', [Validators.required, Validators.email]],
-    roles:     [[] as string[]],
+    firstName:          ['', Validators.required],
+    lastName:           ['', Validators.required],
+    email:              ['', [Validators.required, Validators.email]],
+    roles:              [[] as string[]],
+    // create-only
+    setInitialPassword: [false],
+    initialPassword:    [''],
+    confirmPassword:    [''],
+    temporaryPassword:  [true],
+    // edit-only
+    resetPassword:      [''],
+    confirmResetPassword: [''],
+    temporaryReset:     [true],
   });
+
+  get passwordMismatch(): boolean {
+    const v = this.form.value;
+    return v.setInitialPassword && !!v.initialPassword &&
+           v.initialPassword !== v.confirmPassword;
+  }
+
+  get resetPasswordMismatch(): boolean {
+    const v = this.form.value;
+    return !!v.resetPassword && v.resetPassword !== v.confirmResetPassword;
+  }
 
   ngOnInit(): void {
     this.breadcrumbSvc.set([
@@ -241,7 +354,8 @@ export class UserManagementComponent implements OnInit {
       },
       error: () => {
         this.loading = false;
-        this.toast.add({ severity: 'error', summary: 'Load failed', detail: 'Could not load users or roles.' });
+        this.toast.add({ severity: 'error', summary: 'Load failed',
+          detail: 'Could not load users or roles.' });
         this.cdr.detectChanges();
       },
     });
@@ -251,24 +365,39 @@ export class UserManagementComponent implements OnInit {
     this.selectedUser = null;
     this.editMode     = false;
     this.serverError  = null;
-    this.form.reset({ roles: [] });
-    this.form.get('firstName')?.setValidators(Validators.required);
-    this.form.get('lastName')?.setValidators(Validators.required);
-    this.form.get('email')?.setValidators([Validators.required, Validators.email]);
-    ['firstName', 'lastName', 'email'].forEach(f => this.form.get(f)?.updateValueAndValidity());
+    this.form.reset({
+      roles: [], setInitialPassword: false,
+      temporaryPassword: true, temporaryReset: true,
+    });
+    ['firstName', 'lastName', 'email'].forEach(f => {
+      this.form.get(f)?.setValidators(
+        f === 'email' ? [Validators.required, Validators.email] : Validators.required);
+      this.form.get(f)?.updateValueAndValidity();
+    });
     this.dialogVisible = true;
   }
 
-  openEdit(user: UserResponse): void {
+  openEdit(user: UserResponse, focusPassword = false): void {
     this.selectedUser = user;
     this.editMode     = true;
     this.serverError  = null;
-    this.form.reset({ roles: [...user.roles] });
+    this.form.reset({
+      roles: [...user.roles],
+      resetPassword: '', confirmResetPassword: '',
+      temporaryReset: true,
+    });
     ['firstName', 'lastName', 'email'].forEach(f => {
       this.form.get(f)?.clearValidators();
       this.form.get(f)?.updateValueAndValidity();
     });
     this.dialogVisible = true;
+    if (focusPassword) {
+      setTimeout(() => {
+        const el = document.getElementById('resetPassword');
+        el?.focus();
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    }
   }
 
   closeDialog(): void {
@@ -276,7 +405,7 @@ export class UserManagementComponent implements OnInit {
   }
 
   save(): void {
-    if (this.form.invalid) {
+    if (!this.canSave()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -284,42 +413,81 @@ export class UserManagementComponent implements OnInit {
     this.serverError = null;
 
     if (this.editMode && this.selectedUser) {
-      const roles = this.form.value.roles as string[];
-      this.iam.updateRoles(this.selectedUser.id, roles).subscribe({
-        next: updated => {
-          this.users = this.users.map(u => u.id === updated.id ? updated : u);
-          this.saving        = false;
-          this.dialogVisible = false;
-          this.toast.add({ severity: 'success', summary: 'Roles updated' });
+      this.saveEdit();
+    } else {
+      this.saveCreate();
+    }
+  }
+
+  private saveCreate(): void {
+    const v = this.form.value;
+    const req: CreateUserRequest = {
+      email: v.email, firstName: v.firstName, lastName: v.lastName, roles: v.roles,
+    };
+    if (v.setInitialPassword && v.initialPassword) {
+      req.initialPassword  = v.initialPassword;
+      req.temporaryPassword = v.temporaryPassword;
+    }
+    this.iam.createUser(req).subscribe({
+      next: created => {
+        this.users         = [...this.users, created];
+        this.saving        = false;
+        this.dialogVisible = false;
+        this.toast.add({
+          severity: 'success', summary: 'User created',
+          detail: `${created.firstName} ${created.lastName} has been added.`,
+        });
+        this.cdr.detectChanges();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.serverError = err.error?.message ?? 'Failed to create user.';
+        this.saving = false;
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private saveEdit(): void {
+    const v    = this.form.value;
+    const user = this.selectedUser!;
+    const roles = v.roles as string[];
+    const newPassword: string = v.resetPassword ?? '';
+
+    const roleUpdate$ = this.iam.updateRoles(user.id, roles);
+
+    if (newPassword.trim()) {
+      const pwUpdate$ = this.iam.setPassword(user.id, {
+        newPassword: newPassword.trim(),
+        temporary:   v.temporaryReset,
+      });
+      forkJoin({ roles: roleUpdate$, pw: pwUpdate$ }).subscribe({
+        next: ({ roles: updated }) => {
+          this.onEditSaved(updated as UserResponse);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.serverError = err.error?.message ?? 'Failed to save changes.';
+          this.saving = false;
           this.cdr.detectChanges();
         },
+      });
+    } else {
+      roleUpdate$.subscribe({
+        next: updated => { this.onEditSaved(updated); },
         error: (err: HttpErrorResponse) => {
           this.serverError = err.error?.message ?? 'Failed to update roles.';
           this.saving = false;
           this.cdr.detectChanges();
         },
       });
-    } else {
-      const req = this.form.value as CreateUserRequest;
-      this.iam.createUser(req).subscribe({
-        next: created => {
-          this.users         = [...this.users, created];
-          this.saving        = false;
-          this.dialogVisible = false;
-          this.toast.add({
-            severity: 'success',
-            summary:  'User created',
-            detail:   `${created.firstName} ${created.lastName} has been added.`,
-          });
-          this.cdr.detectChanges();
-        },
-        error: (err: HttpErrorResponse) => {
-          this.serverError = err.error?.message ?? 'Failed to create user.';
-          this.saving = false;
-          this.cdr.detectChanges();
-        },
-      });
     }
+  }
+
+  private onEditSaved(updated: UserResponse): void {
+    this.users = this.users.map(u => u.id === updated.id ? updated : u);
+    this.saving        = false;
+    this.dialogVisible = false;
+    this.toast.add({ severity: 'success', summary: 'User saved' });
+    this.cdr.detectChanges();
   }
 
   confirmDeactivate(userId: string): void {
@@ -329,12 +497,14 @@ export class UserManagementComponent implements OnInit {
           u.id === userId ? { ...u, enabled: false } : u
         );
         this.pendingDeactivateId = null;
-        this.toast.add({ severity: 'warn', summary: 'User deactivated', detail: 'The user has been disabled in Keycloak.' });
+        this.toast.add({ severity: 'warn', summary: 'User deactivated',
+          detail: 'The user has been disabled in Keycloak.' });
         this.cdr.detectChanges();
       },
       error: () => {
         this.pendingDeactivateId = null;
-        this.toast.add({ severity: 'error', summary: 'Deactivate failed', detail: 'Could not deactivate this user.' });
+        this.toast.add({ severity: 'error', summary: 'Deactivate failed',
+          detail: 'Could not deactivate this user.' });
         this.cdr.detectChanges();
       },
     });
@@ -343,5 +513,21 @@ export class UserManagementComponent implements OnInit {
   isInvalid(field: string): boolean {
     const c = this.form.get(field);
     return !!(c?.invalid && c.touched);
+  }
+
+  private canSave(): boolean {
+    if (this.form.invalid) return false;
+    if (!this.editMode) {
+      const v = this.form.value;
+      if (v.setInitialPassword) {
+        if (!v.initialPassword || v.initialPassword.length < 8) return false;
+        if (v.initialPassword !== v.confirmPassword) return false;
+      }
+    } else {
+      if (this.resetPasswordMismatch) return false;
+      const rp = this.form.value.resetPassword ?? '';
+      if (rp.trim() && rp.trim().length < 8) return false;
+    }
+    return true;
   }
 }

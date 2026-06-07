@@ -9,6 +9,7 @@ export interface UserResponse {
   lastName: string;
   enabled: boolean;
   roles: string[];
+  passwordChangeRequired: boolean;
 }
 
 export interface CreateUserRequest {
@@ -16,6 +17,19 @@ export interface CreateUserRequest {
   firstName: string;
   lastName: string;
   roles: string[];
+  initialPassword?: string;
+  temporaryPassword?: boolean;
+}
+
+export interface SetPasswordRequest {
+  newPassword: string;
+  temporary: boolean;
+}
+
+export interface ChangeTemporaryPasswordRequest {
+  username: string;
+  currentPassword: string;
+  newPassword: string;
 }
 
 export interface RoleResponse {
@@ -47,5 +61,13 @@ export class IamApiService {
 
   listRoles(): Observable<RoleResponse[]> {
     return this.http.get<RoleResponse[]>('/api/iam/roles');
+  }
+
+  setPassword(userId: string, req: SetPasswordRequest): Observable<void> {
+    return this.http.put<void>(`/api/iam/users/${userId}/password`, req);
+  }
+
+  changeTemporaryPassword(req: ChangeTemporaryPasswordRequest): Observable<void> {
+    return this.http.post<void>('/api/iam/auth/change-temporary-password', req);
   }
 }

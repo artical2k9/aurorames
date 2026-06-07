@@ -150,7 +150,8 @@ class UserControllerIT {
     void createUser_withAdminToken_returns201AndUserAppearsInKeycloak() {
         assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
         String email = "invite-" + UUID.randomUUID() + "@test.com";
-        CreateUserRequest request = new CreateUserRequest(email, "Alice", "Smith", List.of("SYSTEM_ADMIN"));
+        CreateUserRequest request = new CreateUserRequest(
+                email, "Alice", "Smith", List.of("SYSTEM_ADMIN"), null, false);
 
         ResponseEntity<UserResponse> response = post("/users", adminToken, request, UserResponse.class);
 
@@ -166,7 +167,7 @@ class UserControllerIT {
     void createUser_duplicateEmail_returns409() {
         assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
         String email = "dup-" + UUID.randomUUID() + "@test.com";
-        CreateUserRequest request = new CreateUserRequest(email, "Bob", "Jones", List.of("VIEWER"));
+        CreateUserRequest request = new CreateUserRequest(email, "Bob", "Jones", List.of("VIEWER"), null, false);
 
         post("/users", adminToken, request, UserResponse.class);
         ResponseEntity<Map> second = post("/users", adminToken, request, Map.class);
@@ -178,7 +179,7 @@ class UserControllerIT {
     void createUser_withViewerToken_returns403() {
         assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
         CreateUserRequest request = new CreateUserRequest(
-                "x-" + UUID.randomUUID() + "@test.com", "X", "Y", List.of("VIEWER"));
+                "x-" + UUID.randomUUID() + "@test.com", "X", "Y", List.of("VIEWER"), null, false);
 
         ResponseEntity<Map> response = post("/users", viewerToken, request, Map.class);
 
@@ -187,7 +188,7 @@ class UserControllerIT {
 
     @Test
     void createUser_noToken_returns401() {
-        CreateUserRequest request = new CreateUserRequest("a@b.com", "A", "B", List.of("VIEWER"));
+        CreateUserRequest request = new CreateUserRequest("a@b.com", "A", "B", List.of("VIEWER"), null, false);
 
         ResponseEntity<Map> response = post("/users", null, request, Map.class);
 
@@ -197,7 +198,8 @@ class UserControllerIT {
     @Test
     void createUser_invalidEmail_returns400() {
         assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
-        CreateUserRequest request = new CreateUserRequest("not-an-email", "A", "B", List.of("SYSTEM_ADMIN"));
+        CreateUserRequest request = new CreateUserRequest(
+                "not-an-email", "A", "B", List.of("SYSTEM_ADMIN"), null, false);
 
         ResponseEntity<Map> response = post("/users", adminToken, request, Map.class);
 
@@ -209,7 +211,7 @@ class UserControllerIT {
         assumeTrue(KEYCLOAK.isRunning(), "Docker not available");
         String email = "list-" + UUID.randomUUID() + "@test.com";
         post("/users", adminToken,
-                new CreateUserRequest(email, "List", "User", List.of("VIEWER")), UserResponse.class);
+                new CreateUserRequest(email, "List", "User", List.of("VIEWER"), null, false), UserResponse.class);
 
         ResponseEntity<List<UserResponse>> response = get("/users", adminToken,
                 new ParameterizedTypeReference<>() {});
@@ -235,7 +237,7 @@ class UserControllerIT {
         String email = "get-" + UUID.randomUUID() + "@test.com";
         UserResponse created = Objects.requireNonNull(
                 post("/users", adminToken,
-                        new CreateUserRequest(email, "Get", "Me", List.of("SYSTEM_ADMIN")),
+                        new CreateUserRequest(email, "Get", "Me", List.of("SYSTEM_ADMIN"), null, false),
                         UserResponse.class).getBody());
 
         ResponseEntity<UserResponse> response = get("/users/" + created.id(), adminToken,
@@ -261,7 +263,7 @@ class UserControllerIT {
         String email = "roles-" + UUID.randomUUID() + "@test.com";
         UserResponse created = Objects.requireNonNull(
                 post("/users", adminToken,
-                        new CreateUserRequest(email, "Role", "User", List.of("SYSTEM_ADMIN")),
+                        new CreateUserRequest(email, "Role", "User", List.of("SYSTEM_ADMIN"), null, false),
                         UserResponse.class).getBody());
 
         UpdateUserRolesRequest req = new UpdateUserRolesRequest(List.of("VIEWER"));
@@ -281,7 +283,7 @@ class UserControllerIT {
         String email = "deactivate-" + UUID.randomUUID() + "@test.com";
         UserResponse created = Objects.requireNonNull(
                 post("/users", adminToken,
-                        new CreateUserRequest(email, "Deact", "User", List.of("VIEWER")),
+                        new CreateUserRequest(email, "Deact", "User", List.of("VIEWER"), null, false),
                         UserResponse.class).getBody());
 
         ResponseEntity<Void> deactivateResponse = post(

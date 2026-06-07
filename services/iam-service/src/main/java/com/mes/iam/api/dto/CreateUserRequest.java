@@ -18,5 +18,11 @@ public record CreateUserRequest(
         String lastName,
 
         @NotEmpty
-        List<String> roles
+        List<String> roles,
+
+        // nullable — when absent a KC email invite is sent instead
+        String initialPassword,
+
+        // true = user must change on first login; ignored when initialPassword is absent
+        boolean temporaryPassword
 ) {}

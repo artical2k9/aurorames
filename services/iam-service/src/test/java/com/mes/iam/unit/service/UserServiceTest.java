@@ -3,6 +3,7 @@ package com.mes.iam.unit.service;
 import com.mes.iam.api.dto.UserResponse;
 import com.mes.iam.exception.UserNotFoundException;
 import com.mes.iam.keycloak.KeycloakAdminClient;
+import com.mes.iam.keycloak.KeycloakTokenClient;
 import com.mes.iam.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +30,7 @@ import static org.mockito.Mockito.when;
 class UserServiceTest {
 
     @Mock KeycloakAdminClient keycloakAdminClient;
+    @Mock KeycloakTokenClient keycloakTokenClient;
 
     @InjectMocks UserService userService;
 
@@ -43,7 +45,7 @@ class UserServiceTest {
                 .thenReturn(Optional.of(userRep(USER_ID, "alice@test.com", "Alice", "Smith", true)));
 
         UserResponse response = userService.createUser("alice@test.com", "Alice", "Smith",
-                ORG_ID, List.of("SYSTEM_ADMIN"));
+                ORG_ID, List.of("SYSTEM_ADMIN"), null, false);
 
         assertThat(response.id()).isEqualTo(USER_ID);
         assertThat(response.email()).isEqualTo("alice@test.com");
@@ -57,7 +59,7 @@ class UserServiceTest {
         when(keycloakAdminClient.findUserById(USER_ID))
                 .thenReturn(Optional.of(userRep(USER_ID, "a@b.com", "A", "B", true)));
 
-        userService.createUser("a@b.com", "A", "B", ORG_ID, List.of("VIEWER"));
+        userService.createUser("a@b.com", "A", "B", ORG_ID, List.of("VIEWER"), null, false);
 
         verify(keycloakAdminClient).assignUserRoles(USER_ID, List.of("VIEWER"));
         verify(keycloakAdminClient).sendPasswordEmail(USER_ID);
