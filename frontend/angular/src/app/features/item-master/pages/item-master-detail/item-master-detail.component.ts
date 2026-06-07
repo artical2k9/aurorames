@@ -258,7 +258,7 @@ export class ItemMasterDetailComponent implements OnInit {
   ngOnInit(): void {
     this.itemId = this.route.snapshot.paramMap.get('id')!;
     this.breadcrumbSvc.set([
-      { label: 'Materials' },
+      { label: 'Master Data' },
       { label: 'Item Master', route: ['/item-master'] },
       { label: 'Detail' },
     ]);
@@ -278,7 +278,7 @@ export class ItemMasterDetailComponent implements OnInit {
       next: item => {
         this.item = item;
         this.breadcrumbSvc.set([
-          { label: 'Materials' },
+          { label: 'Master Data' },
           { label: 'Item Master', route: ['/item-master'] },
           { label: `${item.partNumber} Rev ${item.revision}` },
         ]);

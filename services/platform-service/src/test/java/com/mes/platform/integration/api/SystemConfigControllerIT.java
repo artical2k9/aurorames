@@ -26,6 +26,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -46,7 +47,7 @@ import static org.mockito.Mockito.when;
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
         "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration",
-        "spring.security.oauth2.resourceserver.jwt.issuer-uri="
+        "spring.security.oauth2.resourceserver.jwt.jwk-set-uri="
     }
 )
 @Testcontainers(disabledWithoutDocker = true)
@@ -56,6 +57,7 @@ class SystemConfigControllerIT {
     static final UUID ORG_A = UUID.fromString("00000000-0000-0000-0000-000000000001");
     static final UUID ORG_B = UUID.fromString("00000000-0000-0000-0000-000000000002");
     static final String WEBHOOK_TOKEN = "it-webhook-token-for-platform";
+    static final String TEST_ISSUER = "http://test-keycloak/realms/mes-test";
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")
@@ -79,7 +81,9 @@ class SystemConfigControllerIT {
         @Primary
         JwtDecoder testJwtDecoder() {
             try {
-                return NimbusJwtDecoder.withPublicKey(TEST_RSA_KEY.toRSAPublicKey()).build();
+                NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(TEST_RSA_KEY.toRSAPublicKey()).build();
+                decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(TEST_ISSUER));
+                return decoder;
             } catch (JOSEException e) {
                 throw new RuntimeException(e);
             }
@@ -182,6 +186,7 @@ class SystemConfigControllerIT {
     private String buildToken(UUID orgId, String role) {
         try {
             JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                    .issuer(TEST_ISSUER)
                     .subject("test-user")
                     .claim("org_id", orgId.toString())
                     .claim("roles", List.of(role))

@@ -403,7 +403,7 @@ export class ItemMasterCreateComponent implements OnInit {
 
   ngOnInit(): void {
     this.breadcrumbSvc.set([
-      { label: 'Materials' },
+      { label: 'Master Data' },
       { label: 'Item Master', route: ['/item-master'] },
       { label: 'New Item' },
     ]);

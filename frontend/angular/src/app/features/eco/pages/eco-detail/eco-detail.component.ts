@@ -158,7 +158,7 @@ export class EcoDetailComponent implements OnInit {
   ngOnInit(): void {
     const ecoId = this.route.snapshot.paramMap.get('ecoId') ?? '';
     this.breadcrumbSvc.set([
-      { label: 'Home' },
+      { label: 'Engineering' },
       { label: 'ECOs', route: ['/ecos'] },
       { label: 'Detail' },
     ]);

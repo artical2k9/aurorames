@@ -9,6 +9,8 @@ export interface BomDto {
   status: BomStatus;
   description?: string;
   ecoId?: string;
+  releasedBy?: string;
+  releasedAt?: string;
   createdBy: string;
   createdAt: string;
   reasonForRevision?: string;

@@ -289,8 +289,7 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     this.breadcrumbSvc.set([
-      { label: 'Home' },
-      { label: 'Materials' },
+      { label: 'Master Data' },
       { label: 'Item Master' },
     ]);
     this.gridPreference.load();

@@ -78,7 +78,8 @@ public class BomController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID bomId) {
 
-        return BomMapper.toDto(bomService.releaseBom(JwtClaimsExtractor.orgId(jwt), bomId));
+        return BomMapper.toDto(bomService.releaseBom(JwtClaimsExtractor.orgId(jwt), bomId,
+                JwtClaimsExtractor.nullSafeSubject(jwt)));
     }
 
     @GetMapping("/{bomId}/lines")

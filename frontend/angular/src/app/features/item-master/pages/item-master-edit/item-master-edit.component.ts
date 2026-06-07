@@ -435,7 +435,7 @@ export class ItemMasterEditComponent implements OnInit {
   ngOnInit(): void {
     this.itemId = this.route.snapshot.paramMap.get('id')!;
     this.breadcrumbSvc.set([
-      { label: 'Materials' },
+      { label: 'Master Data' },
       { label: 'Item Master', route: ['/item-master'] },
       { label: 'Edit' },
     ]);
@@ -462,7 +462,7 @@ export class ItemMasterEditComponent implements OnInit {
 
   private populateForm(item: ItemMasterDto): void {
     this.breadcrumbSvc.set([
-      { label: 'Materials' },
+      { label: 'Master Data' },
       { label: 'Item Master', route: ['/item-master'] },
       { label: `${item.partNumber} Rev ${item.revision}` },
     ]);

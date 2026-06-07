@@ -236,10 +236,13 @@ $transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
   background: none;
   border: none;
   flex: 1;
+  min-height: 0;       // allow flex item to shrink below content size
+  overflow-y: auto;    // scroll main nav internally; keeps Settings pinned
 
   &--bottom {
-    flex: 0;
-    margin-top: auto;
+    flex: none;        // 0 0 auto — natural content size; no grow or shrink
+    min-height: auto;  // override min-height: 0 inherited from .shell__nav base rule
+    overflow: visible; // override overflow-y: auto inherited from .shell__nav base rule
     padding-bottom: 0.5rem;
   }
 }

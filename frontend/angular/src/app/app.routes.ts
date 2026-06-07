@@ -89,6 +89,12 @@ export const routes: Routes = [
           import('./features/master-data/pages/udf-admin/udf-admin.component')
             .then(m => m.UdfAdminComponent),
       },
+      {
+        path: 'settings/users',
+        loadComponent: () =>
+          import('./features/settings/pages/user-management/user-management.component')
+            .then(m => m.UserManagementComponent),
+      },
     ],
   },
 ];

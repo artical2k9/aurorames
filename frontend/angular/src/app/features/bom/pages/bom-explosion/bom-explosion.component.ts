@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, of, switchMap } from 'rxjs';
@@ -22,7 +22,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
   selector: 'app-bom-explosion',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, RouterLink,
+    CommonModule, DatePipe, FormsModule, RouterLink,
     ButtonModule, TagModule, SelectButtonModule, SelectModule, DatePickerModule,
     MessageModule, TreeTableModule,
     StatusBadgeComponent, LucideFileDown,
@@ -47,6 +47,12 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             <app-status-badge [status]="bom.status" />
           </div>
           <div class="be__header-right">
+            @if (bom.status === 'RELEASED' && bom.releasedBy) {
+              <span class="be__meta">
+                Released by {{ bom.releasedBy }}
+                @if (bom.releasedAt) { · {{ bom.releasedAt | date:'dd MMM yyyy HH:mm' }} }
+              </span>
+            }
             @if (nodes.length > 0) {
               <span class="be__summary">{{ flatCount }} components · {{ maxDepthSeen }} level{{ maxDepthSeen !== 1 ? 's' : '' }} deep</span>
             }
@@ -165,6 +171,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     .be__link:hover { text-decoration: underline; }
     .be__revision { font-weight: 600; }
     .be__summary { font-size: 0.8125rem; color: var(--p-text-muted-color); }
+    .be__meta { font-size: 0.8125rem; color: var(--p-text-muted-color); }
 
     .be__error { margin-bottom: 0.75rem; }
 
@@ -233,7 +240,7 @@ export class BomExplosionComponent implements OnInit {
   ngOnInit(): void {
     this.bomId = this.route.snapshot.paramMap.get('bomId') ?? '';
     this.breadcrumbSvc.set([
-      { label: 'Materials' },
+      { label: 'Engineering' },
       { label: 'Item Master', route: ['/item-master'] },
       { label: 'BOMs' },
       { label: 'Explosion' },
@@ -251,7 +258,7 @@ export class BomExplosionComponent implements OnInit {
         this.parentItem = item;
         this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.bomRevision, value: r.id }));
         this.breadcrumbSvc.set([
-          { label: 'Materials' },
+          { label: 'Engineering' },
           { label: 'Item Master', route: ['/item-master'] },
           { label: item.partNumber, route: ['/item-master', bom.parentItemId, 'boms'] },
           { label: 'Rev ' + bom.bomRevision, route: ['/boms', this.bomId] },

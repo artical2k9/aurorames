@@ -2,7 +2,7 @@ import { Injectable, NgZone, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
 import {
-  Observable, catchError, finalize, from, map, shareReplay, throwError,
+  EMPTY, Observable, catchError, finalize, firstValueFrom, from, map, shareReplay, tap, throwError,
 } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -21,7 +21,7 @@ export class AuthSessionService {
 
   private refreshTimer?: ReturnType<typeof setTimeout>;
   // Shared observable: multiple callers (e.g. concurrent 401s) share one refresh call.
-  private refreshOnce$: Observable<void> | null = null;
+  private refreshOnce$: Observable<string> | null = null;
 
   constructor() {
     // Cross-tab coordination: when any tab stores a new access_token in localStorage
@@ -44,20 +44,32 @@ export class AuthSessionService {
    * Called by APP_INITIALIZER on every page load.
    * If a valid session exists in localStorage, restarts the refresh cycle so a
    * page refresh does not force the user to re-authenticate.
+   *
+   * Returns a Promise so the APP_INITIALIZER can await it — this guarantees the
+   * access token is valid before Angular activates any routes and components fire
+   * their first API calls.
    */
-  restoreSession(): void {
+  async restoreSession(): Promise<void> {
     if (!this.isSessionValid()) {
       return;
     }
     if (!this.oauth.hasValidAccessToken() && this.oauth.getRefreshToken()) {
-      // Access token expired during the page-reload gap — refresh immediately.
-      this.refreshOnce().subscribe({
-        next:  () => this.scheduleRefresh(),
-        error: () => this.endSession(),
-      });
-    } else {
-      this.scheduleRefresh();
+      // Access token expired during the page-reload gap — refresh immediately and
+      // block until the new token is stored so the first component API calls go
+      // out with a valid Bearer header instead of triggering a 401→refresh cycle.
+      await firstValueFrom(
+        this.refreshOnce().pipe(
+          tap(() => this.scheduleRefresh()),
+          catchError(() => {
+            this.endSession();
+            return EMPTY;
+          }),
+        ),
+        { defaultValue: undefined },
+      );
+      return;
     }
+    this.scheduleRefresh();
   }
 
   /**
@@ -86,18 +98,21 @@ export class AuthSessionService {
    * simultaneously (e.g. several concurrent API calls all receive 401) they all
    * receive the same observable and the network call is made exactly once.
    */
-  refreshOnce(): Observable<void> {
+  // Returns the new access_token string so callers never have to re-read from
+  // storage (avoids a race with the library's internal storeAccessTokenResponse).
+  refreshOnce(): Observable<string> {
     if (!this.refreshOnce$) {
       localStorage.setItem(REFRESH_LOCK_KEY, String(Date.now()));
 
       this.refreshOnce$ = from(this.oauth.refreshToken()).pipe(
-        map(() => void 0),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        map((response: any) => (response['access_token'] as string) ?? ''),
         catchError((err) => throwError(() => err)),
         finalize(() => { this.refreshOnce$ = null; }),
         shareReplay(1),
       );
     }
-    return this.refreshOnce$;
+    return this.refreshOnce$ as Observable<string>;
   }
 
   // ── private ────────────────────────────────────────────────────────────────

@@ -307,6 +307,77 @@ Both must be `pass` or `skipped` before merge. If `SonarCloud Code Analysis` sho
 
 ---
 
+---
+
+## Keycloak Docker Hostname Rules — Mandatory for All Compose Environments
+
+**ERR-MES-066:** KC without `KC_HOSTNAME` derives the `iss` claim from the incoming `Host` header. Browser tokens carry `localhost:8080`; backend services in Docker access KC at `keycloak:8080`. Spring Security 6.5+ validates the `iss` claim from OIDC discovery **even when only `jwk-set-uri` is configured**. The hostname mismatch causes 401 on every request.
+
+### Rule — always set KC_HOSTNAME in Docker Compose
+
+Every Keycloak service in every compose file (dev, CI, prod) **must** include:
+
+```yaml
+KC_HOSTNAME: localhost            # or the public hostname for prod
+KC_HOSTNAME_PORT: "8080"          # or the public port
+KC_HOSTNAME_STRICT: "false"
+KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+```
+
+### Verify after KC restart
+
+```bash
+curl -s http://localhost:8080/realms/mes/.well-known/openid-configuration | python3 -m json.tool | grep issuer
+# Must print: "issuer": "http://localhost:8080/realms/mes"
+```
+
+If `issuer` contains `keycloak:` or any Docker-internal hostname, the KC container is misconfigured.
+
+---
+
+## Auth Fix Verification Standard — Mandatory
+
+**ERR-MES-067:** Verifying an auth fix by decoding a JWT or curling KC directly is **insufficient**. That tests token issuance only. The actual failure path is: Angular → dev proxy → gateway (Docker) → service. The gateway validates the `iss` claim; the service validates `org_id`. Only the full path catches both.
+
+### Rule — after any auth-related change, verify via the full stack
+
+1. Log in through the Angular app (or equivalent `curl` to the gateway dev proxy port **8082**, not directly to KC port 8080).
+2. Make the specific API call that was failing (e.g. `GET http://localhost:8082/api/iam/users`).
+3. Confirm HTTP 200.
+
+A 200 from the gateway is the only passing criterion. A valid JWT payload is a prerequisite, not a pass.
+
+---
+
+## JWT Issuer Validation in Integration Tests — Mandatory
+
+**ERR-MES-068:** Setting `spring.security.oauth2.resourceserver.jwt.issuer-uri` to empty string in IT overrides disables all issuer validation. This masks KC_HOSTNAME misconfigurations — the test suite passes while every browser request 401s.
+
+### Rule — IT tests must NOT disable issuer validation
+
+Replace:
+```java
+// WRONG — disables issuer check entirely
+registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", () -> "");
+```
+
+With:
+```java
+// CORRECT — point to Testcontainers KC issuer; Spring Security validates normally
+registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
+    () -> keycloak.getAuthServerUrl() + "/realms/" + REALM + "/protocol/openid-connect/certs");
+```
+
+The Testcontainers KC issues tokens with its own issuer URL; the `jwk-set-uri` must match. Do not additionally set `issuer-uri` to a different value — let Spring Security derive it from OIDC discovery (which will match the Testcontainers KC issuer automatically in Spring Boot 3.5+).
+
+### Pre-PR check for backend PRs touching security
+
+Before raising any PR that changes `application.yml` JWT config, `compose-infra.yml` KC environment, or any `*IT.java` that overrides JWT properties:
+- Grep `grep -rn "issuer-uri.*\"\"" services/ --include="*.java"` — every match is a test that masks issuer validation; replace per rule above.
+- Confirm KC compose entry has `KC_HOSTNAME` set.
+
+---
+
 # Compact
 
 Retain:

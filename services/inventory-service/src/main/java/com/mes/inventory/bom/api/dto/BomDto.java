@@ -13,6 +13,8 @@ public class BomDto {
     private String status;
     private String description;
     private UUID ecoId;
+    private String releasedBy;
+    private Instant releasedAt;
     private String createdBy;
     private Instant createdAt;
     private String reasonForRevision;
@@ -75,6 +77,22 @@ public class BomDto {
 
     public void setEcoId(UUID ecoId) {
         this.ecoId = ecoId;
+    }
+
+    public String getReleasedBy() {
+        return releasedBy;
+    }
+
+    public void setReleasedBy(String releasedBy) {
+        this.releasedBy = releasedBy;
+    }
+
+    public Instant getReleasedAt() {
+        return releasedAt;
+    }
+
+    public void setReleasedAt(Instant releasedAt) {
+        this.releasedAt = releasedAt;
     }
 
     public String getCreatedBy() {
