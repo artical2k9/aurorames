@@ -27,7 +27,8 @@ public class SecurityConfig {
     @Bean
     public ReactiveJwtDecoder jwtDecoder(
             @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwkSetUri,
-            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:http://localhost:8080/realms/mes}") String issuer) {
+            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:"
+                    + "http://localhost:8080/realms/mes}") String issuer) {
         NimbusReactiveJwtDecoder decoder = NimbusReactiveJwtDecoder.withJwkSetUri(jwkSetUri).build();
         decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
         return decoder;

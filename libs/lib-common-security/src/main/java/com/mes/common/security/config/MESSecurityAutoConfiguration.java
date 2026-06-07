@@ -37,7 +37,8 @@ public class MESSecurityAutoConfiguration {
     @ConditionalOnMissingBean(JwtDecoder.class)
     public JwtDecoder jwtDecoder(
             @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwkSetUri,
-            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:http://localhost:8080/realms/mes}") String issuer) {
+            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:"
+                    + "http://localhost:8080/realms/mes}") String issuer) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
         decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
         return decoder;
