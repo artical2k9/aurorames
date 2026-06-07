@@ -378,6 +378,44 @@ Before raising any PR that changes `application.yml` JWT config, `compose-infra.
 
 ---
 
+## `@ConditionalOnMissingBean` in `@Import`-ed Configuration — Mandatory
+
+**ERR-MES-069:** `@ConditionalOnMissingBean` is only reliable in Spring Boot auto-configuration classes (loaded via `AutoConfiguration.imports`). In manually `@Import`-ed `@Configuration` classes it evaluates before `@TestConfiguration` beans are registered, causing the condition to fire incorrectly and crash the `ApplicationContext` in every IT that provides a `@Primary` override.
+
+### Rule — never add `@ConditionalOnMissingBean`-guarded beans to `@Import`-ed classes
+
+If a shared bean (e.g. `JwtDecoder`) needs runtime default behaviour with test-override support:
+- **Rely on Spring Boot auto-configuration** — it processes after all user-defined beans and honours `@ConditionalOnMissingBean` reliably.
+- **Do not** add the bean to a class loaded via `@Import` (e.g. `MESSecurityAutoConfiguration`).
+
+### Pre-PR check for shared lib changes
+
+Before adding any `@Bean` with `@ConditionalOnMissingBean` to a class that is `@Import`-ed:
+- Confirm the class is in `spring.factories` / `AutoConfiguration.imports` (auto-config path).
+- If loaded via `@Import`, remove the condition — tests cannot safely override it.
+
+---
+
+## Private Controller Methods with Branch Logic — Mandatory
+
+**ERR-MES-070:** Private static methods in controllers that contain `if`/ternary branches are invisible to test authors — IT tests only exercise the happy path, leaving fallback branches uncovered. This caused a SonarCloud quality gate failure at 73.3% (threshold 80%).
+
+### Rule — delegate branching logic to a tested shared helper
+
+Before writing a private helper method with branching logic in a controller or service:
+
+1. Grep `libs/` for an equivalent utility: `grep -r "nullSafeSubject\|orgId\|subjectOf" libs/ --include="*.java"`
+2. If a tested helper exists, delegate to it — it inherits full branch coverage from its own unit tests.
+3. If no helper exists, put the new logic in a `final` utility class under `libs/` with dedicated unit tests. Never write it as a private method inside a controller.
+
+### Pre-PR check for new controller code
+
+Before raising any PR that adds private methods to a controller:
+- Grep the diff for `private static` or `private` methods with `if`/ternary branches.
+- For each match: confirm a unit test covers all branches — either directly or via a shared utility's tests.
+
+---
+
 # Compact
 
 Retain:
