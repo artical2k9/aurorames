@@ -13,6 +13,9 @@ import org.springframework.security.core.annotation.AnnotationTemplateExpression
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.client.RestClient;
 
@@ -24,6 +27,20 @@ public class MESSecurityAutoConfiguration {
     @ConditionalOnMissingBean
     static AnnotationTemplateExpressionDefaults methodSecurityDefaults() {
         return new AnnotationTemplateExpressionDefaults();
+    }
+
+    /**
+     * Explicit JwtDecoder: JWK fetch via Docker-internal URI, issuer validation as
+     * string comparison only — no OIDC discovery HTTP call from inside Docker.
+     */
+    @Bean
+    @ConditionalOnMissingBean(JwtDecoder.class)
+    public JwtDecoder jwtDecoder(
+            @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwkSetUri,
+            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:http://localhost:8080/realms/mes}") String issuer) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
+        return decoder;
     }
 
     @Bean

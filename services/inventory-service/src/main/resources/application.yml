@@ -51,6 +51,7 @@ spring:
       resourceserver:
         jwt:
           jwk-set-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mes}/protocol/openid-connect/certs
+          issuer-uri: ${KEYCLOAK_EXTERNAL_URL:http://localhost:8080/realms/mes}
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
