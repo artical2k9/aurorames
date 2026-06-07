@@ -438,3 +438,10 @@ registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
 **Root cause:** Inline `try/catch` in controller duplicated handling already present in `GlobalExceptionHandler`.
 **Fix applied:** Removed try/catch from `PublicAuthController`; `GlobalExceptionHandler` handles all cases.
 **Rule:** Never catch exceptions inline in a controller that are already mapped by `GlobalExceptionHandler`. See ERR-MES-073 archive entry.
+
+## ERR-MES-074 — IT test delegates token-building to another class whose RSA key differs from its own @Primary JwtDecoder
+**Date:** 2026-06-07  **Category:** Testing — Spring Security / JWT  **Status:** Open
+**Symptom:** `UserPasswordControllerIT` and `PublicAuthControllerIT` produced 401 UNAUTHORIZED on every authenticated request in CI. `resetPassword_differentOrg_returns404()` returned 401 instead of 404; `createUser()` helper got null body → NPE in 6 other tests.
+**Root cause:** Each IT class generates its own `static final RSAKey TEST_RSA_KEY` and registers a `@Primary JwtDecoder` using that key. Both classes delegated to `UserControllerIT.buildToken("SYSTEM_ADMIN")`, a static method that signs with `UserControllerIT.TEST_RSA_KEY` — a different key. Tokens signed with key A, decoded with key B → signature verification fails → 401.
+**Fix applied:** Added a local `buildToken(String role)` static method to each class that signs with the class's own `TEST_RSA_KEY`. Removed the delegation to `UserControllerIT.buildToken()`.
+**Rule:** Every IT class that has its own `TEST_RSA_KEY` must have its own `buildToken()` that uses that key. Never delegate token-building to another IT class's static method — the implicit key dependency is invisible at call-site review and only fails at runtime.
