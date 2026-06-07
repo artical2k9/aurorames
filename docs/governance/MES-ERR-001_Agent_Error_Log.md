@@ -417,3 +417,24 @@ registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
 **Root cause:** ESLint v9 flat config requires the `processor` field to be either a registered string (`"plugin/name"`) or a plain object with `preprocess`/`postprocess` methods. `angular.processInlineTemplates` as exported by `@angular-eslint/eslint-plugin` v21 is neither — ESLint rejects it.
 **Fix applied:** Removed the `processor` line entirely. All project components use `templateUrl`, so inline template extraction is not needed; external `.html` files are linted in the separate HTML config block.
 **Rule:** In Angular ESLint flat config, do not set `processor: angular.processInlineTemplates` — it is rejected. The inline template processor is only needed for components with inline `template:` strings; if all components use `templateUrl`, omit the processor entirely.
+
+## ERR-MES-071 — Optional DTO field missing @Size — validation gap vs sibling DTO
+**Date:** 2026-06-07  **Category:** Backend — Validation  **Status:** Promoted 2026-06-07
+**Symptom:** `initialPassword` in `CreateUserRequest` had no `@Size(min=8,max=72)`, allowing a 1-character initial password despite `SetPasswordRequest` enforcing 8 chars for the same semantic value.
+**Root cause:** Nullable optional fields on extended DTOs are easy to omit constraints from. Jakarta Bean Validation skips `@Size` on null automatically, so `@Nullable @Size(min=8,max=72)` is safe.
+**Fix applied:** Added `@Nullable @Size(min = 8, max = 72)` to `initialPassword` in `CreateUserRequest.java`.
+**Rule:** Port ALL constraints from sibling validated DTOs when adding optional fields of the same semantic type. See ERR-MES-071 archive entry.
+
+## ERR-MES-072 — IT test for public endpoint missing assumeTrue despite KC-dependent error path
+**Date:** 2026-06-07  **Category:** Testing — Testcontainers  **Status:** Promoted 2026-06-07
+**Symptom:** `changeTemporaryPassword_unknownUser_returns400` failed with 500 (not 400) when Docker unavailable — the valid payload bypassed `@Valid` and reached `KeycloakTokenClient` which threw an unchecked network exception.
+**Root cause:** The expected 400 comes from KC, not Spring validation. Tests that send structurally valid bodies to public KC-backed endpoints are KC-dependent even when the assertion is an error.
+**Fix applied:** Added `assumeTrue(KEYCLOAK.isRunning(), "Docker not available")` to the test.
+**Rule:** For public endpoints with KC in the error path: if the test body passes `@Valid`, add `assumeTrue`. See ERR-MES-072 archive entry.
+
+## ERR-MES-073 — Controller duplicating GlobalExceptionHandler catch creates divergent response shapes
+**Date:** 2026-06-07  **Category:** Backend — API Design  **Status:** Promoted 2026-06-07
+**Symptom:** `PublicAuthController` returned `{"message":"..."}` for `InvalidCredentialsException`; `GlobalExceptionHandler` returns `{"code":"...","message":"..."}`. Inconsistent shapes for same exception.
+**Root cause:** Inline `try/catch` in controller duplicated handling already present in `GlobalExceptionHandler`.
+**Fix applied:** Removed try/catch from `PublicAuthController`; `GlobalExceptionHandler` handles all cases.
+**Rule:** Never catch exceptions inline in a controller that are already mapped by `GlobalExceptionHandler`. See ERR-MES-073 archive entry.

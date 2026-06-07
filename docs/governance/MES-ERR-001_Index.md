@@ -54,3 +54,6 @@
 | ERR-MES-061 | 2026-06-04 | Backend — Hibernate Envers | New service scaffold must grep `libs/` for `@Audited` entities — every one needs a `_aud` table in the service's Flyway migrations |
 | ERR-MES-062 | 2026-06-05 | Backend — Spring Data / JPA Auditing | Every service with `@EnableJpaAuditing` and `NOT NULL` `@CreatedBy`/`@LastModifiedBy` fields must have an `AuditorAware<String>` bean in `AppConfig.java` |
 | ERR-MES-063 | 2026-06-05 | Backend — Kafka | Any service using `KafkaTemplate` with non-String values must set `spring.kafka.producer.value-serializer: JsonSerializer` explicitly — Spring Boot default is `StringSerializer` |
+| ERR-MES-071 | 2026-06-07 | Backend — Validation | Optional DTO fields that mirror required fields in sibling DTOs must carry the same `@Size`/`@Pattern` constraints — Bean Validation skips them on null safely |
+| ERR-MES-072 | 2026-06-07 | Testing — Testcontainers | Public endpoint IT tests with structurally valid bodies reach KC even when expecting an error response — always add `assumeTrue(KC.isRunning())` if the error path hits KC |
+| ERR-MES-073 | 2026-06-07 | Backend — API Design | Never catch exceptions inline in a controller already mapped by `GlobalExceptionHandler` — creates divergent response shapes between the inline handler and the global handler |
