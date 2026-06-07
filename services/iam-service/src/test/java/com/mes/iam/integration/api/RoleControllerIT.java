@@ -29,6 +29,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -55,6 +56,7 @@ class RoleControllerIT {
 
     static final UUID SYSTEM_ORG_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     static final String TEST_REALM = "mes-test";
+    static final String TEST_ISSUER = "http://test-keycloak/realms/" + TEST_REALM;
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")
@@ -82,7 +84,9 @@ class RoleControllerIT {
         @Primary
         JwtDecoder testJwtDecoder() {
             try {
-                return NimbusJwtDecoder.withPublicKey(TEST_RSA_KEY.toRSAPublicKey()).build();
+                NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(TEST_RSA_KEY.toRSAPublicKey()).build();
+                decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(TEST_ISSUER));
+                return decoder;
             } catch (com.nimbusds.jose.JOSEException e) {
                 throw new RuntimeException(e);
             }
@@ -94,7 +98,7 @@ class RoleControllerIT {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
-        registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", () -> "");
+        registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri", () -> "");
         registry.add("keycloak.admin.server-url", KEYCLOAK::getAuthServerUrl);
         registry.add("keycloak.admin.realm", () -> TEST_REALM);
         registry.add("keycloak.admin.username", KEYCLOAK::getAdminUsername);
@@ -130,6 +134,7 @@ class RoleControllerIT {
     static String buildToken(String role) {
         try {
             com.nimbusds.jwt.JWTClaimsSet claims = new com.nimbusds.jwt.JWTClaimsSet.Builder()
+                    .issuer(TEST_ISSUER)
                     .subject("test-user")
                     .claim("org_id", SYSTEM_ORG_ID.toString())
                     .claim("roles", List.of(role))

@@ -26,6 +26,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -48,6 +49,7 @@ class PrivilegeControllerIT {
 
     static final UUID SYSTEM_ORG_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     static final String TEST_REALM = "mes-test";
+    static final String TEST_ISSUER = "http://test-keycloak/realms/" + TEST_REALM;
     static final String WEBHOOK_TOKEN = "test-webhook-secret-privilege-it";
 
     // When TEST_POSTGRES_URL is set, containers are provided externally (docker/compose-test.yml).
@@ -89,7 +91,9 @@ class PrivilegeControllerIT {
         @Primary
         JwtDecoder testJwtDecoder() {
             try {
-                return NimbusJwtDecoder.withPublicKey(TEST_RSA_KEY.toRSAPublicKey()).build();
+                NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(TEST_RSA_KEY.toRSAPublicKey()).build();
+                decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(TEST_ISSUER));
+                return decoder;
             } catch (com.nimbusds.jose.JOSEException e) {
                 throw new RuntimeException(e);
             }
@@ -103,7 +107,7 @@ class PrivilegeControllerIT {
             registry.add("spring.datasource.url", () -> env.get("TEST_POSTGRES_URL"));
             registry.add("spring.datasource.username", () -> env.getOrDefault("TEST_POSTGRES_USER", "iam_user"));
             registry.add("spring.datasource.password", () -> env.getOrDefault("TEST_POSTGRES_PASSWORD", "secret"));
-            registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", () -> "");
+            registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri", () -> "");
             registry.add("keycloak.admin.server-url",
                     () -> env.getOrDefault("TEST_KEYCLOAK_URL", "http://localhost:8090"));
             registry.add("keycloak.admin.realm", () -> TEST_REALM);
@@ -113,7 +117,7 @@ class PrivilegeControllerIT {
             registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
             registry.add("spring.datasource.username", POSTGRES::getUsername);
             registry.add("spring.datasource.password", POSTGRES::getPassword);
-            registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", () -> "");
+            registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri", () -> "");
             registry.add("keycloak.admin.server-url", KEYCLOAK::getAuthServerUrl);
             registry.add("keycloak.admin.realm", () -> TEST_REALM);
             registry.add("keycloak.admin.username", KEYCLOAK::getAdminUsername);
@@ -168,6 +172,7 @@ class PrivilegeControllerIT {
     static String buildToken(String role) {
         try {
             com.nimbusds.jwt.JWTClaimsSet claims = new com.nimbusds.jwt.JWTClaimsSet.Builder()
+                    .issuer(TEST_ISSUER)
                     .subject("test-user")
                     .claim("org_id", SYSTEM_ORG_ID.toString())
                     .claim("roles", List.of(role))
