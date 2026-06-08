@@ -6,16 +6,19 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule, TableLazyLoadEvent } from 'primeng/table';
 import { MessageModule } from 'primeng/message';
-import { BreadcrumbService } from '../../../../shared/ui';
+import { TagModule } from 'primeng/tag';
+import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
-import { ItemMasterDto } from '../../../item-master/models/item-master.model';
+import { ItemMasterDto, Classification } from '../../../item-master/models/item-master.model';
+import { ClassificationLabelPipe } from '../../../item-master/pipes/classification-label.pipe';
 
 @Component({
   selector: 'app-bom-browser',
   standalone: true,
   imports: [
     FormsModule,
-    TableModule, ButtonModule, InputTextModule, MessageModule,
+    TableModule, ButtonModule, InputTextModule, MessageModule, TagModule,
+    StatusBadgeComponent, ClassificationLabelPipe,
   ],
   template: `
     <div class="bb">
@@ -53,6 +56,8 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             <th>Rev</th>
             <th>Description</th>
             <th>Classification</th>
+            <th>Make/Buy</th>
+            <th>Unit of Measure</th>
             <th>Status</th>
             <th></th>
           </tr>
@@ -60,10 +65,16 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
         <ng-template pTemplate="body" let-item>
           <tr class="bb__row" (click)="openBoms(item)">
             <td class="bb__pn">{{ item.partNumber }}</td>
-            <td>{{ item.revision }}</td>
+            <td>{{ item.revision ?? '—' }}</td>
             <td>{{ item.description }}</td>
-            <td>{{ item.classification }}</td>
-            <td>{{ item.status }}</td>
+            <td>
+              <p-tag [value]="item.classification | classificationLabel"
+                     [severity]="classificationSeverity(item.classification)"
+                     [class]="classificationClass(item.classification)" />
+            </td>
+            <td>{{ item.makeBuyCode ?? '—' }}</td>
+            <td>{{ item.unitOfMeasure ?? '—' }}</td>
+            <td><app-status-badge [status]="item.status" /></td>
             <td class="bb__action">
               <p-button label="View BOMs"
                         severity="secondary"
@@ -74,7 +85,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
         </ng-template>
         <ng-template pTemplate="emptymessage">
           <tr>
-            <td colspan="6" class="bb__empty">No items found.</td>
+            <td colspan="8" class="bb__empty">No items found.</td>
           </tr>
         </ng-template>
       </p-table>
@@ -181,6 +192,22 @@ export class BomBrowserComponent implements AfterViewInit {
 
   openBoms(item: ItemMasterDto): void {
     this.router.navigate(['/bom', item.id]);
+  }
+
+  classificationSeverity(c: Classification): 'info' | 'warn' | 'secondary' | 'success' | 'danger' | undefined {
+    switch (c) {
+      case 'PURCHASED_PART': return 'info';
+      case 'FABRICATED':     return 'warn';
+      case 'ASSEMBLY':       return 'success';
+      case 'COTS':           return 'secondary';
+      default:               return undefined;
+    }
+  }
+
+  classificationClass(c: Classification): string {
+    if (c === 'RAW_MATERIAL') return 'tag-raw-material';
+    if (c === 'SERVICE')      return 'tag-service';
+    return '';
   }
 
   private load(page: number): void {
