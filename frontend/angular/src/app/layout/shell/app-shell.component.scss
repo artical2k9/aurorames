@@ -346,6 +346,15 @@ $transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
   flex-direction: column;
 }
 
+// Bottom nav groups expand UPWARD: column-reverse keeps the header pinned at the
+// group's bottom edge; children grow into the spacer space above the header.
+// DOM order: [header, children]. Visual order with column-reverse: [children, header].
+// When the group expands, the group's bottom edge stays fixed (it's the last item),
+// and the top edge rises — the spacer above shrinks to accommodate.
+.shell__nav--bottom .shell__nav-group {
+  flex-direction: column-reverse;
+}
+
 .shell__nav-group-hdr {
   border: none;
   background: none;
@@ -361,6 +370,15 @@ $transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
 
   &--open {
     transform: rotate(180deg);
+  }
+}
+
+// Bottom nav chevron: inverted default (points up = "expands above"); open = points down
+.shell__nav--bottom .shell__nav-chevron {
+  transform: rotate(180deg);
+
+  &--open {
+    transform: rotate(0deg);
   }
 }
 
