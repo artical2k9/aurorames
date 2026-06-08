@@ -17,7 +17,7 @@ import { ItemMasterApiService } from '../../services/item-master-api.service';
 import {
   ItemMasterDto, Classification, CounterfeitRiskLevel, MakeBuyCode, TraceabilityMethod,
 } from '../../models/item-master.model';
-import { PlatformApiService } from '../../../settings/services/platform-api.service';
+import { PlatformApiService } from '../../../../shared/platform';
 
 @Component({
   selector: 'app-item-master-edit',

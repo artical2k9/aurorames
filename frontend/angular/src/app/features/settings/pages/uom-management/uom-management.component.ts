@@ -19,7 +19,7 @@ import {
   UnitOfMeasureDto,
   CreateUomRequest,
   PatchUomRequest,
-} from '../../services/platform-api.service';
+} from '../../../../shared/platform';
 
 @Component({
   selector: 'app-uom-management',
