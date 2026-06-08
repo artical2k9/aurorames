@@ -73,4 +73,20 @@ export class BomApiService {
   patchHeader(bomId: string, req: PatchBomHeaderRequest): Observable<BomDto> {
     return this.http.patch<BomDto>(`${this.base}/${bomId}`, req);
   }
+
+  downloadExplosion(
+    bomId: string,
+    format: 'flat' | 'indented',
+    fileType: 'csv' | 'pdf',
+    asOfDate?: string,
+    maxDepth?: number,
+  ): Observable<Blob> {
+    let params = new HttpParams().set('format', format).set('download', fileType);
+    if (asOfDate) { params = params.set('asOfDate', asOfDate); }
+    if (maxDepth) { params = params.set('maxDepth', maxDepth); }
+    return this.http.get(`${this.base}/${bomId}/explosion/download`, {
+      params,
+      responseType: 'blob',
+    });
+  }
 }
