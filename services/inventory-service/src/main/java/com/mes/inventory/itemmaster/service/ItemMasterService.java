@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;  // used by validateUdf
 
@@ -94,9 +95,10 @@ public class ItemMasterService {
                                  CounterfeitRiskLevel riskLevel, MakeBuyCode makeBuyCode,
                                  String search, Pageable pageable) {
         String searchPattern = (search != null && !search.isBlank())
-                ? "%" + search.toLowerCase() + "%"
+                ? "%" + search.toLowerCase(Locale.ROOT) + "%"
                 : null;
-        return repository.findAllFiltered(orgId, status, classification, riskLevel, makeBuyCode, searchPattern, pageable);
+        return repository.findAllFiltered(
+                orgId, status, classification, riskLevel, makeBuyCode, searchPattern, pageable);
     }
 
     private void validateShelfLife(boolean controlled, Integer days) {
