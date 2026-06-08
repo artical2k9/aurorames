@@ -142,6 +142,7 @@ interface NavItem {
           }
         </button>
 
+        <div class="shell__nav-container">
         <nav class="shell__nav" aria-label="Main navigation">
           @for (item of navItems; track item.label) {
 
@@ -256,6 +257,7 @@ interface NavItem {
           }
         </nav>
 
+        <div class="shell__nav-spacer"></div>
         <nav class="shell__nav shell__nav--bottom" aria-label="Settings and help">
           @for (item of navItemsBottom; track item.label) {
             @if (item.children) {
@@ -327,6 +329,7 @@ interface NavItem {
             }
           }
         </nav>
+        </div>
       </aside>
 
       <!-- ── Content area ────────────────────────────────────── -->

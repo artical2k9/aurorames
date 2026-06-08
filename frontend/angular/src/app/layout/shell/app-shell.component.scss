@@ -226,6 +226,21 @@ $transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
+// ── Nav container — single scrollable column; spacer pushes Settings to bottom ─
+.shell__nav-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0.5rem;
+}
+
+.shell__nav-spacer {
+  flex: 1;
+  min-height: 0.5rem; // minimum gap even when space is tight
+}
+
 // ── Nav ───────────────────────────────────────────────────────────────────────
 .shell__nav {
   display: flex;
@@ -235,15 +250,10 @@ $transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
   padding: 0;
   background: none;
   border: none;
-  flex: 1;
-  min-height: 0;       // allow flex item to shrink below content size
-  overflow-y: auto;    // scroll main nav internally; keeps Settings pinned
+  flex: none;
 
   &--bottom {
-    flex: none;        // 0 0 auto — natural content size; no grow or shrink
-    min-height: auto;  // override min-height: 0 inherited from .shell__nav base rule
-    overflow: visible; // override overflow-y: auto inherited from .shell__nav base rule
-    padding-bottom: 0.5rem;
+    padding-bottom: 0;
   }
 }
 
