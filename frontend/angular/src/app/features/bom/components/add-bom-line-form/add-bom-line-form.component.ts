@@ -68,7 +68,9 @@ import { debounceTime, distinctUntilChanged, Subject, switchMap } from 'rxjs';
 
           <div class="ablf__field">
             <label>Unit</label>
-            <input pInputText formControlName="unitOfMeasure" placeholder="e.g. EA" />
+            <input pInputText formControlName="unitOfMeasure"
+                   [attr.readonly]="true" placeholder="—"
+                   title="Inherited from item master" class="ablf__uom-readonly" />
           </div>
 
           <div class="ablf__field">
@@ -130,6 +132,7 @@ import { debounceTime, distinctUntilChanged, Subject, switchMap } from 'rxjs';
     .ablf__suggestion-pn { font-weight: 600; font-size: 0.875rem; }
     .ablf__suggestion-rev { font-size: 0.75rem; color: var(--p-text-muted-color); }
     .ablf__suggestion-desc { font-size: 0.75rem; color: var(--p-text-muted-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+    .ablf__uom-readonly { background: var(--p-surface-50); cursor: default; color: var(--p-text-muted-color); }
   `],
 })
 export class AddBomLineFormComponent implements OnInit {
@@ -187,7 +190,9 @@ export class AddBomLineFormComponent implements OnInit {
   }
 
   onItemSelect(event: AutoCompleteSelectEvent): void {
-    this.selectedItemId = (event.value as ItemMasterDto).id;
+    const item = event.value as ItemMasterDto;
+    this.selectedItemId = item.id;
+    this.form.patchValue({ unitOfMeasure: item.unitOfMeasure ?? '' });
   }
 
   canSave(): boolean {

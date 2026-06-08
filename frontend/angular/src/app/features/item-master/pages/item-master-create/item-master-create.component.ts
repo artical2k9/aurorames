@@ -16,6 +16,7 @@ import { ItemMasterApiService } from '../../services/item-master-api.service';
 import {
   Classification, TraceabilityMethod, CounterfeitRiskLevel, MakeBuyCode,
 } from '../../models/item-master.model';
+import { PlatformApiService } from '../../../settings/services/platform-api.service';
 
 @Component({
   selector: 'app-item-master-create',
@@ -225,19 +226,13 @@ import {
 export class ItemMasterCreateComponent implements OnInit {
   private readonly fb            = inject(FormBuilder);
   private readonly api           = inject(ItemMasterApiService);
+  private readonly platformApi   = inject(PlatformApiService);
   private readonly router        = inject(Router);
   private readonly route         = inject(ActivatedRoute);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
   private readonly cdr           = inject(ChangeDetectorRef);
 
-  readonly uomOptions = [
-    { label: 'Each (EA)',      value: 'EA' },
-    { label: 'Kilogram (KG)', value: 'KG' },
-    { label: 'Metre (M)',     value: 'M' },
-    { label: 'Litre (L)',     value: 'L' },
-    { label: 'Piece (PC)',    value: 'PC' },
-    { label: 'Set (SET)',     value: 'SET' },
-  ];
+  uomOptions: { label: string; value: string }[] = [];
 
   readonly classificationOptions = [
     { label: 'Assembly',       value: 'ASSEMBLY' },
@@ -407,6 +402,13 @@ export class ItemMasterCreateComponent implements OnInit {
       { label: 'Item Master', route: ['/item-master'] },
       { label: 'New Item' },
     ]);
+
+    this.platformApi.listUom(false).subscribe({
+      next: uoms => {
+        this.uomOptions = uoms.map(u => ({ label: `${u.code} — ${u.name}`, value: u.code }));
+        this.cdr.detectChanges();
+      },
+    });
 
     this.form.get('shelfLifeControlled')!.valueChanges.subscribe(() => {
       this.updateShelfLifeDaysValidity();
