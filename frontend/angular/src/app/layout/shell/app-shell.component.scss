@@ -227,6 +227,13 @@ $transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 // ── Nav container — single scrollable column; spacer pushes Settings to bottom ─
+//
+// Scroll shadow technique: two background layers on the same element.
+//   local  = scrolls with the content → covers the shadow when at boundary
+//   scroll = fixed relative to the box  → the visible shadow gradient
+// When the container is scrolled to the very top, the "cover" top gradient sits
+// exactly over the top shadow, hiding it.  As the user scrolls, the cover moves
+// away and the shadow becomes visible.  Same logic inverted for the bottom.
 .shell__nav-container {
   flex: 1;
   min-height: 0;
@@ -234,6 +241,16 @@ $transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   padding-bottom: 0.5rem;
+
+  background:
+    // top cover — hides top shadow when scrolled to very top
+    linear-gradient(var(--aurora-bg-subtle) 40%, transparent) top    / 100% 32px no-repeat local,
+    // bottom cover — hides bottom shadow when scrolled to very bottom
+    linear-gradient(transparent, var(--aurora-bg-subtle) 60%) bottom / 100% 32px no-repeat local,
+    // top shadow indicator
+    radial-gradient(farthest-side at 50% 0%,   rgba(0,0,0,.10), transparent) top    / 100% 12px no-repeat scroll,
+    // bottom shadow indicator
+    radial-gradient(farthest-side at 50% 100%, rgba(0,0,0,.10), transparent) bottom / 100% 12px no-repeat scroll;
 }
 
 .shell__nav-spacer {
@@ -434,5 +451,13 @@ $transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
 
   .shell__nav-children {
     border-left-color: var(--aurora-border-subtle);
+  }
+
+  .shell__nav-container {
+    background:
+      linear-gradient(var(--aurora-bg-subtle) 40%, transparent) top    / 100% 32px no-repeat local,
+      linear-gradient(transparent, var(--aurora-bg-subtle) 60%) bottom / 100% 32px no-repeat local,
+      radial-gradient(farthest-side at 50% 0%,   rgba(0,0,0,.20), transparent) top    / 100% 12px no-repeat scroll,
+      radial-gradient(farthest-side at 50% 100%, rgba(0,0,0,.20), transparent) bottom / 100% 12px no-repeat scroll;
   }
 }
