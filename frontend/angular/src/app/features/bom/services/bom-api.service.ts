@@ -4,10 +4,12 @@ import { Observable } from 'rxjs';
 import {
   BomDto,
   BomLineDto,
+  BomSummaryDto,
   BomExplosionNode,
   CreateBomRequest,
   CreateBomLineRequest,
   PatchBomHeaderRequest,
+  Page,
 } from '../models/bom.model';
 
 @Injectable({ providedIn: 'root' })
@@ -18,6 +20,12 @@ export class BomApiService {
   listForItem(parentItemId: string): Observable<BomDto[]> {
     const params = new HttpParams().set('parentItemId', parentItemId);
     return this.http.get<BomDto[]>(this.base, { params });
+  }
+
+  listHeaders(search?: string, page = 0, size = 20): Observable<Page<BomSummaryDto>> {
+    let params = new HttpParams().set('page', page).set('size', size);
+    if (search) { params = params.set('search', search); }
+    return this.http.get<Page<BomSummaryDto>>(`${this.base}/headers`, { params });
   }
 
   getById(id: string): Observable<BomDto> {

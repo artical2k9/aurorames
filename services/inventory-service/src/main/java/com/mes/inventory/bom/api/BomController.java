@@ -6,6 +6,7 @@ import com.mes.inventory.bom.api.dto.BomDto;
 import com.mes.inventory.bom.api.dto.BomExplosionNode;
 import com.mes.inventory.bom.api.dto.BomLineDto;
 import com.mes.inventory.bom.api.dto.BomMapper;
+import com.mes.inventory.bom.api.dto.BomSummaryDto;
 import com.mes.inventory.bom.api.dto.CreateBomLineRequest;
 import com.mes.inventory.bom.api.dto.CreateBomRequest;
 import com.mes.inventory.bom.api.dto.PatchBomHeaderRequest;
@@ -34,6 +35,9 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @RestController
 @RequestMapping("/api/v1/boms")
@@ -125,6 +129,18 @@ public class BomController {
 
         return bomService.listByItem(JwtClaimsExtractor.orgId(jwt), parentItemId).stream()
                 .map(BomMapper::toDto).toList();
+    }
+
+    @GetMapping("/headers")
+    @RequiresPrivilege("item-master:bom:manage")
+    public Page<BomSummaryDto> listHeaders(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return bomService.listSummaries(JwtClaimsExtractor.orgId(jwt), search, pageable);
     }
 
     @DeleteMapping("/{bomId}/lines/{lineId}")

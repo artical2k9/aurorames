@@ -2,6 +2,7 @@ package com.mes.inventory.bom.service;
 
 import com.mes.inventory.bom.api.dto.BomLineDto;
 import com.mes.inventory.bom.api.dto.BomMapper;
+import com.mes.inventory.bom.api.dto.BomSummaryDto;
 import com.mes.inventory.bom.api.dto.CreateBomLineRequest;
 import com.mes.inventory.bom.api.dto.CreateBomRequest;
 import com.mes.inventory.bom.api.dto.PatchBomHeaderRequest;
@@ -219,6 +220,38 @@ public class BomService {
     @Transactional(readOnly = true)
     public List<BillOfMaterials> listByItem(UUID orgId, UUID parentItemId) {
         return bomRepository.findAllByOrgIdAndParentItemId(orgId, parentItemId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<BomSummaryDto> listSummaries(UUID orgId, String search, Pageable pageable) {
+        Page<BillOfMaterials> page = bomRepository.searchAllByOrgId(
+                orgId, search == null || search.isBlank() ? null : search, pageable);
+
+        Set<UUID> itemIds = page.stream().map(BillOfMaterials::getParentItemId).collect(Collectors.toSet());
+        Map<UUID, ItemMaster> itemMap = itemMasterRepository.findAllById(itemIds)
+                .stream().collect(Collectors.toMap(ItemMaster::getId, im -> im));
+
+        return page.map(bom -> toSummary(bom, itemMap.get(bom.getParentItemId())));
+    }
+
+    private static BomSummaryDto toSummary(BillOfMaterials bom, ItemMaster item) {
+        BomSummaryDto dto = new BomSummaryDto();
+        dto.setBomId(bom.getId());
+        dto.setBomRevision(bom.getBomRevision());
+        dto.setBomStatus(bom.getStatus() != null ? bom.getStatus().name() : null);
+        dto.setBomDescription(bom.getDescription());
+        dto.setParentItemId(bom.getParentItemId());
+        dto.setCreatedBy(bom.getCreatedBy());
+        dto.setCreatedAt(bom.getCreatedAt());
+        if (item != null) {
+            dto.setPartNumber(item.getPartNumber());
+            dto.setRevision(item.getRevision());
+            dto.setItemDescription(item.getDescription());
+            dto.setClassification(item.getClassification() != null ? item.getClassification().name() : null);
+            dto.setUnitOfMeasure(item.getUnitOfMeasure());
+            dto.setItemStatus(item.getStatus() != null ? item.getStatus().name() : null);
+        }
+        return dto;
     }
 
     @Transactional(readOnly = true)
