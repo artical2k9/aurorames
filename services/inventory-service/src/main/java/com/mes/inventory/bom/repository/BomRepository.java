@@ -1,7 +1,6 @@
 package com.mes.inventory.bom.repository;
 
 import com.mes.inventory.bom.domain.BillOfMaterials;
-import com.mes.inventory.itemmaster.domain.ItemMaster;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

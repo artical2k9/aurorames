@@ -8,7 +8,7 @@ export type Classification =
 
 export type MakeBuyCode = 'MAKE' | 'BUY' | 'EITHER';
 export type TraceabilityMethod = 'SERIAL' | 'LOT' | 'HEAT_CODE' | 'DATE_CODE' | 'NONE';
-export type ItemStatus = 'ACTIVE' | 'INACTIVE' | 'OBSOLETE';
+export type ItemStatus = 'ACTIVE' | 'OBSOLETE';
 export type CounterfeitRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export interface ItemMasterDto {

@@ -2,6 +2,7 @@ import {
   AfterViewInit, ChangeDetectorRef, Component, DestroyRef, inject, OnInit, ViewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, debounceTime, distinctUntilChanged, filter } from 'rxjs';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -63,10 +64,12 @@ import {
                [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()" />
 
         <p-select [options]="classificationOptions" [(ngModel)]="selectedClassification"
+                  optionLabel="label" optionValue="value"
                   placeholder="Classification" [showClear]="true"
                   (onChange)="reload()" styleClass="filter-select" />
 
         <p-select [options]="statusOptions" [(ngModel)]="selectedStatus"
+                  optionLabel="label" optionValue="value"
                   placeholder="Status" [showClear]="true"
                   (onChange)="reload()" styleClass="filter-select" />
 
@@ -106,6 +109,7 @@ import {
         <app-column-picker
           [columns]="(gridPreference.activeColumns$ | async) ?? []"
           (applied)="onColumnsApplied($event); colPickerPanel.hide()"
+          (cancelled)="colPickerPanel.hide()"
           (reset)="gridPreference.reset(); colPickerPanel.hide()"
         />
       </p-popover>
@@ -258,6 +262,8 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
   selectedStatus: ItemStatus | null = null;
   selectedMakeBuy: MakeBuyCode | null = null;
 
+  private readonly searchSubject = new Subject<string>();
+
   readonly classificationOptions = [
     { label: 'Assembly',       value: 'ASSEMBLY' },
     { label: 'COTS',           value: 'COTS' },
@@ -269,7 +275,6 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
 
   readonly statusOptions = [
     { label: 'Active',   value: 'ACTIVE' },
-    { label: 'Inactive', value: 'INACTIVE' },
     { label: 'Obsolete', value: 'OBSOLETE' },
   ];
 
@@ -293,6 +298,15 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
       { label: 'Item Master' },
     ]);
     this.gridPreference.load();
+    this.searchSubject.pipe(
+      debounceTime(400),
+      distinctUntilChanged(),
+      filter(term => term.length === 0 || term.length >= 3),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(() => {
+      this.currentPage = 0;
+      this.fetchItems();
+    });
   }
 
   ngAfterViewInit(): void {
@@ -306,8 +320,7 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
   }
 
   onSearchChange(): void {
-    this.currentPage = 0;
-    this.fetchItems();
+    this.searchSubject.next(this.searchTerm);
   }
 
   reload(): void {

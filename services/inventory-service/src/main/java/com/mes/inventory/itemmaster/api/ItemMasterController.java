@@ -9,6 +9,7 @@ import com.mes.inventory.itemmaster.api.dto.PatchItemMasterRequest;
 import com.mes.inventory.itemmaster.domain.Classification;
 import com.mes.inventory.itemmaster.domain.CounterfeitRiskLevel;
 import com.mes.inventory.itemmaster.domain.ItemStatus;
+import com.mes.inventory.itemmaster.domain.MakeBuyCode;
 import com.mes.inventory.itemmaster.service.ItemMasterService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -48,10 +49,12 @@ public class ItemMasterController {
             @RequestParam(required = false) ItemStatus status,
             @RequestParam(required = false) Classification classification,
             @RequestParam(required = false) CounterfeitRiskLevel counterfeitRiskLevel,
+            @RequestParam(required = false) MakeBuyCode makeBuyCode,
+            @RequestParam(required = false) String search,
             @PageableDefault(size = 50) Pageable pageable) {
 
         var orgId = JwtClaimsExtractor.orgId(jwt);
-        var page = service.list(orgId, status, classification, counterfeitRiskLevel, pageable);
+        var page = service.list(orgId, status, classification, counterfeitRiskLevel, makeBuyCode, search, pageable);
         var dtos = page.getContent().stream().map(ItemMasterMapper::toDto).toList();
         return new PageImpl<>(dtos, pageable, page.getTotalElements());
     }
