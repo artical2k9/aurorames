@@ -114,6 +114,48 @@ class ItemMasterControllerIT extends BaseIntegrationTest {
     }
 
     @Test
+    void listWithSearch_returnsOnlyMatchingItems() {
+        String token = engineerToken();
+        restTemplate.exchange(BASE_URL, HttpMethod.POST,
+                jsonRequest(token, createRequest("SRCH-MATCH-001", "A")), Map.class);
+        restTemplate.exchange(BASE_URL, HttpMethod.POST,
+                jsonRequest(token, createRequest("NOTSRCH-OTHER-001", "A")), Map.class);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BASE_URL + "?search=SRCH-MATCH",
+                HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<?> content = (List<?>) response.getBody().get("content");
+        assertThat(content).isNotEmpty();
+        content.forEach(e -> {
+            String pn = (String) ((Map<?, ?>) e).get("partNumber");
+            assertThat(pn).containsIgnoringCase("SRCH-MATCH");
+        });
+    }
+
+    @Test
+    void listWithMakeBuyCode_returnsOnlyMatchingItems() {
+        String token = engineerToken();
+        Map<String, Object> buyReq = createRequest("MAKEBUY-BUY-001", "A");
+        buyReq.put("makeBuyCode", "BUY");
+        restTemplate.exchange(BASE_URL, HttpMethod.POST, jsonRequest(token, buyReq), Map.class);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BASE_URL + "?makeBuyCode=BUY",
+                HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<?> content = (List<?>) response.getBody().get("content");
+        assertThat(content).isNotEmpty();
+        content.forEach(e -> assertThat(((Map<?, ?>) e).get("makeBuyCode")).isEqualTo("BUY"));
+    }
+
+    @Test
     void postWithNoPrivilegesReturns403() {
         String token = buildToken(ORG_ID, List.of());
 
