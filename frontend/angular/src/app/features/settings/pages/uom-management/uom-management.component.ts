@@ -9,13 +9,13 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
-import { DropdownModule } from 'primeng/dropdown';
+import { SelectModule } from 'primeng/select';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
-import { LucideAngularModule, LucidePlus, LucidePencil, LucideSearch } from 'lucide-angular';
+import { LucidePlus, LucidePencil, LucideSearch } from '@lucide/angular';
 import {
   PlatformApiService,
   UnitOfMeasureDto,
@@ -32,13 +32,15 @@ import {
     FormsModule,
     ButtonModule,
     DialogModule,
-    DropdownModule,
+    SelectModule,
     IconFieldModule,
     InputIconModule,
     InputTextModule,
     TableModule,
     TagModule,
-    LucideAngularModule,
+    LucidePlus,
+    LucidePencil,
+    LucideSearch,
   ],
   template: `
     <div class="p-4">
@@ -57,16 +59,16 @@ import {
           <input pInputText type="text" placeholder="Search code or name…"
                  [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" />
         </p-iconField>
-        <p-dropdown [options]="categoryOptions" [(ngModel)]="selectedCategory"
+        <p-select [options]="categoryOptions" [(ngModel)]="selectedCategory"
                     (onChange)="applyFilters()"
                     placeholder="All categories" [showClear]="true"
                     [style]="{ minWidth: '200px' }">
-        </p-dropdown>
-        <p-dropdown [options]="[{label:'Active only', value:false},{label:'Include inactive', value:true}]"
+        </p-select>
+        <p-select [options]="[{label:'Active only', value:false},{label:'Include inactive', value:true}]"
                     [(ngModel)]="includeInactive"
                     (onChange)="load()"
                     [style]="{ minWidth: '160px' }">
-        </p-dropdown>
+        </p-select>
       </div>
 
       <!-- table -->
@@ -125,9 +127,9 @@ import {
         </div>
         <div class="flex flex-column gap-1">
           <label class="font-medium text-sm">Category *</label>
-          <p-dropdown [options]="categoryOptions" [(ngModel)]="createForm.category"
+          <p-select [options]="categoryOptions" [(ngModel)]="createForm.category"
                       [editable]="true" placeholder="Select or type…" class="w-full">
-          </p-dropdown>
+          </p-select>
         </div>
         @if (createError) {
           <p class="text-red-500 text-sm m-0">{{ createError }}</p>

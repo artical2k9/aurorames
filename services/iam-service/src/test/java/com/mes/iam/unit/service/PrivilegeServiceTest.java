@@ -6,9 +6,11 @@ import com.mes.iam.domain.Role;
 import com.mes.iam.domain.RolePrivilegeAssignment;
 import com.mes.iam.repository.PrivilegeRepository;
 import com.mes.iam.repository.RolePrivilegeRepository;
+import com.mes.iam.repository.RoleRepository;
 import com.mes.iam.service.PrivilegeService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,6 +32,7 @@ class PrivilegeServiceTest {
 
     @Mock PrivilegeRepository privilegeRepository;
     @Mock RolePrivilegeRepository rolePrivilegeRepository;
+    @Mock RoleRepository roleRepository;
 
     @InjectMocks PrivilegeService privilegeService;
 
@@ -37,6 +40,7 @@ class PrivilegeServiceTest {
 
     @Test
     void registerManifest_newPrivilege_savesIt() {
+        when(roleRepository.findByName("SYSTEM_ADMIN")).thenReturn(List.of());
         when(privilegeRepository.findByPrivilegeKey("quality:inspection:view"))
                 .thenReturn(Optional.empty());
         when(privilegeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -49,6 +53,7 @@ class PrivilegeServiceTest {
 
     @Test
     void registerManifest_existingPrivilege_updatesDescriptionWithoutDuplicate() {
+        when(roleRepository.findByName("SYSTEM_ADMIN")).thenReturn(List.of());
         Privilege existing = new Privilege("quality:inspection:view", "quality", "quality");
         when(privilegeRepository.findByPrivilegeKey("quality:inspection:view"))
                 .thenReturn(Optional.of(existing));
@@ -63,6 +68,7 @@ class PrivilegeServiceTest {
 
     @Test
     void registerManifest_calledTwice_samePriority_onlyOneRow() {
+        when(roleRepository.findByName("SYSTEM_ADMIN")).thenReturn(List.of());
         when(privilegeRepository.findByPrivilegeKey("quality:inspection:view"))
                 .thenReturn(Optional.empty())
                 .thenReturn(Optional.of(new Privilege("quality:inspection:view", "quality", "quality")));
@@ -73,6 +79,68 @@ class PrivilegeServiceTest {
         privilegeService.registerManifest("quality", List.of(item));
 
         verify(privilegeRepository, times(2)).save(any());
+    }
+
+    @Test
+    void registerManifest_multipleItems_savesAll() {
+        when(roleRepository.findByName("SYSTEM_ADMIN")).thenReturn(List.of());
+        when(privilegeRepository.findByPrivilegeKey(any())).thenReturn(Optional.empty());
+        when(privilegeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        privilegeService.registerManifest("quality", List.of(
+                new PrivilegeItemRequest("quality:inspection:view", "View"),
+                new PrivilegeItemRequest("quality:inspection:sign-off", "Sign off")));
+
+        verify(privilegeRepository, times(2)).save(any(Privilege.class));
+    }
+
+    @Test
+    void registerManifest_newPrivilege_autoGrantsToSystemAdmin() {
+        Role admin = new Role(ORG_ID, "SYSTEM_ADMIN");
+        when(roleRepository.findByName("SYSTEM_ADMIN")).thenReturn(List.of(admin));
+        when(rolePrivilegeRepository.findActiveByRoleId(admin.getId())).thenReturn(List.of());
+        when(privilegeRepository.findByPrivilegeKey("quality:inspection:view"))
+                .thenReturn(Optional.empty());
+        Privilege saved = new Privilege("quality:inspection:view", "quality", "quality");
+        when(privilegeRepository.save(any())).thenReturn(saved);
+
+        privilegeService.registerManifest("quality", List.of(
+                new PrivilegeItemRequest("quality:inspection:view", "View")));
+
+        ArgumentCaptor<RolePrivilegeAssignment> captor = ArgumentCaptor.forClass(RolePrivilegeAssignment.class);
+        verify(rolePrivilegeRepository).save(captor.capture());
+        assertThat(captor.getValue().getRole()).isSameAs(admin);
+        assertThat(captor.getValue().getPrivilege()).isSameAs(saved);
+    }
+
+    @Test
+    void registerManifest_privilegeAlreadyGranted_doesNotDuplicate() {
+        Role admin = new Role(ORG_ID, "SYSTEM_ADMIN");
+        Privilege existing = new Privilege("quality:inspection:view", "quality", "quality");
+        RolePrivilegeAssignment existingGrant = new RolePrivilegeAssignment(admin, existing, ORG_ID);
+        when(roleRepository.findByName("SYSTEM_ADMIN")).thenReturn(List.of(admin));
+        when(rolePrivilegeRepository.findActiveByRoleId(admin.getId())).thenReturn(List.of(existingGrant));
+        when(privilegeRepository.findByPrivilegeKey("quality:inspection:view"))
+                .thenReturn(Optional.of(existing));
+        when(privilegeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        privilegeService.registerManifest("quality", List.of(
+                new PrivilegeItemRequest("quality:inspection:view", "View")));
+
+        verify(rolePrivilegeRepository, never()).save(any(RolePrivilegeAssignment.class));
+    }
+
+    @Test
+    void registerManifest_noSystemAdminRole_skipsAutoGrant() {
+        when(roleRepository.findByName("SYSTEM_ADMIN")).thenReturn(List.of());
+        when(privilegeRepository.findByPrivilegeKey("quality:inspection:view"))
+                .thenReturn(Optional.empty());
+        when(privilegeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        privilegeService.registerManifest("quality", List.of(
+                new PrivilegeItemRequest("quality:inspection:view", "View")));
+
+        verify(rolePrivilegeRepository, never()).save(any(RolePrivilegeAssignment.class));
     }
 
     @Test
@@ -118,18 +186,6 @@ class PrivilegeServiceTest {
         Map<String, List<String>> map = privilegeService.getPrivilegeMap();
 
         assertThat(map).isEmpty();
-    }
-
-    @Test
-    void registerManifest_multipleItems_savesAll() {
-        when(privilegeRepository.findByPrivilegeKey(any())).thenReturn(Optional.empty());
-        when(privilegeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        privilegeService.registerManifest("quality", List.of(
-                new PrivilegeItemRequest("quality:inspection:view", "View"),
-                new PrivilegeItemRequest("quality:inspection:sign-off", "Sign off")));
-
-        verify(privilegeRepository, times(2)).save(any(Privilege.class));
     }
 
     @Test

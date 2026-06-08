@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
 
 export interface UnitOfMeasureDto {
   id: string;
@@ -30,7 +29,7 @@ export interface PatchUomRequest {
 @Injectable({ providedIn: 'root' })
 export class PlatformApiService {
   private readonly http = inject(HttpClient);
-  private readonly base = `${environment.apiBase}/platform/uom`;
+  private readonly base = '/api/platform/uom';
 
   listUom(includeInactive = false): Observable<UnitOfMeasureDto[]> {
     return this.http.get<UnitOfMeasureDto[]>(
