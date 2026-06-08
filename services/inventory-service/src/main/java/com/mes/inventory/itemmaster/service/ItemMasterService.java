@@ -10,6 +10,7 @@ import com.mes.inventory.itemmaster.domain.Classification;
 import com.mes.inventory.itemmaster.domain.CounterfeitRiskLevel;
 import com.mes.inventory.itemmaster.domain.ItemMaster;
 import com.mes.inventory.itemmaster.domain.ItemStatus;
+import com.mes.inventory.itemmaster.domain.MakeBuyCode;
 import com.mes.inventory.itemmaster.repository.ItemMasterRepository;
 import com.mes.inventory.kafka.ItemMasterEventPublisher;
 import org.springframework.data.domain.Page;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.stream.Collectors;  // used by validateUdf
 
@@ -90,8 +92,13 @@ public class ItemMasterService {
 
     @Transactional(readOnly = true)
     public Page<ItemMaster> list(UUID orgId, ItemStatus status, Classification classification,
-                                 CounterfeitRiskLevel riskLevel, Pageable pageable) {
-        return repository.findAllFiltered(orgId, status, classification, riskLevel, pageable);
+                                 CounterfeitRiskLevel riskLevel, MakeBuyCode makeBuyCode,
+                                 String search, Pageable pageable) {
+        String searchPattern = (search != null && !search.isBlank())
+                ? "%" + search.toLowerCase(Locale.ROOT) + "%"
+                : null;
+        return repository.findAllFiltered(
+                orgId, status, classification, riskLevel, makeBuyCode, searchPattern, pageable);
     }
 
     private void validateShelfLife(boolean controlled, Integer days) {

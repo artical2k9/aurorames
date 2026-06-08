@@ -28,6 +28,7 @@ import {
   LucideArchive,
   LucideClipboardCheck,
   LucideUsers,
+  LucideRuler,
 } from '@lucide/angular';
 import { ThemeToggleComponent } from '../../shared/theme';
 import { ThemeService } from '../../shared/theme';
@@ -35,7 +36,7 @@ import { BreadcrumbComponent, BreadcrumbService } from '../../shared/ui';
 
 const NAV_COLLAPSED_KEY = 'aurora-mes-nav-collapsed';
 
-type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering' | 'production' | 'materials' | 'inventory' | 'receiving' | 'users';
+type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering' | 'production' | 'materials' | 'inventory' | 'receiving' | 'users' | 'uom';
 
 interface ChildNavItem {
   label: string;
@@ -63,7 +64,7 @@ interface NavItem {
     LucidePanelLeftOpen, LucidePanelLeftClose,
     LucideUserCog, LucideList, LucideLayoutGrid, LucideBell, LucideLogOut,
     LucideDatabase, LucideSlidersHorizontal, LucideChevronDown, LucideHammer,
-    LucideFactory, LucideBoxes, LucideArchive, LucideClipboardCheck, LucideUsers,
+    LucideFactory, LucideBoxes, LucideArchive, LucideClipboardCheck, LucideUsers, LucideRuler,
     ThemeToggleComponent,
   ],
   template: `
@@ -141,6 +142,7 @@ interface NavItem {
           }
         </button>
 
+        <div class="shell__nav-container">
         <nav class="shell__nav" aria-label="Main navigation">
           @for (item of navItems; track item.label) {
 
@@ -255,6 +257,7 @@ interface NavItem {
           }
         </nav>
 
+        <div class="shell__nav-spacer"></div>
         <nav class="shell__nav shell__nav--bottom" aria-label="Settings and help">
           @for (item of navItemsBottom; track item.label) {
             @if (item.children) {
@@ -285,6 +288,7 @@ interface NavItem {
                             @switch (child.iconKey) {
                               @case ('users') { <svg lucideUsers              [size]="15" [strokeWidth]="2"></svg> }
                               @case ('udf')   { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('uom')   { <svg lucideRuler              [size]="15" [strokeWidth]="2"></svg> }
                             }
                           </span>
                           <span class="shell__nav-label">{{ child.label }}</span>
@@ -299,6 +303,7 @@ interface NavItem {
                             @switch (child.iconKey) {
                               @case ('users') { <svg lucideUsers              [size]="15" [strokeWidth]="2"></svg> }
                               @case ('udf')   { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('uom')   { <svg lucideRuler              [size]="15" [strokeWidth]="2"></svg> }
                             }
                           </span>
                           <span class="shell__nav-label">{{ child.label }}</span>
@@ -324,6 +329,7 @@ interface NavItem {
             }
           }
         </nav>
+        </div>
       </aside>
 
       <!-- ── Content area ────────────────────────────────────── -->

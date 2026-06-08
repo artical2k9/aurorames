@@ -235,6 +235,59 @@ class BomControllerIT extends BaseIntegrationTest {
     }
 
     @Test
+    void listHeaders_returns200WithItemDetails() {
+        String token = engineerToken();
+        String parentId = createItem(token, "BOM-HDR-LIST-001", "A");
+        createBom(token, parentId, "REV-A");
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BOM_BASE + "/headers",
+                HttpMethod.GET,
+                bearerRequest(token),
+                Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsKey("content");
+        List<?> content = (List<?>) response.getBody().get("content");
+        assertThat(content).isNotEmpty();
+        Map<?, ?> first = (Map<?, ?>) content.stream()
+                .filter(e -> "BOM-HDR-LIST-001".equals(((Map<?, ?>) e).get("partNumber")))
+                .findFirst().orElse(null);
+        assertThat(first).isNotNull();
+        assertThat(first.get("bomRevision")).isEqualTo("REV-A");
+        assertThat(first.get("partNumber")).isEqualTo("BOM-HDR-LIST-001");
+        assertThat(first.get("itemStatus")).isEqualTo("ACTIVE");
+    }
+
+    @Test
+    void listHeaders_withSearch_returnsMatchingBomsOnly() {
+        String token = engineerToken();
+        String matchId = createItem(token, "BOM-SRCH-UNIQUE-XYZ", "A");
+        createItem(token, "BOM-SRCH-OTHER-001", "A");
+        createBom(token, matchId, "REV-A");
+
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BOM_BASE + "/headers?search=SRCH-UNIQUE",
+                HttpMethod.GET,
+                bearerRequest(token),
+                Map.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        List<?> content = (List<?>) response.getBody().get("content");
+        assertThat(content).isNotEmpty();
+        content.forEach(e -> {
+            String pn = (String) ((Map<?, ?>) e).get("partNumber");
+            assertThat(pn).containsIgnoringCase("SRCH-UNIQUE");
+        });
+    }
+
+    @Test
+    void listHeaders_unauthenticated_returns401() {
+        ResponseEntity<Map> response = restTemplate.getForEntity(BOM_BASE + "/headers", Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
     void addLineWithNonExistentComponentReturns422() {
         String token = engineerToken();
         String parentId = createItem(token, "BOM-NF-PARENT-001", "A");

@@ -1,7 +1,7 @@
 # Programme: MikeMES (MES-4)
 
 Full-scope aerospace/defence Manufacturing Execution System.
-Breakdown generated: 2026-05-20 · 18 child Epics across 6 phases.
+Breakdown generated: 2026-05-20 · 19 child Epics across 6 phases + 1 cross-cutting platform Epic.
 
 ## Phase Overview
 
@@ -36,6 +36,7 @@ Breakdown generated: 2026-05-20 · 18 child Epics across 6 phases.
 | [MES-20](https://artical.atlassian.net/browse/MES-20) | P5 | Gauge & Tool Management | gauge-tool-service | To Do |
 | [MES-21](https://artical.atlassian.net/browse/MES-21) | P5 | Outside Processing (OSP) | osp-service | To Do |
 | [MES-22](https://artical.atlassian.net/browse/MES-22) | P6 | Inbound/Outbound Integrations | integration-service | To Do |
+| [MES-112](https://artical.atlassian.net/browse/MES-112) | P-Cross | Workflow & Approval Engine (Camunda 8) | workflow-service | To Do |
 
 ## Dependency Chain (Blocks links)
 
@@ -53,6 +54,9 @@ MES-14 (Work Orders)  ───────────────────�
 MES-15 (Shop Floor)   ─────────────────────────────────────► MES-18
 MES-16 (Receiving)    ─────────────────────────────────────► MES-17
 MES-18 (Quality Recording) ────────────────────────────────► MES-19
+MES-5  (IAM) ──────────────────────────────────────────────► MES-112 (Workflow Engine — needs Keycloak)
+MES-8  (Item Master) ──────────────────────────────────────► MES-112 (Workflow Engine — Part/BOM approval)
+MES-112 (Workflow Engine) ─────────────────────────────────► MES-10, MES-13, MES-14, MES-16, MES-18, MES-19, MES-21
 ```
 
 ## Workflow: Epic → Spec → Plan → Tasks → Jira

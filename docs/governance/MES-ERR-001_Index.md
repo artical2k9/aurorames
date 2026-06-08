@@ -57,3 +57,4 @@
 | ERR-MES-071 | 2026-06-07 | Backend — Validation | Optional DTO fields that mirror required fields in sibling DTOs must carry the same `@Size`/`@Pattern` constraints — Bean Validation skips them on null safely |
 | ERR-MES-072 | 2026-06-07 | Testing — Testcontainers | Public endpoint IT tests with structurally valid bodies reach KC even when expecting an error response — always add `assumeTrue(KC.isRunning())` if the error path hits KC |
 | ERR-MES-073 | 2026-06-07 | Backend — API Design | Never catch exceptions inline in a controller already mapped by `GlobalExceptionHandler` — creates divergent response shapes between the inline handler and the global handler |
+| ERR-MES-075 | 2026-06-08 | Backend — IAM / Privilege System | `registerManifest()` only upserts `iam.privilege`; new privileges are never granted to SYSTEM_ADMIN until `registerManifest()` explicitly auto-grants them — fixed in `PrivilegeService` |

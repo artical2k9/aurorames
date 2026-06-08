@@ -4,10 +4,12 @@ import { Observable } from 'rxjs';
 import {
   BomDto,
   BomLineDto,
+  BomSummaryDto,
   BomExplosionNode,
   CreateBomRequest,
   CreateBomLineRequest,
   PatchBomHeaderRequest,
+  Page,
 } from '../models/bom.model';
 
 @Injectable({ providedIn: 'root' })
@@ -18,6 +20,12 @@ export class BomApiService {
   listForItem(parentItemId: string): Observable<BomDto[]> {
     const params = new HttpParams().set('parentItemId', parentItemId);
     return this.http.get<BomDto[]>(this.base, { params });
+  }
+
+  listHeaders(search?: string, page = 0, size = 20): Observable<Page<BomSummaryDto>> {
+    let params = new HttpParams().set('page', page).set('size', size);
+    if (search) { params = params.set('search', search); }
+    return this.http.get<Page<BomSummaryDto>>(`${this.base}/headers`, { params });
   }
 
   getById(id: string): Observable<BomDto> {
@@ -64,5 +72,21 @@ export class BomApiService {
 
   patchHeader(bomId: string, req: PatchBomHeaderRequest): Observable<BomDto> {
     return this.http.patch<BomDto>(`${this.base}/${bomId}`, req);
+  }
+
+  downloadExplosion(
+    bomId: string,
+    format: 'flat' | 'indented',
+    fileType: 'csv' | 'pdf',
+    asOfDate?: string,
+    maxDepth?: number,
+  ): Observable<Blob> {
+    let params = new HttpParams().set('format', format).set('download', fileType);
+    if (asOfDate) { params = params.set('asOfDate', asOfDate); }
+    if (maxDepth) { params = params.set('maxDepth', maxDepth); }
+    return this.http.get(`${this.base}/${bomId}/explosion/download`, {
+      params,
+      responseType: 'blob',
+    });
   }
 }

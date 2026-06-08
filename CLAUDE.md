@@ -416,6 +416,28 @@ Before raising any PR that adds private methods to a controller:
 
 ---
 
+## New Module Privilege Registration — Mandatory
+
+**ERR-MES-075:** `PrivilegeRegistryClient.register()` calls `PrivilegeService.registerManifest()` which only upserts rows in `iam.privilege`. Before this fix, it never granted privileges to any role — including `SYSTEM_ADMIN`. The result: every new `@RequiresPrivilege` key was catalogued but unreachable by any user until manually granted.
+
+### Fix — `registerManifest()` auto-grants to SYSTEM_ADMIN
+
+As of 2026-06-08, `PrivilegeService.registerManifest()` auto-grants every registered privilege to `SYSTEM_ADMIN` if not already held. No separate deployment step is needed when adding new `@RequiresPrivilege` keys.
+
+**How it works:**
+- Loads existing SYSTEM_ADMIN grants once before the item loop (no N+1)
+- Idempotent: re-registering an existing key re-grants it if accidentally revoked
+- Only SYSTEM_ADMIN is auto-granted; all other roles require explicit assignment via the Role management UI
+
+### Pre-PR check for new services or new @RequiresPrivilege keys
+
+When adding any new `@RequiresPrivilege("x:y:z")` annotation:
+1. Confirm the key is included in the module's privilege registration manifest (the `ApplicationReadyEvent` handler or equivalent).
+2. No Flyway migration or manual grant is needed for SYSTEM_ADMIN — the auto-grant runs on service startup.
+3. If the service is already deployed and the key was added in this PR: restart `iam-service` so `registerManifest()` runs again and auto-grants the new key.
+
+---
+
 # Compact
 
 Retain:

@@ -1,4 +1,5 @@
-import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -200,6 +201,7 @@ export class BomExplosionComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
+  private readonly destroyRef = inject(DestroyRef);
 
   bomId = '';
   bom: BomDto | null = null;
@@ -311,15 +313,34 @@ export class BomExplosionComponent implements OnInit {
   }
 
   downloadCsv(): void {
-    const asOf = this.asOfDate ? `&asOfDate=${this.asOfDateStr}` : '';
-    const depth = this.maxDepth ? `&maxDepth=${this.maxDepth}` : '';
-    window.open(`/api/v1/boms/${this.bomId}/explosion/download?format=${this.selectedFormat}&download=csv${asOf}${depth}`);
+    this.triggerDownload('csv');
   }
 
   downloadPdf(): void {
-    const asOf = this.asOfDate ? `&asOfDate=${this.asOfDateStr}` : '';
-    const depth = this.maxDepth ? `&maxDepth=${this.maxDepth}` : '';
-    window.open(`/api/v1/boms/${this.bomId}/explosion/download?format=${this.selectedFormat}&download=pdf${asOf}${depth}`);
+    this.triggerDownload('pdf');
+  }
+
+  private triggerDownload(fileType: 'csv' | 'pdf'): void {
+    this.bomApi.downloadExplosion(
+      this.bomId,
+      this.selectedFormat,
+      fileType,
+      this.asOfDate ? this.asOfDateStr : undefined,
+      this.maxDepth || undefined,
+    ).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bom-explosion-${this.bomId}.${fileType}`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => {
+        this.explosionError = `Failed to download ${fileType.toUpperCase()}`;
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   private toTreeNodes(nodes: BomExplosionNode[]): TreeNode[] {

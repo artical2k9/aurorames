@@ -48,7 +48,7 @@ import { ColumnDef } from '../../models/column-def.model';
 
       <div class="column-picker__footer">
         <p-button label="Apply" size="small" (onClick)="onApply()" />
-        <p-button label="Cancel" size="small" severity="secondary" (onClick)="applied.emit(null!)" />
+        <p-button label="Cancel" size="small" severity="secondary" (onClick)="onCancel()" />
       </div>
     </div>
   `,
@@ -67,6 +67,7 @@ import { ColumnDef } from '../../models/column-def.model';
 export class ColumnPickerComponent implements OnChanges {
   @Input() columns: ColumnDef[] = [];
   @Output() applied = new EventEmitter<ColumnDef[]>();
+  @Output() cancelled = new EventEmitter<void>();
   @Output() reset = new EventEmitter<void>();
 
   standardColumns: ColumnDef[] = [];
@@ -88,5 +89,11 @@ export class ColumnPickerComponent implements OnChanges {
   onApply(): void {
     const all = [...this.standardColumns, ...this.udfColumns].map((c, i) => ({ ...c, order: i }));
     this.applied.emit(all);
+  }
+
+  onCancel(): void {
+    this.standardColumns = this.columns.filter(c => !c.udf).map(c => ({ ...c }));
+    this.udfColumns = this.columns.filter(c => c.udf).map(c => ({ ...c }));
+    this.cancelled.emit();
   }
 }

@@ -1,4 +1,20 @@
 export type BomStatus = 'DRAFT' | 'RELEASED' | 'OBSOLETE';
+
+export interface BomSummaryDto {
+  bomId:           string;
+  bomRevision:     string;
+  bomStatus:       BomStatus;
+  bomDescription:  string | null;
+  parentItemId:    string;
+  partNumber:      string;
+  revision:        string;
+  itemDescription: string;
+  classification:  string;
+  unitOfMeasure:   string | null;
+  itemStatus:      string;
+  createdBy:       string;
+  createdAt:       string;
+}
 export type EffectivityMethod = 'NONE' | 'DATE' | 'UNIT';
 
 export interface BomDto {

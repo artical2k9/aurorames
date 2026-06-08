@@ -9,19 +9,17 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
-import { DropdownModule } from 'primeng/dropdown';
-import { IconFieldModule } from 'primeng/iconfield';
-import { InputIconModule } from 'primeng/inputicon';
+import { SelectModule } from 'primeng/select';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
-import { LucideAngularModule, LucidePlus, LucidePencil, LucideSearch } from 'lucide-angular';
+import { LucidePencil } from '@lucide/angular';
 import {
   PlatformApiService,
   UnitOfMeasureDto,
   CreateUomRequest,
   PatchUomRequest,
-} from '../../services/platform-api.service';
+} from '../../../../shared/platform';
 
 @Component({
   selector: 'app-uom-management',
@@ -32,44 +30,59 @@ import {
     FormsModule,
     ButtonModule,
     DialogModule,
-    DropdownModule,
-    IconFieldModule,
-    InputIconModule,
+    SelectModule,
     InputTextModule,
     TableModule,
     TagModule,
-    LucideAngularModule,
+    LucidePencil,
   ],
+  styles: [`
+    .uom { padding: 1.25rem; }
+
+    .uom__heading {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .uom__heading-left { display: flex; align-items: baseline; gap: 0.5rem; }
+    .uom__title { margin: 0; font-size: 1.375rem; font-weight: 700; }
+    .uom__count { font-size: 0.875rem; color: var(--p-text-muted-color); }
+
+    .uom__toolbar {
+      display: flex; align-items: center; gap: 0.5rem;
+      flex-wrap: wrap; margin-bottom: 0.75rem;
+    }
+    :host ::ng-deep .uom__toolbar .p-inputtext { min-width: 220px; }
+    :host ::ng-deep .filter-select { min-width: 160px; }
+  `],
   template: `
-    <div class="p-4">
-      <div class="flex align-items-center justify-content-between mb-4">
-        <h2 class="text-2xl font-semibold m-0">Units of Measure</h2>
-        <button pButton type="button" label="New Unit" class="p-button-sm"
-                (click)="openCreate()">
-          <ng-template pTemplate="icon"><svg lucidePlus class="w-4 h-4 mr-1"></svg></ng-template>
-        </button>
+    <div class="uom">
+
+      <!-- Heading row -->
+      <div class="uom__heading">
+        <div class="uom__heading-left">
+          <h2 class="uom__title">Units of Measure</h2>
+          <span class="uom__count">({{ filtered.length }} units)</span>
+        </div>
+        <p-button label="New Unit" icon="pi pi-plus" severity="primary"
+                  size="small" (onClick)="openCreate()" />
       </div>
 
-      <!-- filter bar -->
-      <div class="flex gap-2 mb-3">
-        <p-iconField iconPosition="left" class="flex-1">
-          <p-inputIcon><svg lucideSearch class="w-4 h-4"></svg></p-inputIcon>
-          <input pInputText type="text" placeholder="Search code or name…"
-                 [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" />
-        </p-iconField>
-        <p-dropdown [options]="categoryOptions" [(ngModel)]="selectedCategory"
-                    (onChange)="applyFilters()"
-                    placeholder="All categories" [showClear]="true"
-                    [style]="{ minWidth: '200px' }">
-        </p-dropdown>
-        <p-dropdown [options]="[{label:'Active only', value:false},{label:'Include inactive', value:true}]"
-                    [(ngModel)]="includeInactive"
-                    (onChange)="load()"
-                    [style]="{ minWidth: '160px' }">
-        </p-dropdown>
+      <!-- Toolbar -->
+      <div class="uom__toolbar">
+        <input pInputText type="text" placeholder="Search code or name…"
+               [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" />
+
+        <p-select [options]="categoryOptions" [(ngModel)]="selectedCategory"
+                  placeholder="Category" [showClear]="true"
+                  (onChange)="applyFilters()" styleClass="filter-select" />
+
+        <p-select [options]="activeOptions" [(ngModel)]="includeInactive"
+                  (onChange)="load()" styleClass="filter-select" />
+
+        <p-button label="Clear" severity="secondary" size="small" (onClick)="clearFilters()" />
       </div>
 
-      <!-- table -->
+      <!-- Table -->
       <p-table [value]="filtered" [loading]="loading" [paginator]="true" [rows]="25"
                [rowsPerPageOptions]="[25, 50, 100]" styleClass="p-datatable-sm">
         <ng-template pTemplate="header">
@@ -79,7 +92,7 @@ import {
             <th>Name</th>
             <th>Category</th>
             <th>Status</th>
-            <th style="width:80px"></th>
+            <th style="width:60px"></th>
           </tr>
         </ng-template>
         <ng-template pTemplate="body" let-uom>
@@ -90,19 +103,17 @@ import {
             <td>{{ uom.category }}</td>
             <td>
               <p-tag [value]="uom.active ? 'Active' : 'Inactive'"
-                     [severity]="uom.active ? 'success' : 'secondary'">
-              </p-tag>
+                     [severity]="uom.active ? 'success' : 'secondary'" />
             </td>
-            <td class="text-right">
-              <button pButton type="button" class="p-button-text p-button-sm"
-                      (click)="openEdit(uom)">
-                <svg lucidePencil class="w-4 h-4"></svg>
-              </button>
+            <td>
+              <p-button [text]="true" size="small" (onClick)="openEdit(uom)">
+                <svg lucidePencil [size]="15" [strokeWidth]="1.75"></svg>
+              </p-button>
             </td>
           </tr>
         </ng-template>
         <ng-template pTemplate="emptymessage">
-          <tr><td colspan="6" class="text-center text-color-secondary p-4">No units found.</td></tr>
+          <tr><td colspan="6" class="text-center p-4" style="color:var(--p-text-muted-color)">No units found.</td></tr>
         </ng-template>
       </p-table>
     </div>
@@ -125,9 +136,9 @@ import {
         </div>
         <div class="flex flex-column gap-1">
           <label class="font-medium text-sm">Category *</label>
-          <p-dropdown [options]="categoryOptions" [(ngModel)]="createForm.category"
+          <p-select [options]="categoryOptions" [(ngModel)]="createForm.category"
                       [editable]="true" placeholder="Select or type…" class="w-full">
-          </p-dropdown>
+          </p-select>
         </div>
         @if (createError) {
           <p class="text-red-500 text-sm m-0">{{ createError }}</p>
@@ -178,9 +189,11 @@ export class UomManagementComponent implements OnInit {
   private readonly api = inject(PlatformApiService);
   private readonly cdr = inject(ChangeDetectorRef);
 
-  readonly LucidePlus   = LucidePlus;
   readonly LucidePencil = LucidePencil;
-  readonly LucideSearch = LucideSearch;
+  readonly activeOptions = [
+    { label: 'Active only',       value: false },
+    { label: 'Include inactive',  value: true  },
+  ];
 
   loading        = false;
   saving         = false;
@@ -232,6 +245,13 @@ export class UomManagementComponent implements OnInit {
       const matchCategory = !this.selectedCategory || u.category === this.selectedCategory;
       return matchSearch && matchCategory;
     });
+  }
+
+  clearFilters(): void {
+    this.searchTerm      = '';
+    this.selectedCategory = null;
+    this.includeInactive  = false;
+    this.load();
   }
 
   openCreate(): void {
