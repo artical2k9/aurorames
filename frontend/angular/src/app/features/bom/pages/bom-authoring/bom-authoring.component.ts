@@ -97,6 +97,8 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             <span class="ba__spacer"></span>
             <p-button label="+ Add Line" severity="primary" size="small"
                       (onClick)="addingLine = !addingLine" />
+            <p-button label="Save Draft" severity="secondary" size="small"
+                      [disabled]="!isDirty" (onClick)="saveDraft()" />
             <p-button label="Submit for Review" severity="success" size="small"
                       [loading]="releasing" (onClick)="confirmRelease()" />
             <p-button [rounded]="true" [text]="true"
@@ -201,8 +203,11 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
         </p-table>
 
         <!-- Status bar -->
-        <div class="ba__statusbar">
+        <div class="ba__statusbar" [class.ba__statusbar--dirty]="isDirty">
           <span>{{ lines.length }} component{{ lines.length !== 1 ? 's' : '' }}</span>
+          @if (isDirty) {
+            <span class="ba__statusbar-unsaved"> · Unsaved changes — click Save Draft to retain</span>
+          }
         </div>
       }
 
@@ -250,6 +255,8 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
       margin-top: 0.5rem; padding: 0.4rem 0.75rem; font-size: 0.8125rem;
       color: var(--p-text-muted-color); border-top: 1px solid var(--p-surface-border);
     }
+    .ba__statusbar--dirty { color: #F59E0B; }
+    .ba__statusbar-unsaved { font-style: italic; }
     .ba__rev-label { font-size: 0.8125rem; color: var(--p-text-muted-color); }
     :host ::ng-deep .ba__rev-select { min-width: 110px; font-size: 0.8125rem; }
     .ba__lines-count { font-size: 0.8125rem; font-weight: 600; }
@@ -284,6 +291,7 @@ export class BomAuthoringComponent implements OnInit {
 
   editingLineId: string | null = null;
   editQty: number | null = null;
+  isDirty = false;
 
   ngOnInit(): void {
     this.bomId = this.route.snapshot.paramMap.get('bomId') ?? '';
@@ -340,6 +348,7 @@ export class BomAuthoringComponent implements OnInit {
   onLineSaved(line: BomLineDto): void {
     this.lines = [...this.lines, line];
     this.addingLine = false;
+    this.isDirty = true;
     this.cdr.detectChanges();
   }
 
@@ -347,6 +356,7 @@ export class BomAuthoringComponent implements OnInit {
     this.bomApi.removeLine(this.bomId, line.id).subscribe({
       next: () => {
         this.lines = this.lines.filter(l => l.id !== line.id);
+        this.isDirty = true;
         this.cdr.detectChanges();
       },
       error: () => {
@@ -368,6 +378,7 @@ export class BomAuthoringComponent implements OnInit {
       next: bom => {
         this.bom = bom;
         this.releasing = false;
+        this.isDirty = false;
         this.messageService.add({ severity: 'success', summary: 'BOM released' });
         this.cdr.detectChanges();
       },
@@ -399,6 +410,7 @@ export class BomAuthoringComponent implements OnInit {
         this.editingLineId = null;
         this.editQty = null;
         this.savingLine = false;
+        this.isDirty = true;
         this.cdr.detectChanges();
       },
       error: () => {
@@ -406,6 +418,12 @@ export class BomAuthoringComponent implements OnInit {
         this.messageService.add({ severity: 'error', summary: 'Failed to save line' });
       },
     });
+  }
+
+  saveDraft(): void {
+    this.isDirty = false;
+    this.messageService.add({ severity: 'success', summary: 'Draft saved' });
+    this.cdr.detectChanges();
   }
 
   goToExplosion(): void {

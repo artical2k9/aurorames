@@ -156,6 +156,28 @@ class ItemMasterControllerIT extends BaseIntegrationTest {
     }
 
     @Test
+    void cloneReturnsTemplateWithSourceFieldsCopied() {
+        String token = engineerToken();
+        ResponseEntity<Map> created = restTemplate.exchange(
+                BASE_URL, HttpMethod.POST,
+                jsonRequest(token, createRequest("CLONE-SRC-001", "A")), Map.class);
+        String location = created.getHeaders().getLocation().getPath();
+        String itemId = location.substring(location.lastIndexOf('/') + 1);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        ResponseEntity<Map> cloned = restTemplate.exchange(
+                BASE_URL + "/" + itemId + "/clone",
+                HttpMethod.POST, new HttpEntity<>(headers), Map.class);
+
+        assertThat(cloned.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(cloned.getBody().get("id")).isNull();
+        assertThat(cloned.getBody().get("partNumber")).isNull();
+        assertThat(cloned.getBody().get("revision")).isNull();
+        assertThat(cloned.getBody().get("description")).isEqualTo("Test item");
+    }
+
+    @Test
     void postWithNoPrivilegesReturns403() {
         String token = buildToken(ORG_ID, List.of());
 
