@@ -9,11 +9,13 @@ VALUES ('item-master:as5553:manage', 'item-master',
 ON CONFLICT (privilege_key) DO NOTHING;
 
 -- Create QUALITY_ENGINEER role if it does not already exist
-INSERT INTO iam.role (name, description, org_id, is_system_role)
+INSERT INTO iam.role (name, description, org_id, is_system_role, created_by, updated_by)
 SELECT 'QUALITY_ENGINEER',
        'Quality engineer — manages AS5553 counterfeit risk fields',
        '00000000-0000-0000-0000-000000000001',
-       true
+       true,
+       'migration',
+       'migration'
 WHERE NOT EXISTS (
     SELECT 1 FROM iam.role
     WHERE name = 'QUALITY_ENGINEER'
