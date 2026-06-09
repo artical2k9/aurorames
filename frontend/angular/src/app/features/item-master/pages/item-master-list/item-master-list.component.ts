@@ -18,13 +18,13 @@ import { Menu } from 'primeng/menu';
 import { MenuItem, MessageService } from 'primeng/api';
 import { LucideColumnsSettings } from '@lucide/angular';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
-import { StatusBadgeComponent, BreadcrumbService } from '../../../../shared/ui';
+import { BreadcrumbService } from '../../../../shared/ui';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
 import { ClassificationLabelPipe } from '../../pipes/classification-label.pipe';
 import { DEFAULT_ITEM_MASTER_COLUMNS } from '../../constants/default-columns';
 import {
-  ItemMasterDto, Classification, ItemStatus, MakeBuyCode,
+  ItemMasterDto, Classification, RevisionStatus, MakeBuyCode,
 } from '../../models/item-master.model';
 
 @Component({
@@ -34,7 +34,7 @@ import {
     CommonModule, AsyncPipe, FormsModule,
     TableModule, InputTextModule, SelectModule,
     ButtonModule, PopoverModule, TagModule, MenuModule, ToastModule,
-    ColumnPickerComponent, StatusBadgeComponent,
+    ColumnPickerComponent,
     ClassificationLabelPipe, LucideColumnsSettings,
   ],
   providers: [
@@ -69,9 +69,9 @@ import {
                   placeholder="Classification" [showClear]="true"
                   (onChange)="reload()" styleClass="filter-select" />
 
-        <p-select [options]="statusOptions" [(ngModel)]="selectedStatus"
+        <p-select [options]="revisionStatusOptions" [(ngModel)]="selectedRevisionStatus"
                   optionLabel="label" optionValue="value"
-                  placeholder="Status" [showClear]="true"
+                  placeholder="Rev Status" [showClear]="true"
                   (onChange)="reload()" styleClass="filter-select" />
 
         <p-select [options]="makeBuyOptions" [(ngModel)]="selectedMakeBuy"
@@ -100,8 +100,6 @@ import {
           <p-button label="Clone Item" severity="secondary" size="small"
                     [disabled]="selectedItems.length !== 1"
                     (onClick)="cloneSelected()" />
-          <p-button label="Obsolete" severity="danger" size="small"
-                    [loading]="obsoleting" (onClick)="obsoleteSelected()" />
           <p-button label="Clear" [text]="true" size="small" (onClick)="selectedItems = []" />
         </div>
       }
@@ -157,8 +155,12 @@ import {
                            [severity]="classificationSeverity(item.classification)"
                            [class]="classificationClass(item.classification)" />
                   }
-                  @case ('status') {
-                    <app-status-badge [status]="item.status" />
+                  @case ('revisionStatus') {
+                    <p-tag [value]="revisionStatusLabel(item.revisionStatus)"
+                           [severity]="revisionStatusSeverity(item.revisionStatus)" />
+                    @if (item.hasDraft && item.revisionStatus !== 'DRAFT') {
+                      <p-tag value="Draft pending" severity="warn" styleClass="iml__draft-chip" />
+                    }
                   }
                   @default {
                     {{ getCellValue(item, col) ?? '—' }}
@@ -235,6 +237,7 @@ import {
       background: #7C3AED !important;
       color: #fff !important;
     }
+    :host ::ng-deep .iml__draft-chip { margin-left: 0.375rem; font-size: 0.75rem; }
   `],
 })
 export class ItemMasterListComponent implements OnInit, AfterViewInit {
@@ -252,7 +255,6 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
   rows: ItemMasterDto[] = [];
   totalRecords = 0;
   loading = true;
-  obsoleting = false;
   pageSize = 20;
   currentPage = 0;
 
@@ -261,7 +263,7 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
 
   searchTerm = '';
   selectedClassification: Classification | null = null;
-  selectedStatus: ItemStatus | null = null;
+  selectedRevisionStatus: RevisionStatus | null = null;
   selectedMakeBuy: MakeBuyCode | null = null;
 
   private readonly searchSubject = new Subject<string>();
@@ -275,9 +277,10 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
     { label: 'Service',        value: 'SERVICE' },
   ];
 
-  readonly statusOptions = [
-    { label: 'Active',   value: 'ACTIVE' },
-    { label: 'Obsolete', value: 'OBSOLETE' },
+  readonly revisionStatusOptions = [
+    { label: 'Draft',            value: 'DRAFT' },
+    { label: 'Pending Approval', value: 'PENDING_APPROVAL' },
+    { label: 'Approved',         value: 'APPROVED' },
   ];
 
   readonly makeBuyOptions = [
@@ -348,7 +351,7 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
   clearFilters(): void {
     this.searchTerm = '';
     this.selectedClassification = null;
-    this.selectedStatus = null;
+    this.selectedRevisionStatus = null;
     this.selectedMakeBuy = null;
     this.reload();
   }
@@ -369,6 +372,18 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
 
   visibleColumnCount(_columns: ColumnDef[]): number {
     return this.visibleColumns(_columns).length;
+  }
+
+  revisionStatusLabel(s: RevisionStatus): string {
+    if (s === 'PENDING_APPROVAL') return 'Pending';
+    if (s === 'APPROVED') return 'Approved';
+    return 'Draft';
+  }
+
+  revisionStatusSeverity(s: RevisionStatus): 'info' | 'warn' | 'success' | 'secondary' {
+    if (s === 'APPROVED') return 'success';
+    if (s === 'PENDING_APPROVAL') return 'warn';
+    return 'secondary';
   }
 
   classificationSeverity(c: Classification): 'info' | 'warn' | 'secondary' | 'success' | 'danger' | undefined {
@@ -427,48 +442,8 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
         icon: 'pi pi-sitemap',
         command: () => this.router.navigate(['/item-master', item.id, 'boms']),
       },
-      {
-        label: 'Obsolete',
-        icon: 'pi pi-ban',
-        command: () => this.obsoleteItem(item.id),
-      },
     ];
     this.rowMenu.toggle(event);
-  }
-
-  obsoleteItem(id: string): void {
-    this.api.obsolete(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => {
-        this.messageService.add({ severity: 'success', summary: 'Item obsoleted' });
-        this.reload();
-      },
-    });
-  }
-
-  obsoleteSelected(): void {
-    this.obsoleting = true;
-    const ids = this.selectedItems.map(i => i.id);
-    let done = 0;
-    ids.forEach(id => {
-      this.api.obsolete(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-        next: () => {
-          done++;
-          if (done === ids.length) {
-            this.obsoleting = false;
-            this.selectedItems = [];
-            this.messageService.add({ severity: 'success', summary: `${ids.length} item(s) obsoleted` });
-            this.reload();
-          }
-        },
-        error: () => {
-          done++;
-          if (done === ids.length) {
-            this.obsoleting = false;
-            this.reload();
-          }
-        },
-      });
-    });
   }
 
   private fetchItems(): void {
@@ -478,7 +453,7 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
       size: this.pageSize,
       search: this.searchTerm || undefined,
       classification: this.selectedClassification ?? undefined,
-      status: this.selectedStatus ?? undefined,
+      revisionStatus: this.selectedRevisionStatus ?? undefined,
       makeBuyCode: this.selectedMakeBuy ?? undefined,
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: page => {

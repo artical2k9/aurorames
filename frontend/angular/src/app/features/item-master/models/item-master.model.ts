@@ -8,21 +8,23 @@ export type Classification =
 
 export type MakeBuyCode = 'MAKE' | 'BUY' | 'EITHER';
 export type TraceabilityMethod = 'SERIAL' | 'LOT' | 'HEAT_CODE' | 'DATE_CODE' | 'NONE';
-export type ItemStatus = 'ACTIVE' | 'OBSOLETE';
 export type CounterfeitRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type RevisionStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED';
 
 export interface ItemMasterDto {
   id: string;
+  revisionId: string;
   orgId: string;
   partNumber: string;
-  revision: string;
+  revision: number;
+  revisionStatus: RevisionStatus;
+  hasDraft: boolean;
   description: string;
   unitOfMeasure: string;
   cageCode?: string;
   classification: Classification;
   makeBuyCode: MakeBuyCode;
   traceabilityMethod: TraceabilityMethod;
-  status: ItemStatus;
   shelfLifeControlled: boolean;
   shelfLifeDays?: number;
   stepPartRef?: string;
@@ -30,6 +32,9 @@ export interface ItemMasterDto {
   verificationRequired: boolean;
   approvedSuppliers?: string[];
   customFields?: Record<string, unknown>;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
   createdBy: string;
   createdAt: string;
   modifiedBy: string;
@@ -41,7 +46,7 @@ export interface ItemMasterListParams {
   size?: number;
   search?: string;
   classification?: Classification;
-  status?: ItemStatus;
+  revisionStatus?: RevisionStatus;
   makeBuyCode?: MakeBuyCode;
   counterfeitRiskLevel?: CounterfeitRiskLevel;
 }
@@ -56,7 +61,6 @@ export interface Page<T> {
 
 export interface CreateItemMasterRequest {
   partNumber: string;
-  revision: string;
   description: string;
   unitOfMeasure: string;
   classification: Classification;
@@ -79,7 +83,6 @@ export interface PatchItemMasterRequest {
   classification?: Classification;
   makeBuyCode?: MakeBuyCode;
   traceabilityMethod?: TraceabilityMethod;
-  status?: ItemStatus;
   shelfLifeControlled?: boolean;
   shelfLifeDays?: number | null;
   counterfeitRiskLevel?: CounterfeitRiskLevel | null;

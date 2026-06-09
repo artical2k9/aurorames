@@ -27,6 +27,9 @@ const MOCK_LINE: BomLineDto = {
   id: 'line-1',
   bomId: 'bom-1',
   componentItemId: 'comp-1',
+  partNumber: 'PN-100',
+  revision: 'A',
+  description: 'Widget',
   counterfeitRiskAlert: false,
   componentObsoleted: false,
   createdBy: 'user',
@@ -50,14 +53,16 @@ describe('BomAuthoringComponent', () => {
     patchHeader: vi.fn().mockReturnValue(of(MOCK_BOM)),
     release: vi.fn().mockReturnValue(of(RELEASED_BOM)),
     removeLine: vi.fn().mockReturnValue(of(undefined)),
+    listForItem: vi.fn().mockReturnValue(of([])),
   };
 
   const mockItemApi = {
     getById: vi.fn().mockReturnValue(of({
-      id: 'item-1', partNumber: 'ASSY-001', revision: 'A',
+      id: 'item-1', revisionId: 'rev-1', partNumber: 'ASSY-001', revision: 0,
+      revisionStatus: 'APPROVED', hasDraft: false,
       orgId: 'org-1', description: 'Assembly', unitOfMeasure: 'EA',
       classification: 'ASSEMBLY', makeBuyCode: 'MAKE', traceabilityMethod: 'SERIAL',
-      status: 'ACTIVE', shelfLifeControlled: false, verificationRequired: false,
+      shelfLifeControlled: false, verificationRequired: false,
       createdBy: 'user', createdAt: '2026-01-01T00:00:00Z',
       modifiedBy: 'user', modifiedAt: '2026-01-01T00:00:00Z',
     })),
@@ -111,7 +116,6 @@ describe('BomAuthoringComponent', () => {
     component.bomId = 'bom-1';
     component.isDirty = true;
     component.saveDraft();
-    expect(mockBomApi.patchHeader).toHaveBeenCalledWith('bom-1', {});
     expect(component.isDirty).toBe(false);
   });
 

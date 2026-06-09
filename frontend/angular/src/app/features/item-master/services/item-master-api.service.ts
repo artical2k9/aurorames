@@ -20,7 +20,7 @@ export class ItemMasterApiService {
       .set('size', params.size ?? 20);
     if (params.search)               httpParams = httpParams.set('search', params.search);
     if (params.classification)       httpParams = httpParams.set('classification', params.classification);
-    if (params.status)               httpParams = httpParams.set('status', params.status);
+    if (params.revisionStatus)       httpParams = httpParams.set('revisionStatus', params.revisionStatus);
     if (params.makeBuyCode)          httpParams = httpParams.set('makeBuyCode', params.makeBuyCode);
     if (params.counterfeitRiskLevel) httpParams = httpParams.set('counterfeitRiskLevel', params.counterfeitRiskLevel);
     return this.http.get<Page<ItemMasterDto>>(this.base, { params: httpParams });
@@ -38,8 +38,16 @@ export class ItemMasterApiService {
     return this.http.patch<ItemMasterDto>(`${this.base}/${id}`, req);
   }
 
-  obsolete(id: string): Observable<ItemMasterDto> {
-    return this.http.post<ItemMasterDto>(`${this.base}/${id}/obsolete`, {});
+  submit(id: string): Observable<ItemMasterDto> {
+    return this.http.post<ItemMasterDto>(`${this.base}/${id}/submit`, {});
+  }
+
+  approve(id: string): Observable<ItemMasterDto> {
+    return this.http.post<ItemMasterDto>(`${this.base}/${id}/approve`, {});
+  }
+
+  cancelDraft(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${id}/draft`);
   }
 
   clone(id: string): Observable<ItemMasterDto> {

@@ -58,14 +58,6 @@ import { ItemMasterDto, Classification, MakeBuyCode, TraceabilityMethod, Counter
                 <input pInputText formControlName="partNumber" placeholder="e.g. PN-001" />
               }
             </div>
-            <div class="imf__field">
-              <label>Revision <span class="imf__req">*</span></label>
-              @if (editMode) {
-                <span class="imf__readonly">{{ form.get('revision')?.value }}</span>
-              } @else {
-                <input pInputText formControlName="revision" placeholder="e.g. A" />
-              }
-            </div>
             <div class="imf__field imf__field--full">
               <label>Description <span class="imf__req">*</span></label>
               <input pInputText formControlName="description" placeholder="Brief item description" />
@@ -194,7 +186,6 @@ export class ItemMasterFormComponent implements OnInit, OnChanges {
 
   form = this.fb.group({
     partNumber: ['', Validators.required],
-    revision: ['', Validators.required],
     description: ['', Validators.required],
     classification: [null as string | null, Validators.required],
     makeBuyCode: [null as string | null, Validators.required],
@@ -290,7 +281,6 @@ export class ItemMasterFormComponent implements OnInit, OnChanges {
       this.loadedItem = item;
       this.form.patchValue({
         partNumber:          item.partNumber,
-        revision:            item.revision,
         description:         item.description,
         classification:      item.classification,
         makeBuyCode:         item.makeBuyCode,
@@ -331,7 +321,6 @@ export class ItemMasterFormComponent implements OnInit, OnChanges {
         })
       : this.api.create({
           partNumber: v.partNumber!,
-          revision: v.revision!,
           description: v.description!,
           unitOfMeasure: v.unitOfMeasure!,
           classification: v.classification as Classification,
