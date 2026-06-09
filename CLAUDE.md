@@ -438,6 +438,26 @@ When adding any new `@RequiresPrivilege("x:y:z")` annotation:
 
 ---
 
+## Flyway Seed Migrations — Audit Columns Mandatory
+
+**ERR-MES-077:** V013 seeded `iam.role` with an INSERT that omitted `created_by` and `updated_by` — both NOT NULL on the table. Postgres raised error 23502 on service startup. Spring Boot failed to load the ApplicationContext, and the Testcontainers context-caching mechanism then refused to retry for every subsequent test class, cascading one bad migration into 33 IT failures across the entire inventory-service suite.
+
+### Rule — always include NOT NULL audit columns in seed INSERT statements
+
+Before writing any `INSERT INTO` in a Flyway migration:
+1. Check the target table's schema for NOT NULL columns — especially `created_by`, `updated_by`, `created_at`, `updated_at`.
+2. For audit columns (`created_by`, `updated_by`): use the literal value `'migration'`.
+3. For timestamp columns that cannot use a `DEFAULT`: use `NOW()` or `CURRENT_TIMESTAMP`.
+4. Never rely on Spring Data Auditing to fill these values — Flyway runs outside the Spring container; `AuditorAware` is not active.
+
+### Pre-PR check for any PR adding Flyway migrations
+
+Before raising any PR with a new `V*.sql` migration file that contains `INSERT INTO`:
+- For each table: run `\d <schema>.<table>` (or check the previous `CREATE TABLE` migration) to enumerate NOT NULL columns.
+- Confirm every NOT NULL column has a value in the INSERT — no omissions allowed.
+
+---
+
 # Compact
 
 Retain:
