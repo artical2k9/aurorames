@@ -358,8 +358,8 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
   }
 
   getCellValue(item: ItemMasterDto, col: ColumnDef): unknown {
-    if (!col.udf) return (item as Record<string, unknown>)[col.key];
-    const direct = (item as Record<string, unknown>)[col.key];
+    if (!col.udf) return (item as unknown as Record<string, unknown>)[col.key];
+    const direct = (item as unknown as Record<string, unknown>)[col.key];
     return direct !== undefined ? direct : item.customFields?.[col.key];
   }
 
