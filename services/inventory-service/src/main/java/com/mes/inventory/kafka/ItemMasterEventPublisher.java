@@ -1,13 +1,12 @@
 package com.mes.inventory.kafka;
 
-import com.mes.inventory.itemmaster.api.dto.ItemMasterDto;
-import com.mes.inventory.itemmaster.api.dto.ItemMasterMapper;
-import com.mes.inventory.itemmaster.domain.ItemMaster;
+import com.mes.inventory.itemmaster.domain.ItemRevision;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,30 +21,17 @@ public class ItemMasterEventPublisher {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void publishCreated(ItemMaster entity) {
-        publish("ITEM_MASTER_CREATED", entity);
-    }
-
-    public void publishUpdated(ItemMaster entity) {
-        publish("ITEM_MASTER_UPDATED", entity);
-    }
-
-    public void publishAs5553RiskAdded(ItemMaster component) {
-        publish("compliance.as5553-risk-added", component);
-    }
-
-    private void publish(String eventType, ItemMaster entity) {
-        ItemMasterDto dto = ItemMasterMapper.toDto(entity);
-        Map<String, Object> event = Map.of(
-                "eventId", UUID.randomUUID().toString(),
-                "eventType", eventType,
-                "entityId", entity.getId().toString(),
-                "orgId", entity.getOrgId().toString(),
-                "actorId", actorId(),
-                "occurredAt", Instant.now().toString(),
-                "payload", dto
-        );
-        kafkaTemplate.send(TOPIC, entity.getId().toString(), event);
+    public void publishAs5553RiskAdded(ItemRevision component) {
+        Map<String, Object> event = new HashMap<>();
+        event.put("eventId", UUID.randomUUID().toString());
+        event.put("eventType", "compliance.as5553-risk-added");
+        event.put("entityId", component.getId().toString());
+        event.put("orgId", component.getItem().getOrgId().toString());
+        event.put("partNumber", component.getItem().getPartNumber());
+        event.put("counterfeitRiskLevel", component.getCounterfeitRiskLevel().name());
+        event.put("actorId", actorId());
+        event.put("occurredAt", Instant.now().toString());
+        kafkaTemplate.send(TOPIC, component.getId().toString(), event);
     }
 
     private String actorId() {

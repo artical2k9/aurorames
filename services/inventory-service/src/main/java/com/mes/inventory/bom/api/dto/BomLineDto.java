@@ -8,8 +8,9 @@ import java.util.UUID;
 public class BomLineDto {
 
     private UUID id;
-    private UUID bomId;
-    private UUID componentItemId;
+    private UUID bomRevisionId;
+    private UUID componentItemRevisionId;
+    private Integer componentRevision;
     private BigDecimal quantity;
     private String unitOfMeasure;
     private String findNumber;
@@ -22,7 +23,6 @@ public class BomLineDto {
     private boolean counterfeitRiskAlert;
     private boolean componentObsoleted;
     private String partNumber;
-    private String revision;
     private String description;
     private String makeBuyCode;
     private String createdBy;
@@ -36,20 +36,28 @@ public class BomLineDto {
         this.id = id;
     }
 
-    public UUID getBomId() {
-        return bomId;
+    public UUID getBomRevisionId() {
+        return bomRevisionId;
     }
 
-    public void setBomId(UUID bomId) {
-        this.bomId = bomId;
+    public void setBomRevisionId(UUID bomRevisionId) {
+        this.bomRevisionId = bomRevisionId;
     }
 
-    public UUID getComponentItemId() {
-        return componentItemId;
+    public UUID getComponentItemRevisionId() {
+        return componentItemRevisionId;
     }
 
-    public void setComponentItemId(UUID componentItemId) {
-        this.componentItemId = componentItemId;
+    public void setComponentItemRevisionId(UUID componentItemRevisionId) {
+        this.componentItemRevisionId = componentItemRevisionId;
+    }
+
+    public Integer getComponentRevision() {
+        return componentRevision;
+    }
+
+    public void setComponentRevision(Integer componentRevision) {
+        this.componentRevision = componentRevision;
     }
 
     public BigDecimal getQuantity() {
@@ -146,14 +154,6 @@ public class BomLineDto {
 
     public void setPartNumber(String partNumber) {
         this.partNumber = partNumber;
-    }
-
-    public String getRevision() {
-        return revision;
-    }
-
-    public void setRevision(String revision) {
-        this.revision = revision;
     }
 
     public String getDescription() {

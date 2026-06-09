@@ -79,7 +79,8 @@ public abstract class BaseIntegrationTest {
                         "item-master:records:view", "item-master:records:manage",
                         "item-master:revisions:approve",
                         "item-master:bom:manage",  "item-master:udf:manage",
-                        "item-master:as5553:manage");
+                        "item-master:as5553:manage",
+                        "bom:revisions:approve");
                 case "ENGINEER" -> Set.of(
                         "item-master:records:view", "item-master:records:manage",
                         "item-master:bom:manage");

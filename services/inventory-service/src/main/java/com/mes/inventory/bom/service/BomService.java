@@ -1,5 +1,6 @@
 package com.mes.inventory.bom.service;
 
+import com.mes.inventory.bom.api.dto.BomDto;
 import com.mes.inventory.bom.api.dto.BomLineDto;
 import com.mes.inventory.bom.api.dto.BomMapper;
 import com.mes.inventory.bom.api.dto.BomSummaryDto;
@@ -7,30 +8,30 @@ import com.mes.inventory.bom.api.dto.CreateBomLineRequest;
 import com.mes.inventory.bom.api.dto.CreateBomRequest;
 import com.mes.inventory.bom.api.dto.PatchBomHeaderRequest;
 import com.mes.inventory.bom.api.dto.UpdateBomLineRequest;
-import com.mes.inventory.bom.domain.BillOfMaterials;
+import com.mes.inventory.bom.domain.Bom;
 import com.mes.inventory.bom.domain.BomLine;
-import com.mes.inventory.bom.domain.BomStatus;
+import com.mes.inventory.bom.domain.BomRevision;
 import com.mes.inventory.bom.domain.EffectivityMethod;
 import com.mes.inventory.bom.repository.BomLineRepository;
 import com.mes.inventory.bom.repository.BomRepository;
+import com.mes.inventory.bom.repository.BomRevisionRepository;
 import com.mes.inventory.itemmaster.domain.CounterfeitRiskLevel;
-import com.mes.inventory.itemmaster.domain.ItemMaster;
-import com.mes.inventory.itemmaster.repository.ItemMasterRepository;
+import com.mes.inventory.itemmaster.domain.ItemRevision;
+import com.mes.inventory.itemmaster.domain.RevisionStatus;
+import com.mes.inventory.itemmaster.repository.ItemRepository;
+import com.mes.inventory.itemmaster.repository.ItemRevisionRepository;
 import com.mes.inventory.kafka.BomEventPublisher;
 import com.mes.inventory.kafka.ItemMasterEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 
 @Service
 @Transactional
@@ -39,60 +40,123 @@ public class BomService {
     private static final String BOM_NOT_FOUND = "BOM not found: ";
 
     private final BomRepository bomRepository;
+    private final BomRevisionRepository bomRevisionRepository;
     private final BomLineRepository bomLineRepository;
-    private final ItemMasterRepository itemMasterRepository;
+    private final ItemRepository itemRepository;
+    private final ItemRevisionRepository itemRevisionRepository;
     private final BomEventPublisher bomEventPublisher;
     private final ItemMasterEventPublisher itemMasterEventPublisher;
     private final EffectivityValidator effectivityValidator;
 
     public BomService(BomRepository bomRepository,
+                      BomRevisionRepository bomRevisionRepository,
                       BomLineRepository bomLineRepository,
-                      ItemMasterRepository itemMasterRepository,
+                      ItemRepository itemRepository,
+                      ItemRevisionRepository itemRevisionRepository,
                       BomEventPublisher bomEventPublisher,
                       ItemMasterEventPublisher itemMasterEventPublisher,
                       EffectivityValidator effectivityValidator) {
         this.bomRepository = bomRepository;
+        this.bomRevisionRepository = bomRevisionRepository;
         this.bomLineRepository = bomLineRepository;
-        this.itemMasterRepository = itemMasterRepository;
+        this.itemRepository = itemRepository;
+        this.itemRevisionRepository = itemRevisionRepository;
         this.bomEventPublisher = bomEventPublisher;
         this.itemMasterEventPublisher = itemMasterEventPublisher;
         this.effectivityValidator = effectivityValidator;
     }
 
-    public BillOfMaterials createBom(UUID orgId, CreateBomRequest req) {
-        if (!itemMasterRepository.existsByOrgIdAndId(orgId, req.getParentItemId())) {
+    public BomDto createBom(UUID orgId, CreateBomRequest req) {
+        if (itemRepository.findByOrgIdAndId(orgId, req.getParentItemId()).isEmpty()) {
             throw new BomValidationException("Parent item not found: " + req.getParentItemId());
         }
-        if (bomRepository.existsByOrgIdAndParentItemIdAndBomRevision(
-                orgId, req.getParentItemId(), req.getBomRevision())) {
-            throw new BomConflictException(
-                    "BOM already exists for item " + req.getParentItemId()
-                    + " revision " + req.getBomRevision());
+        if (bomRepository.existsByOrgIdAndParentItemId(orgId, req.getParentItemId())) {
+            throw new BomConflictException("BOM already exists for item " + req.getParentItemId());
         }
-        BillOfMaterials bom = new BillOfMaterials();
+
+        Bom bom = new Bom();
         bom.setOrgId(orgId);
         bom.setParentItemId(req.getParentItemId());
-        bom.setBomRevision(req.getBomRevision());
-        bom.setDescription(req.getDescription());
-        bom.setEcoId(req.getEcoId());
-        return bomRepository.save(bom);
+        Bom savedBom = bomRepository.save(bom);
+
+        BomRevision revision = new BomRevision();
+        revision.setBom(savedBom);
+        revision.setRevision(0);
+        revision.setDescription(req.getDescription());
+        revision.setEcoId(req.getEcoId());
+        BomRevision savedRevision = bomRevisionRepository.save(revision);
+
+        return BomMapper.toDto(savedBom, savedRevision, true);
     }
 
     @Transactional(readOnly = true)
-    public BillOfMaterials getBom(UUID orgId, UUID bomId) {
-        return bomRepository.findByOrgIdAndId(orgId, bomId)
+    public BomDto getBom(UUID orgId, UUID bomId) {
+        Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
+        return buildDto(bom);
+    }
+
+    public BomDto submitDraft(UUID orgId, UUID bomId, String actor) {
+        BomRevision draft = getRequiredRevision(orgId, bomId, RevisionStatus.DRAFT);
+        draft.setRevisionStatus(RevisionStatus.PENDING_APPROVAL);
+        draft.setSubmittedBy(actor);
+        draft.setSubmittedAt(Instant.now());
+        BomRevision saved = bomRevisionRepository.save(draft);
+        Bom bom = saved.getBom();
+        return BomMapper.toDto(bom, saved, bomRevisionRepository
+                .existsByBomIdAndRevisionStatus(bom.getId(), RevisionStatus.DRAFT));
+    }
+
+    public BomDto approveDraft(UUID orgId, UUID bomId, String actor) {
+        BomRevision pending = getRequiredRevision(orgId, bomId, RevisionStatus.PENDING_APPROVAL);
+        pending.setRevisionStatus(RevisionStatus.APPROVED);
+        pending.setApprovedBy(actor);
+        pending.setApprovedAt(Instant.now());
+        BomRevision saved = bomRevisionRepository.save(pending);
+        Bom bom = saved.getBom();
+        boolean hasDraft = bomRevisionRepository
+                .existsByBomIdAndRevisionStatus(bom.getId(), RevisionStatus.DRAFT);
+        bomEventPublisher.publishApproved(bom, saved);
+        return BomMapper.toDto(bom, saved, hasDraft);
+    }
+
+    public BomDto rejectDraft(UUID orgId, UUID bomId, String actor, String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new BomValidationException("rejectionReason is required");
+        }
+        BomRevision pending = getRequiredRevision(orgId, bomId, RevisionStatus.PENDING_APPROVAL);
+        pending.setRevisionStatus(RevisionStatus.DRAFT);
+        pending.setRejectedBy(actor);
+        pending.setRejectedAt(Instant.now());
+        pending.setRejectionReason(reason);
+        pending.setSubmittedBy(null);
+        pending.setSubmittedAt(null);
+        BomRevision saved = bomRevisionRepository.save(pending);
+        Bom bom = saved.getBom();
+        return BomMapper.toDto(bom, saved, true);
+    }
+
+    public void cancelDraft(UUID orgId, UUID bomId) {
+        BomRevision draft = getRequiredRevision(orgId, bomId, RevisionStatus.DRAFT);
+        bomRevisionRepository.delete(draft);
     }
 
     public BomLine addLine(UUID orgId, UUID bomId, CreateBomLineRequest req) {
-        BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
+        Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
 
-        if (bom.getStatus() != BomStatus.DRAFT) {
-            throw new BomConflictException("Cannot modify a BOM that is not in DRAFT status");
-        }
-        if (!itemMasterRepository.existsByOrgIdAndId(orgId, req.getComponentItemId())) {
-            throw new BomValidationException("Component item not found: " + req.getComponentItemId());
+        BomRevision draft = bomRevisionRepository
+                .findByBomIdAndRevisionStatus(bom.getId(), RevisionStatus.DRAFT)
+                .orElseThrow(() -> new BomConflictException(
+                        "Cannot modify a BOM that is not in DRAFT status"));
+
+        ItemRevision componentRevision = itemRevisionRepository
+                .findById(req.getComponentItemRevisionId())
+                .orElseThrow(() -> new BomValidationException(
+                        "Component item revision not found: " + req.getComponentItemRevisionId()));
+        if (!componentRevision.getItem().getOrgId().equals(orgId)) {
+            throw new BomValidationException(
+                    "Component item revision not found: " + req.getComponentItemRevisionId());
         }
 
         EffectivityMethod method = req.getEffectivityMethod();
@@ -100,27 +164,27 @@ public class BomService {
             if (req.getEffectiveFromDate() == null) {
                 throw new BomValidationException("effectiveFromDate is required for DATE effectivity");
             }
-            effectivityValidator.validateNewLine(bomId, req);
+            effectivityValidator.validateNewLine(draft.getId(), req);
         } else if (method == EffectivityMethod.UNIT) {
             if (req.getEffectiveFromUnit() == null) {
                 throw new BomValidationException("effectiveFromUnit is required for UNIT effectivity");
             }
-            if (bomLineRepository.existsByBomIdAndFindNumber(bomId, req.getFindNumber())) {
+            if (bomLineRepository.existsByBomRevisionIdAndFindNumber(draft.getId(), req.getFindNumber())) {
                 throw new BomConflictException("Find number already exists: " + req.getFindNumber());
             }
         } else {
-            if (bomLineRepository.existsByBomIdAndFindNumber(bomId, req.getFindNumber())) {
+            if (bomLineRepository.existsByBomRevisionIdAndFindNumber(draft.getId(), req.getFindNumber())) {
                 throw new BomConflictException("Find number already exists: " + req.getFindNumber());
             }
         }
 
-        if (bomRepository.hasAncestorCycle(bomId, req.getComponentItemId())) {
+        if (bomRepository.hasAncestorCycle(bom.getId(), req.getComponentItemRevisionId())) {
             throw new BomValidationException("Adding this component would create a circular reference");
         }
 
         BomLine line = new BomLine();
-        line.setBomId(bomId);
-        line.setComponentItemId(req.getComponentItemId());
+        line.setBomRevision(draft);
+        line.setComponentItemRevision(componentRevision);
         line.setQuantity(req.getQuantity());
         line.setUnitOfMeasure(req.getUnitOfMeasure());
         line.setFindNumber(req.getFindNumber());
@@ -132,76 +196,148 @@ public class BomService {
         line.setEffectiveToUnit(req.getEffectiveToUnit());
         BomLine saved = bomLineRepository.save(line);
 
-        itemMasterRepository.findByOrgIdAndId(orgId, req.getComponentItemId()).ifPresent(component -> {
-            CounterfeitRiskLevel risk = component.getCounterfeitRiskLevel();
-            if (risk == CounterfeitRiskLevel.HIGH || risk == CounterfeitRiskLevel.CRITICAL) {
-                itemMasterEventPublisher.publishAs5553RiskAdded(component);
-            }
-        });
+        CounterfeitRiskLevel risk = componentRevision.getCounterfeitRiskLevel();
+        if (risk == CounterfeitRiskLevel.HIGH || risk == CounterfeitRiskLevel.CRITICAL) {
+            itemMasterEventPublisher.publishAs5553RiskAdded(componentRevision);
+        }
 
         return saved;
     }
 
     @Transactional(readOnly = true)
-    public List<BomLine> listLines(UUID orgId, UUID bomId) {
-        getBom(orgId, bomId);
-        return bomLineRepository.findAllByBomId(bomId);
-    }
-
-    @Transactional(readOnly = true)
     public List<BomLineDto> listEnrichedLines(UUID orgId, UUID bomId) {
-        getBom(orgId, bomId);
-        List<BomLine> lines = bomLineRepository.findAllByBomId(bomId);
-        if (lines.isEmpty()) {
+        Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
+                .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
+        BomRevision displayRevision = resolveDisplayRevision(bom);
+        if (displayRevision == null) {
             return List.of();
         }
-        Set<UUID> itemIds = lines.stream().map(BomLine::getComponentItemId).collect(Collectors.toSet());
-        Map<UUID, ItemMaster> itemMap = itemMasterRepository.findAllById(itemIds)
-                .stream().collect(Collectors.toMap(ItemMaster::getId, i -> i));
-        return lines.stream()
-                .map(l -> BomMapper.toLineDto(l, itemMap.get(l.getComponentItemId())))
+        return bomLineRepository.findAllByBomRevisionId(displayRevision.getId())
+                .stream()
+                .map(BomMapper::toLineDto)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public BomLineDto enrichLine(BomLine line) {
-        ItemMaster item = itemMasterRepository.findById(line.getComponentItemId()).orElse(null);
-        return BomMapper.toLineDto(line, item);
+        return BomMapper.toLineDto(line);
     }
 
     public BomLine updateLine(UUID orgId, UUID bomId, UUID lineId, UpdateBomLineRequest req) {
-        BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
+        Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        if (bom.getStatus() != BomStatus.DRAFT) {
-            throw new BomConflictException("Cannot modify a BOM that is not in DRAFT status");
-        }
+        BomRevision draft = bomRevisionRepository
+                .findByBomIdAndRevisionStatus(bom.getId(), RevisionStatus.DRAFT)
+                .orElseThrow(() -> new BomConflictException(
+                        "Cannot modify a BOM that is not in DRAFT status"));
         BomLine line = bomLineRepository.findById(lineId)
-                .filter(l -> l.getBomId().equals(bomId))
+                .filter(l -> l.getBomRevision().getId().equals(draft.getId()))
                 .orElseThrow(() -> new BomNotFoundException("BOM line not found: " + lineId));
-        applyScalarUpdates(line, bomId, req);
-        applyEffectivityUpdates(line, bomId, lineId, req);
+        applyScalarUpdates(line, draft.getId(), req);
+        applyEffectivityUpdates(line, draft.getId(), lineId, req);
         return bomLineRepository.save(line);
     }
 
-    public BillOfMaterials releaseBom(UUID orgId, UUID bomId, String releasedBy) {
-        BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
+    public void deleteLine(UUID orgId, UUID bomId, UUID lineId) {
+        Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        if (bom.getStatus() != BomStatus.DRAFT) {
-            throw new BomConflictException("BOM is not in DRAFT status");
-        }
-        bom.setStatus(BomStatus.RELEASED);
-        bom.setReleasedBy(releasedBy);
-        bom.setReleasedAt(Instant.now());
-        BillOfMaterials saved = bomRepository.save(bom);
-        // Publish bom.released event — engineering-service consumes this to link ECO output BOMs.
-        // No direct cross-service call; ecoId is forwarded in the event payload for correlation.
-        bomEventPublisher.publishReleased(saved);
-        return saved;
+        BomRevision draft = bomRevisionRepository
+                .findByBomIdAndRevisionStatus(bom.getId(), RevisionStatus.DRAFT)
+                .orElseThrow(() -> new BomConflictException(
+                        "Cannot modify a BOM that is not in DRAFT status"));
+        BomLine line = bomLineRepository.findById(lineId)
+                .filter(l -> l.getBomRevision().getId().equals(draft.getId()))
+                .orElseThrow(() -> new BomNotFoundException("BOM line not found: " + lineId));
+        bomLineRepository.delete(line);
     }
 
-    private void applyScalarUpdates(BomLine line, UUID bomId, UpdateBomLineRequest req) {
+    public BomDto patchHeader(UUID orgId, UUID bomId, PatchBomHeaderRequest req) {
+        Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
+                .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
+        BomRevision draft = bomRevisionRepository
+                .findByBomIdAndRevisionStatus(bom.getId(), RevisionStatus.DRAFT)
+                .orElseThrow(() -> new BomConflictException(
+                        "Cannot modify a BOM that is not in DRAFT status"));
+        if (req.getDescription() != null) {
+            draft.setDescription(req.getDescription());
+        }
+        if (req.getReasonForRevision() != null) {
+            draft.setReasonForRevision(req.getReasonForRevision());
+        }
+        if (req.getProductionLine() != null) {
+            draft.setProductionLine(req.getProductionLine());
+        }
+        if (req.getBomType() != null) {
+            draft.setBomType(req.getBomType());
+        }
+        if (req.getEffectivityType() != null) {
+            draft.setEffectivityType(req.getEffectivityType());
+        }
+        if (req.getCustomFields() != null) {
+            draft.setCustomFields(req.getCustomFields());
+        }
+        BomRevision saved = bomRevisionRepository.save(draft);
+        return BomMapper.toDto(bom, saved, true);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<BomSummaryDto> listSummaries(UUID orgId, String search, Pageable pageable) {
+        String searchParam = (search == null || search.isBlank()) ? null : search;
+        Page<Object[]> rows = bomRevisionRepository
+                .findDisplayRevisionSummaries(orgId, searchParam, pageable);
+        return rows.map(BomService::toSummaryFromRow);
+    }
+
+    @Transactional(readOnly = true)
+    public BomDto getBomDisplayRevision(UUID orgId, UUID bomId) {
+        Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
+                .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
+        return buildDto(bom);
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    private BomDto buildDto(Bom bom) {
+        List<BomRevision> all = bomRevisionRepository.findAllByBomId(bom.getId());
+        BomRevision display = resolveDisplayRevision(all);
+        if (display == null) {
+            throw new BomNotFoundException(BOM_NOT_FOUND + bom.getId());
+        }
+        boolean hasDraft = all.stream()
+                .anyMatch(r -> r.getRevisionStatus() == RevisionStatus.DRAFT);
+        return BomMapper.toDto(bom, display, hasDraft);
+    }
+
+    private BomRevision resolveDisplayRevision(Bom bom) {
+        List<BomRevision> all = bomRevisionRepository.findAllByBomId(bom.getId());
+        return resolveDisplayRevision(all);
+    }
+
+    private BomRevision resolveDisplayRevision(List<BomRevision> revisions) {
+        for (RevisionStatus status : new RevisionStatus[]{
+                RevisionStatus.APPROVED, RevisionStatus.PENDING_APPROVAL, RevisionStatus.DRAFT}) {
+            for (BomRevision r : revisions) {
+                if (r.getRevisionStatus() == status) {
+                    return r;
+                }
+            }
+        }
+        return null;
+    }
+
+    private BomRevision getRequiredRevision(UUID orgId, UUID bomId, RevisionStatus status) {
+        Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
+                .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
+        return bomRevisionRepository
+                .findByBomIdAndRevisionStatus(bom.getId(), status)
+                .orElseThrow(() -> new BomConflictException(
+                        "BOM is not in " + status + " status: " + bomId));
+    }
+
+    private void applyScalarUpdates(BomLine line, UUID bomRevisionId, UpdateBomLineRequest req) {
         if (req.getFindNumber() != null && !req.getFindNumber().equals(line.getFindNumber())) {
-            if (bomLineRepository.existsByBomIdAndFindNumber(bomId, req.getFindNumber())) {
+            if (bomLineRepository.existsByBomRevisionIdAndFindNumber(
+                    bomRevisionId, req.getFindNumber())) {
                 throw new BomConflictException("Find number already exists: " + req.getFindNumber());
             }
             line.setFindNumber(req.getFindNumber());
@@ -217,90 +353,8 @@ public class BomService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public List<BillOfMaterials> listByItem(UUID orgId, UUID parentItemId) {
-        return bomRepository.findAllByOrgIdAndParentItemId(orgId, parentItemId);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<BomSummaryDto> listSummaries(UUID orgId, String search, Pageable pageable) {
-        Page<BillOfMaterials> page = bomRepository.searchAllByOrgId(
-                orgId, search == null || search.isBlank() ? null : search, pageable);
-
-        Set<UUID> itemIds = page.stream().map(BillOfMaterials::getParentItemId).collect(Collectors.toSet());
-        Map<UUID, ItemMaster> itemMap = itemMasterRepository.findAllById(itemIds)
-                .stream().collect(Collectors.toMap(ItemMaster::getId, im -> im));
-
-        return page.map(bom -> toSummary(bom, itemMap.get(bom.getParentItemId())));
-    }
-
-    private static BomSummaryDto toSummary(BillOfMaterials bom, ItemMaster item) {
-        BomSummaryDto dto = new BomSummaryDto();
-        dto.setBomId(bom.getId());
-        dto.setBomRevision(bom.getBomRevision());
-        dto.setBomStatus(bom.getStatus() != null ? bom.getStatus().name() : null);
-        dto.setBomDescription(bom.getDescription());
-        dto.setParentItemId(bom.getParentItemId());
-        dto.setCreatedBy(bom.getCreatedBy());
-        dto.setCreatedAt(bom.getCreatedAt());
-        if (item != null) {
-            dto.setPartNumber(item.getPartNumber());
-            dto.setRevision(item.getRevision());
-            dto.setItemDescription(item.getDescription());
-            dto.setClassification(item.getClassification() != null ? item.getClassification().name() : null);
-            dto.setUnitOfMeasure(item.getUnitOfMeasure());
-            dto.setItemStatus(item.getStatus() != null ? item.getStatus().name() : null);
-        }
-        return dto;
-    }
-
-    @Transactional(readOnly = true)
-    public Page<BillOfMaterials> list(UUID orgId, Pageable pageable) {
-        List<BillOfMaterials> all = bomRepository.findAll().stream()
-                .filter(b -> b.getOrgId().equals(orgId)).toList();
-        int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), all.size());
-        List<BillOfMaterials> slice = start >= all.size() ? List.of() : all.subList(start, end);
-        return new PageImpl<>(slice, pageable, all.size());
-    }
-
-    public void deleteLine(UUID orgId, UUID bomId, UUID lineId) {
-        BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
-                .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        if (bom.getStatus() != BomStatus.DRAFT) {
-            throw new BomConflictException("Cannot modify a BOM that is not in DRAFT status");
-        }
-        BomLine line = bomLineRepository.findById(lineId)
-                .filter(l -> l.getBomId().equals(bomId))
-                .orElseThrow(() -> new BomNotFoundException("BOM line not found: " + lineId));
-        bomLineRepository.delete(line);
-    }
-
-    public BillOfMaterials patchHeader(UUID orgId, UUID bomId, PatchBomHeaderRequest req) {
-        BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
-                .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        if (req.getDescription() != null) {
-            bom.setDescription(req.getDescription());
-        }
-        if (req.getReasonForRevision() != null) {
-            bom.setReasonForRevision(req.getReasonForRevision());
-        }
-        if (req.getProductionLine() != null) {
-            bom.setProductionLine(req.getProductionLine());
-        }
-        if (req.getBomType() != null) {
-            bom.setBomType(req.getBomType());
-        }
-        if (req.getEffectivityType() != null) {
-            bom.setEffectivityType(req.getEffectivityType());
-        }
-        if (req.getCustomFields() != null) {
-            bom.setCustomFields(req.getCustomFields());
-        }
-        return bomRepository.save(bom);
-    }
-
-    private void applyEffectivityUpdates(BomLine line, UUID bomId, UUID lineId, UpdateBomLineRequest req) {
+    private void applyEffectivityUpdates(BomLine line, UUID bomRevisionId, UUID lineId,
+                                         UpdateBomLineRequest req) {
         boolean effectivityChanged = req.getEffectivityMethod() != null
                 || req.getEffectiveFromDate() != null
                 || req.getEffectiveToDate() != null;
@@ -313,7 +367,7 @@ public class BomService {
                 ? req.getEffectiveToDate() : line.getEffectiveToDate();
         EffectivityMethod method = req.getEffectivityMethod() != null
                 ? req.getEffectivityMethod() : line.getEffectivityMethod();
-        effectivityValidator.validateUpdateLine(bomId, line.getFindNumber(), method,
+        effectivityValidator.validateUpdateLine(bomRevisionId, line.getFindNumber(), method,
                 effectiveFrom, effectiveTo, lineId);
         if (req.getEffectivityMethod() != null) {
             line.setEffectivityMethod(req.getEffectivityMethod());
@@ -330,5 +384,30 @@ public class BomService {
         if (req.getEffectiveToUnit() != null) {
             line.setEffectiveToUnit(req.getEffectiveToUnit());
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static BomSummaryDto toSummaryFromRow(Object[] row) {
+        BomSummaryDto dto = new BomSummaryDto();
+        dto.setBomId(UUID.fromString((String) row[0]));
+        dto.setBomRevisionId(UUID.fromString((String) row[1]));
+        dto.setRevision(((Number) row[2]).intValue());
+        dto.setRevisionStatus((String) row[3]);
+        dto.setDescription((String) row[4]);
+        // row[5] = eco_id (not on BomSummaryDto)
+        dto.setParentItemId(row[6] != null ? UUID.fromString((String) row[6]) : null);
+        // row[7] = org_id (not on BomSummaryDto)
+        dto.setHasDraft(Boolean.TRUE.equals(row[8]));
+        dto.setCreatedBy((String) row[9]);
+        Object createdAt = row[10];
+        if (createdAt instanceof Timestamp ts) {
+            dto.setCreatedAt(ts.toInstant());
+        } else if (createdAt instanceof Instant inst) {
+            dto.setCreatedAt(inst);
+        }
+        dto.setPartNumber((String) row[11]);
+        dto.setItemRevision(row[12] != null ? ((Number) row[12]).intValue() : null);
+        dto.setItemRevisionStatus((String) row[13]);
+        return dto;
     }
 }

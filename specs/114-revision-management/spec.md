@@ -76,6 +76,9 @@ A materials administrator creates a new item. The system automatically assigns `
 2. **Given** an item revision in `DRAFT` status, **When** the user POSTs `/items/{id}/submit`, **Then** the revision status changes to `PENDING_APPROVAL` and HTTP 200 is returned.
 3. **Given** an item revision in `PENDING_APPROVAL`, **When** a user with `item-master:revisions:approve` POSTs `/items/{id}/approve`, **Then** the revision status changes to `APPROVED` and HTTP 200 is returned.
 4. **Given** an item revision in `PENDING_APPROVAL`, **When** a user without `item-master:revisions:approve` POSTs `/items/{id}/approve`, **Then** HTTP 403 is returned.
+7. **Given** an item revision in `PENDING_APPROVAL`, **When** an approver POSTs `/items/{id}/reject` with a `rejectionReason`, **Then** the revision status returns to `DRAFT`, `rejectedBy`, `rejectedAt`, and `rejectionReason` are persisted on the revision, and HTTP 200 is returned with the updated revision data.
+8. **Given** an item revision in `PENDING_APPROVAL`, **When** an approver POSTs `/items/{id}/reject` with an empty or missing `rejectionReason`, **Then** HTTP 422 is returned ("Rejection reason is required").
+9. **Given** an item revision NOT in `PENDING_APPROVAL`, **When** `/items/{id}/reject` is called, **Then** HTTP 409 is returned.
 5. **Given** no DRAFT revision exists for an item, **When** `/items/{id}/submit` is called, **Then** HTTP 409 is returned with message "No draft revision exists".
 6. **Given** an unauthenticated request, **When** any item revision endpoint is called, **Then** HTTP 401 is returned.
 
@@ -114,7 +117,11 @@ A product engineer creates a new BOM for an approved item. The BOM starts at `re
 3. **Given** a BOM revision in DRAFT, **When** the engineer POSTs `/boms/{id}/submit`, **Then** status changes to `PENDING_APPROVAL`.
 4. **Given** a BOM revision in PENDING_APPROVAL, **When** an approver POSTs `/boms/{id}/approve`, **Then** status changes to `APPROVED`.
 5. **Given** a DRAFT BOM revision, **When** the engineer DELETEs `/boms/{id}/draft`, **Then** the draft and all its BOM lines are hard-deleted; HTTP 204 is returned.
+10. **Given** a BOM revision in `PENDING_APPROVAL`, **When** an approver POSTs `/boms/{id}/reject` with a `rejectionReason`, **Then** the BOM revision returns to `DRAFT`, `rejectedBy`, `rejectedAt`, and `rejectionReason` are persisted, and HTTP 200 is returned.
 6. **Given** a BOM in APPROVED status, **When** the engineer edits the BOM header, **Then** a new DRAFT at `revision = N+1` is created with all existing BOM lines copied from the last APPROVED revision.
+7. **Given** a DRAFT BOM revision with one or more lines, **When** the engineer updates a line's quantity or find-number, **Then** the change is persisted and HTTP 200 is returned; the BOM revision remains in DRAFT.
+8. **Given** a DRAFT BOM revision with one or more lines, **When** the engineer deletes a specific line, **Then** that `bom_line` row is hard-deleted and HTTP 204 is returned.
+9. **Given** a BOM revision in `PENDING_APPROVAL` or `APPROVED` status, **When** any line write operation (add, update, delete) is attempted, **Then** HTTP 409 is returned ("BOM revision is not in DRAFT status").
 
 ---
 
@@ -157,6 +164,8 @@ All existing `item_master` and `bill_of_materials` rows are migrated to the new 
 - What happens when a user tries to approve their own submission? No constraint in this phase (workflow MES-112 will add a 4-eyes rule later).
 - What happens when a BOM line's component item revision is approved, then that approval is somehow revoked? Not in scope — approved items are immutable. Revocation is a future compliance requirement.
 - What happens when two users simultaneously try to create a draft for the same item? A unique constraint on `(item_id, revision_status = DRAFT)` (enforced via partial index) prevents this; the second request gets HTTP 409.
+- What happens when an engineer submits a BOM DRAFT that has zero BOM lines? The system returns HTTP 422 ("BOM must have at least one line before submission"). This validation fires in `BomService.submitDraft()` before any status transition.
+- What happens when a user tries to clone an item that has never been approved (DRAFT-only)? The system returns HTTP 422 ("Source item has no approved revision — approve it before cloning"). Only items with at least one APPROVED revision may be the source of a clone operation.
 
 ---
 
@@ -174,10 +183,14 @@ All existing `item_master` and `bill_of_materials` rows are migrated to the new 
 - **FR-008**: When editing an APPROVED BOM, the system MUST auto-copy all existing BOM lines from the last APPROVED revision into the new DRAFT.
 - **FR-009**: System MUST migrate all existing `item_master` rows to the new parent/child schema via a Flyway migration with no data loss; all migrated rows receive `revisionStatus = APPROVED`.
 - **FR-010**: System MUST migrate all existing `bill_of_materials` and `bom_line` rows to the new schema via a Flyway migration; FK references must be updated.
-- **FR-011**: `GET /items` and `GET /boms` MUST return the most recent revision per item/BOM (DRAFT if no APPROVED exists; APPROVED if no DRAFT exists; if both exist, return both or the highest-revision one per a defined rule — see FR-012).
-- **FR-012**: List endpoints MUST show the current APPROVED revision plus a flag `hasDraft: true` when a DRAFT also exists; the draft itself is accessible via `GET /items/{id}?status=DRAFT`.
+- **FR-011**: `GET /items` and `GET /boms` MUST return one entry per item/BOM identity showing the most stable revision available, using this display priority: (1) APPROVED preferred if one exists; (2) PENDING_APPROVAL if no APPROVED exists; (3) DRAFT if neither APPROVED nor PENDING_APPROVAL exists. All three revision statuses are visible to any authenticated user with `item-master:records:view`.
+- **FR-012**: List endpoints MUST include `hasDraft: true` whenever any in-progress revision (DRAFT or PENDING_APPROVAL) exists for the item/BOM. `hasDraft` is set on draft initiation and cleared only when the revision is APPROVED or hard-deleted. The in-progress revision is accessible via `GET /items/{id}?revisionStatus=DRAFT` or `?revisionStatus=PENDING_APPROVAL`.
 - **FR-013**: `approvedBy` and `approvedAt` MUST be recorded on `item_revision` and `bom_revision` when approved.
 - **FR-014**: Deleting a DRAFT BOM also MUST hard-delete all `bom_line` rows attached to that DRAFT revision.
+- **FR-015**: `POST /api/v1/item-master/{id}/clone` MUST clone from the source item's current APPROVED `item_revision`.
+- **FR-016**: `POST /boms/{id}/submit` MUST return HTTP 422 with "BOM must have at least one line before submission" if the DRAFT `bom_revision` has zero `bom_line` rows. An empty BOM may not be submitted for approval.
+- **FR-017**: BOM line write operations (add, update quantity/find-number, delete individual line) MUST be permitted only when the parent `bom_revision` is in `DRAFT` status. Any write attempt against a `PENDING_APPROVAL` or `APPROVED` BOM revision MUST return HTTP 409 ("BOM revision is not in DRAFT status").
+- **FR-018**: An approver with `item-master:revisions:approve` (or `bom:revisions:approve`) MUST be able to reject a `PENDING_APPROVAL` revision via `POST /item-master/{id}/reject` (or `POST /boms/{id}/reject`). The request MUST include a non-empty `rejectionReason`. On rejection: `revisionStatus` transitions back to `DRAFT`; `rejectedBy` (actor), `rejectedAt` (timestamp), and `rejectionReason` are stored on the revision record. The draft is NOT deleted — it reverts to editable state so the submitter can address the feedback and re-submit. If the source item has no APPROVED revision (DRAFT-only), the system MUST return HTTP 422 with message "Source item has no approved revision — approve it before cloning". The cloned item receives a new `item` identity and a new `item_revision` at `revision = 0, revisionStatus = DRAFT`.
 
 ### Key Entities
 
@@ -232,8 +245,20 @@ All existing `item_master` and `bill_of_materials` rows are migrated to the new 
 | ID | Deferred Capability | Reason for Deferral | Impact if Never Addressed | Suggested Phase | Jira |
 |---|---|---|---|---|---|
 | DEF-001 | Route revision management | Route entity does not exist yet | Routes cannot have version-controlled configurations | MES-9 | — |
-| DEF-002 | Workflow engine integration (MES-112) for 4-eyes approval | MES-112 is a separate epic not yet started | Submitter can approve their own revision; no parallel approval chain | Post-MES-112 | — |
+| DEF-002 | Workflow engine integration (MES-112) for 4-eyes approval | MES-112 is a separate epic not yet started | Submitter can approve their own revision; no parallel approval chain. Note: basic reject-with-reason (PENDING_APPROVAL → DRAFT) is implemented in MES-114 (FR-018); full 4-eyes chain deferred | Post-MES-112 | — |
 | DEF-003 | OBSOLETE revision status transition | Low priority; APPROVED revisions become superseded by newer ones implicitly | Old revisions remain queryable indefinitely with no OBSOLETE marker | P3 / Post-GA | — |
 | DEF-004 | Revision history UI screen | P2 scope; API endpoint is sufficient for traceability at this phase | Engineers must use the API directly to view full revision history | P3 | — |
 | DEF-005 | ECO (Engineering Change Order) linkage to revision | ECO module not yet implemented | Revisions cannot be linked to the ECO that drove the change | MES-9 | — |
 | DEF-006 | "Compare revisions" diff view | Complex UI; no immediate compliance requirement | Users cannot easily see what changed between revisions in the UI | Post-GA | — |
+
+---
+
+## Clarifications
+
+### Session 2026-06-09
+
+- Q: What should happen when cloning an item that has no APPROVED revision (DRAFT-only)? → A: HTTP 422 — clone permitted only when source has at least one APPROVED revision.
+- Q: Should submitting a BOM DRAFT with zero BOM lines be allowed? → A: No — HTTP 422 ("BOM must have at least one line before submission"); validation fires in BomService.submitDraft() before any status transition.
+- Q: Can BOM lines be updated or deleted individually within an existing DRAFT BOM revision, or is cancel+recreate required? → A: Full CRUD — add, update quantity/find-number, and delete individual lines are all permitted while the BOM revision is in DRAFT; all line writes return HTTP 409 once PENDING_APPROVAL or APPROVED.
+- Q: Who can see items/BOMs in PENDING_APPROVAL status in list and detail endpoints? → A: All authenticated users with `item-master:records:view` — same access as DRAFT and APPROVED; no privilege restriction beyond the existing records:view gate.
+- Q: When an approver rejects a PENDING_APPROVAL revision, what transition occurs and should a reason be captured? → A: Option B — `POST /item-master/{id}/reject` (and `/boms/{id}/reject`) transitions PENDING_APPROVAL → DRAFT; approver MUST supply a non-empty `rejectionReason`; fields `rejectedBy`, `rejectedAt`, `rejectionReason` stored on the revision; revision survives (not deleted) for submitter to correct and re-submit.

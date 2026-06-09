@@ -12,7 +12,6 @@ import com.mes.inventory.itemmaster.domain.ItemRevision;
 import com.mes.inventory.itemmaster.domain.RevisionStatus;
 import com.mes.inventory.itemmaster.repository.ItemRepository;
 import com.mes.inventory.itemmaster.repository.ItemRevisionRepository;
-import com.mes.inventory.kafka.ItemMasterEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,16 +28,13 @@ public class ItemRevisionService {
 
     private final ItemRepository itemRepository;
     private final ItemRevisionRepository revisionRepository;
-    private final ItemMasterEventPublisher eventPublisher;
     private final UdfValidator udfValidator;
 
     public ItemRevisionService(ItemRepository itemRepository,
                                ItemRevisionRepository revisionRepository,
-                               ItemMasterEventPublisher eventPublisher,
                                UdfValidator udfValidator) {
         this.itemRepository = itemRepository;
         this.revisionRepository = revisionRepository;
-        this.eventPublisher = eventPublisher;
         this.udfValidator = udfValidator;
     }
 

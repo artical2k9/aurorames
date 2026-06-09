@@ -121,7 +121,7 @@ services/inventory-service/
     │       ├── V019__create_bom_revision_envers.sql    NEW
     │       ├── V020__migrate_bom_line_fks.sql          NEW
     │       ├── V021__update_bom_line_envers.sql        NEW
-    │       └── V022__register_revision_privileges.sql  NEW
+    │       └── V022__drop_legacy_tables.sql             NEW
     └── test/
         └── java/com/mes/inventory/
             ├── unit/itemmaster/
@@ -182,7 +182,7 @@ See [contracts/inventory-service-revision-api.yaml](contracts/inventory-service-
 | V019 | CREATE `bom_aud`, `bom_revision_aud` Envers tables; RENAME `bill_of_materials_aud` → `bill_of_materials_aud_legacy` |
 | V020 | ALTER `bom_line`: ADD `bom_revision_id` UUID NULL, ADD `component_item_revision_id` UUID NULL; UPDATE both columns from migration mapping tables; ADD FKs; DROP OLD FKs `bom_id` + `component_item_id`; ALTER NOT NULL |
 | V021 | ADD `bom_revision_id` + `component_item_revision_id` columns to `bom_line_aud`; REMOVE old audit columns `bom_id` + `component_item_id` from `bom_line_aud` |
-| V022 | DROP TABLE `inventory.bill_of_materials`; DROP TABLE `inventory.item_master`; INSERT new privileges `item-master:revisions:approve` + `bom:revisions:approve` into `iam.privilege`; INSERT grants to SYSTEM_ADMIN in `iam.role_privilege` |
+| V022 | DROP TABLE `inventory.bill_of_materials`; DROP TABLE `inventory.item_master` — privilege registration handled automatically by `InventoryServiceApplication` manifest on startup via ERR-MES-075 auto-grant; no SQL INSERT needed |
 
 ### New Privilege Registration
 

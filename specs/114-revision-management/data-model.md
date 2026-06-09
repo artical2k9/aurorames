@@ -95,6 +95,9 @@ CREATE TABLE inventory.item_revision (
     submitted_at  TIMESTAMPTZ,
     approved_by   VARCHAR(255),
     approved_at   TIMESTAMPTZ,
+    rejected_by   VARCHAR(255),
+    rejected_at   TIMESTAMPTZ,
+    rejection_reason VARCHAR(500),
 
     created_by    VARCHAR(255) NOT NULL,
     created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
@@ -207,6 +210,9 @@ CREATE TABLE inventory.bom_revision (
     submitted_at     TIMESTAMPTZ,
     approved_by      VARCHAR(255),
     approved_at      TIMESTAMPTZ,
+    rejected_by      VARCHAR(255),
+    rejected_at      TIMESTAMPTZ,
+    rejection_reason VARCHAR(500),
 
     created_by       VARCHAR(255) NOT NULL,
     created_at       TIMESTAMPTZ  NOT NULL DEFAULT now(),
@@ -344,6 +350,15 @@ public class ItemRevision {
     @Column(name = "approved_at")
     private Instant approvedAt;
 
+    @Column(name = "rejected_by", length = 255)
+    private String rejectedBy;
+
+    @Column(name = "rejected_at")
+    private Instant rejectedAt;
+
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
+
     @CreatedBy
     @Column(name = "created_by", nullable = false, updatable = false, length = 255)
     private String createdBy;
@@ -394,7 +409,7 @@ export interface ItemMasterDto {
   revisionId: string;  // item_revision UUID
   revision: number;    // integer, e.g. 0, 1, 2
   revisionStatus: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED';
-  hasDraft: boolean;   // true when APPROVED revision exists + a DRAFT also exists
+  hasDraft: boolean;   // true when a DRAFT revision exists for this item (set on draft initiation; cleared on approve or hard-delete)
 
   description: string;
   // ... all other existing fields ...
@@ -403,6 +418,9 @@ export interface ItemMasterDto {
   approvedAt?: string;
   submittedBy?: string;
   submittedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
 }
 ```
 
@@ -421,6 +439,8 @@ Same pattern — `revision: number`, `revisionStatus`, `hasDraft`.
 | DRAFT | POST /submit | `item-master:records:manage` | PENDING_APPROVAL | 200 |
 | DRAFT | DELETE /draft | `item-master:records:manage` | (deleted) | 204 |
 | PENDING_APPROVAL | POST /approve | `item-master:revisions:approve` | APPROVED | 200 |
+| PENDING_APPROVAL | POST /reject (with rejectionReason) | `item-master:revisions:approve` | DRAFT (revision survives; rejectedBy/rejectedAt/rejectionReason stored) | 200 |
+| PENDING_APPROVAL | POST /reject (empty rejectionReason) | `item-master:revisions:approve` | 422 (reason required) | 422 |
 | APPROVED | PATCH (auto-creates draft) | `item-master:records:manage` | new DRAFT at N+1 | 200 |
 | APPROVED | POST /submit | — | 409 (no draft) | 409 |
 | APPROVED | DELETE /draft | — | 409 (no draft) | 409 |

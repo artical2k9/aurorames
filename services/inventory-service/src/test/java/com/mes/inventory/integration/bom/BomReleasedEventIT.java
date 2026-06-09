@@ -29,31 +29,33 @@ class BomReleasedEventIT extends BaseIntegrationTest {
     ObjectMapper objectMapper;
 
     @Test
-    void releaseBomPublishesBomReleasedEventWithAllRequiredFields() throws Exception {
+    void approveBomPublishesBomReleasedEventWithAllRequiredFields() throws Exception {
         String token = buildToken(ORG_ID, List.of("ENGINEER"));
+        String adminToken = buildToken(ORG_ID, List.of("SYSTEM_ADMIN"));
         UUID ecoId = UUID.randomUUID();
 
         ResponseEntity<Map> itemResp = restTemplate.exchange(
                 ITEM_BASE, HttpMethod.POST,
                 jsonRequest(token, baseItemRequest("EVT-PARENT-001", "A")), Map.class);
         assertThat(itemResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        String parentPath = itemResp.getHeaders().getLocation().getPath();
-        String parentItemId = parentPath.substring(parentPath.lastIndexOf('/') + 1);
+        String parentItemId = itemResp.getBody().get("id").toString();
 
         ResponseEntity<Map> bomResp = restTemplate.exchange(
                 BOM_BASE, HttpMethod.POST,
                 jsonRequest(token, Map.of(
                         "parentItemId", parentItemId,
-                        "bomRevision", "REV-A",
                         "ecoId", ecoId.toString())),
                 Map.class);
         assertThat(bomResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         String bomId = bomResp.getBody().get("id").toString();
 
-        ResponseEntity<Map> releaseResp = restTemplate.exchange(
-                BOM_BASE + "/" + bomId + "/release", HttpMethod.POST,
-                bearerRequest(token), Map.class);
-        assertThat(releaseResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // submit → approve
+        restTemplate.exchange(BOM_BASE + "/" + bomId + "/submit",
+                HttpMethod.POST, bearerRequest(token), Map.class);
+        ResponseEntity<Map> approveResp = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/approve",
+                HttpMethod.POST, bearerRequest(adminToken), Map.class);
+        assertThat(approveResp.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         Map<?, ?> payload = findEventForBom(bomId);
         assertThat(payload).as("bom.released event not received within 10s for bomId=%s", bomId)
@@ -62,27 +64,29 @@ class BomReleasedEventIT extends BaseIntegrationTest {
         assertThat(payload.get("ecoId")).isEqualTo(ecoId.toString());
         assertThat(payload.get("orgId")).isEqualTo(ORG_ID);
         assertThat(payload.get("parentItemId")).isEqualTo(parentItemId);
-        assertThat(payload.get("bomRevision")).isEqualTo("REV-A");
+        assertThat(payload.get("revision")).isNotNull();
     }
 
     @Test
-    void releaseBomWithNullEcoIdPublishesEventWithNullEcoId() throws Exception {
+    void approveBomWithNullEcoIdPublishesEventWithNullEcoId() throws Exception {
         String token = buildToken(ORG_ID, List.of("ENGINEER"));
+        String adminToken = buildToken(ORG_ID, List.of("SYSTEM_ADMIN"));
 
         ResponseEntity<Map> itemResp = restTemplate.exchange(
                 ITEM_BASE, HttpMethod.POST,
                 jsonRequest(token, baseItemRequest("EVT-NOECO-001", "A")), Map.class);
-        String parentPath = itemResp.getHeaders().getLocation().getPath();
-        String parentItemId = parentPath.substring(parentPath.lastIndexOf('/') + 1);
+        String parentItemId = itemResp.getBody().get("id").toString();
 
         ResponseEntity<Map> bomResp = restTemplate.exchange(
                 BOM_BASE, HttpMethod.POST,
-                jsonRequest(token, Map.of("parentItemId", parentItemId, "bomRevision", "REV-B")),
+                jsonRequest(token, Map.of("parentItemId", parentItemId)),
                 Map.class);
         String bomId = bomResp.getBody().get("id").toString();
 
-        restTemplate.exchange(BOM_BASE + "/" + bomId + "/release",
+        restTemplate.exchange(BOM_BASE + "/" + bomId + "/submit",
                 HttpMethod.POST, bearerRequest(token), Map.class);
+        restTemplate.exchange(BOM_BASE + "/" + bomId + "/approve",
+                HttpMethod.POST, bearerRequest(adminToken), Map.class);
 
         Map<?, ?> payload = findEventForBom(bomId);
         assertThat(payload).as("bom.released event not received within 10s for bomId=%s", bomId)
@@ -105,5 +109,4 @@ class BomReleasedEventIT extends BaseIntegrationTest {
         }
         return null;
     }
-
 }

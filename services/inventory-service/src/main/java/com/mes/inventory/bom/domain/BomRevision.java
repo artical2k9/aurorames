@@ -1,18 +1,21 @@
 package com.mes.inventory.bom.domain;
 
+import com.mes.inventory.itemmaster.domain.RevisionStatus;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.Type;
-
-import java.util.Map;
 import org.hibernate.envers.Audited;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -21,30 +24,31 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
 @Audited
 @EntityListeners(AuditingEntityListener.class)
-@Table(name = "bill_of_materials", schema = "inventory")
-public class BillOfMaterials {
+@Table(name = "bom_revision", schema = "inventory")
+public class BomRevision {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "org_id", nullable = false)
-    private UUID orgId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bom_id", nullable = false)
+    private Bom bom;
 
-    @Column(name = "parent_item_id", nullable = false)
-    private UUID parentItemId;
-
-    @Column(name = "bom_revision", nullable = false, length = 20)
-    private String bomRevision;
+    @Column(name = "revision", nullable = false)
+    private Integer revision;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 10)
-    private BomStatus status = BomStatus.DRAFT;
+    @Column(name = "revision_status", nullable = false, length = 20)
+    private RevisionStatus revisionStatus = RevisionStatus.DRAFT;
 
     @Column(name = "description", length = 500)
     private String description;
@@ -68,14 +72,29 @@ public class BillOfMaterials {
     @Column(name = "custom_fields", columnDefinition = "jsonb")
     private Map<String, Object> customFields;
 
-    @Column(name = "released_by", length = 255)
-    private String releasedBy;
+    @Column(name = "submitted_by", length = 255)
+    private String submittedBy;
 
-    @Column(name = "released_at")
-    private Instant releasedAt;
+    @Column(name = "submitted_at")
+    private Instant submittedAt;
+
+    @Column(name = "approved_by", length = 255)
+    private String approvedBy;
+
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
+    @Column(name = "rejected_by", length = 255)
+    private String rejectedBy;
+
+    @Column(name = "rejected_at")
+    private Instant rejectedAt;
+
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
 
     @CreatedBy
-    @Column(name = "created_by", nullable = false, length = 255, updatable = false)
+    @Column(name = "created_by", nullable = false, updatable = false, length = 255)
     private String createdBy;
 
     @CreatedDate
@@ -90,42 +109,37 @@ public class BillOfMaterials {
     @Column(name = "modified_at", nullable = false)
     private Instant modifiedAt;
 
+    @OneToMany(mappedBy = "bomRevision", fetch = FetchType.LAZY)
+    private List<BomLine> lines = new ArrayList<>();
+
     // ── Getters and setters ───────────────────────────────────────────────────
 
     public UUID getId() {
         return id;
     }
 
-    public UUID getOrgId() {
-        return orgId;
+    public Bom getBom() {
+        return bom;
     }
 
-    public void setOrgId(UUID orgId) {
-        this.orgId = orgId;
+    public void setBom(Bom bom) {
+        this.bom = bom;
     }
 
-    public UUID getParentItemId() {
-        return parentItemId;
+    public Integer getRevision() {
+        return revision;
     }
 
-    public void setParentItemId(UUID parentItemId) {
-        this.parentItemId = parentItemId;
+    public void setRevision(Integer revision) {
+        this.revision = revision;
     }
 
-    public String getBomRevision() {
-        return bomRevision;
+    public RevisionStatus getRevisionStatus() {
+        return revisionStatus;
     }
 
-    public void setBomRevision(String bomRevision) {
-        this.bomRevision = bomRevision;
-    }
-
-    public BomStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(BomStatus status) {
-        this.status = status;
+    public void setRevisionStatus(RevisionStatus revisionStatus) {
+        this.revisionStatus = revisionStatus;
     }
 
     public String getDescription() {
@@ -142,38 +156,6 @@ public class BillOfMaterials {
 
     public void setEcoId(UUID ecoId) {
         this.ecoId = ecoId;
-    }
-
-    public String getReleasedBy() {
-        return releasedBy;
-    }
-
-    public void setReleasedBy(String releasedBy) {
-        this.releasedBy = releasedBy;
-    }
-
-    public Instant getReleasedAt() {
-        return releasedAt;
-    }
-
-    public void setReleasedAt(Instant releasedAt) {
-        this.releasedAt = releasedAt;
-    }
-
-    public String getCreatedBy() {
-        return createdBy;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public String getModifiedBy() {
-        return modifiedBy;
-    }
-
-    public Instant getModifiedAt() {
-        return modifiedAt;
     }
 
     public String getReasonForRevision() {
@@ -214,5 +196,81 @@ public class BillOfMaterials {
 
     public void setCustomFields(Map<String, Object> customFields) {
         this.customFields = customFields;
+    }
+
+    public String getSubmittedBy() {
+        return submittedBy;
+    }
+
+    public void setSubmittedBy(String submittedBy) {
+        this.submittedBy = submittedBy;
+    }
+
+    public Instant getSubmittedAt() {
+        return submittedAt;
+    }
+
+    public void setSubmittedAt(Instant submittedAt) {
+        this.submittedAt = submittedAt;
+    }
+
+    public String getApprovedBy() {
+        return approvedBy;
+    }
+
+    public void setApprovedBy(String approvedBy) {
+        this.approvedBy = approvedBy;
+    }
+
+    public Instant getApprovedAt() {
+        return approvedAt;
+    }
+
+    public void setApprovedAt(Instant approvedAt) {
+        this.approvedAt = approvedAt;
+    }
+
+    public String getRejectedBy() {
+        return rejectedBy;
+    }
+
+    public void setRejectedBy(String rejectedBy) {
+        this.rejectedBy = rejectedBy;
+    }
+
+    public Instant getRejectedAt() {
+        return rejectedAt;
+    }
+
+    public void setRejectedAt(Instant rejectedAt) {
+        this.rejectedAt = rejectedAt;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public String getModifiedBy() {
+        return modifiedBy;
+    }
+
+    public Instant getModifiedAt() {
+        return modifiedAt;
+    }
+
+    public List<BomLine> getLines() {
+        return lines;
     }
 }

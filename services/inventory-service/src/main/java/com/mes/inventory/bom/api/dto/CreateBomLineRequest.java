@@ -12,7 +12,7 @@ import java.util.UUID;
 public class CreateBomLineRequest {
 
     @NotNull
-    private UUID componentItemId;
+    private UUID componentItemRevisionId;
 
     @NotNull
     @Positive
@@ -31,12 +31,12 @@ public class CreateBomLineRequest {
     private String effectiveFromUnit;
     private String effectiveToUnit;
 
-    public UUID getComponentItemId() {
-        return componentItemId;
+    public UUID getComponentItemRevisionId() {
+        return componentItemRevisionId;
     }
 
-    public void setComponentItemId(UUID componentItemId) {
-        this.componentItemId = componentItemId;
+    public void setComponentItemRevisionId(UUID componentItemRevisionId) {
+        this.componentItemRevisionId = componentItemRevisionId;
     }
 
     public BigDecimal getQuantity() {

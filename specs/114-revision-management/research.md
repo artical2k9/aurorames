@@ -98,7 +98,7 @@ GET  /api/v1/boms/{id}/revisions            — list all revisions (P2)
 `GET /api/v1/item-master` (list) returns one entry per item identity showing:
 - current APPROVED revision fields (or DRAFT if no APPROVED exists)
 - `revisionStatus` badge
-- `hasDraft: true` if a DRAFT also exists alongside an APPROVED revision
+- `hasDraft: true` if any DRAFT revision currently exists for the item (set on draft initiation; cleared on approve or hard-delete — not restricted to co-existence with an APPROVED revision)
 
 **Rationale**: Breaking URL changes require frontend updates to all consumers. Preserving paths limits the PR blast radius.
 

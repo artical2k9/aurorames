@@ -40,8 +40,10 @@ public class InventoryServiceApplication implements ApplicationListener<Applicat
                     new PrivilegeRegistration("item-master:records:manage",   "Create and update item master records"),
                     new PrivilegeRegistration("item-master:revisions:approve",
                             "Approve or reject item revision submissions"),
-                    new PrivilegeRegistration("item-master:bom:manage",       "Author and release BOM revisions"),
-                    new PrivilegeRegistration("item-master:udf:manage",       "Define and delete UDF fields")
+                    new PrivilegeRegistration("item-master:bom:manage",       "Author BOM revisions"),
+                    new PrivilegeRegistration("item-master:udf:manage",       "Define and delete UDF fields"),
+                    new PrivilegeRegistration("bom:revisions:approve",
+                            "Approve or reject BOM revision submissions")
             ));
             privilegeHealthIndicator.markRegistered();
             LOG.info("item-master privileges registered with IAM service");

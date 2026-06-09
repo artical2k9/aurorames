@@ -1,7 +1,7 @@
 package com.mes.inventory.bom.service;
 
 import com.mes.inventory.bom.api.dto.BomExplosionNode;
-import com.mes.inventory.bom.domain.BillOfMaterials;
+import com.mes.inventory.bom.domain.BomRevision;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -43,7 +43,18 @@ public class BomExportService {
         return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
 
-    public byte[] toPdf(BillOfMaterials bom, List<BomExplosionNode> nodes) {
+    public byte[] toPdfFromDto(com.mes.inventory.bom.api.dto.BomDto dto,
+                               List<BomExplosionNode> nodes) {
+        String label = dto.getRevision() != null ? dto.getRevision().toString() : "—";
+        return renderPdf(label, nodes);
+    }
+
+    public byte[] toPdf(BomRevision bomRevision, List<BomExplosionNode> nodes) {
+        return renderPdf(bomRevision.getRevision() != null
+                ? bomRevision.getRevision().toString() : "—", nodes);
+    }
+
+    private byte[] renderPdf(String revisionLabel, List<BomExplosionNode> nodes) {
         try (PDDocument doc = new PDDocument()) {
             PDPage page = new PDPage(PDRectangle.A4);
             doc.addPage(page);
@@ -61,21 +72,24 @@ public class BomExportService {
                 cs.beginText();
                 cs.setFont(bold, 12);
                 cs.newLineAtOffset(margin, y);
-                cs.showText("BOM Explosion Report — BOM " + bom.getBomRevision());
+                cs.showText("BOM Explosion Report — Revision " + revisionLabel);
                 cs.endText();
                 y -= lineHeight * 1.5f;
 
                 cs.beginText();
                 cs.setFont(regular, 9);
                 cs.newLineAtOffset(margin, y);
-                cs.showText("Generated: " + LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                cs.showText("Generated: "
+                        + LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
                 cs.endText();
                 y -= lineHeight * 2;
 
                 cs.beginText();
                 cs.setFont(bold, 9);
                 cs.newLineAtOffset(margin, y);
-                cs.showText("Find #   Part Number              Rev    Description                   Qty    Ctft Risk");
+                cs.showText(
+                        "Find #   Part Number              Rev    Description                   "
+                        + "Qty    Ctft Risk");
                 cs.endText();
                 y -= lineHeight;
 

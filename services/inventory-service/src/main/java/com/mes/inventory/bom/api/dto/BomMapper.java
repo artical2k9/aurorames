@@ -1,42 +1,52 @@
 package com.mes.inventory.bom.api.dto;
 
-import com.mes.inventory.bom.domain.BillOfMaterials;
+import com.mes.inventory.bom.domain.Bom;
 import com.mes.inventory.bom.domain.BomLine;
+import com.mes.inventory.bom.domain.BomRevision;
 import com.mes.inventory.itemmaster.domain.CounterfeitRiskLevel;
-import com.mes.inventory.itemmaster.domain.ItemMaster;
-import com.mes.inventory.itemmaster.domain.ItemStatus;
+import com.mes.inventory.itemmaster.domain.ItemRevision;
 
 public final class BomMapper {
 
     private BomMapper() {
     }
 
-    public static BomDto toDto(BillOfMaterials bom) {
+    public static BomDto toDto(Bom bom, BomRevision br, boolean hasDraft) {
         BomDto dto = new BomDto();
         dto.setId(bom.getId());
         dto.setOrgId(bom.getOrgId());
         dto.setParentItemId(bom.getParentItemId());
-        dto.setBomRevision(bom.getBomRevision());
-        dto.setStatus(bom.getStatus().name());
-        dto.setDescription(bom.getDescription());
-        dto.setEcoId(bom.getEcoId());
-        dto.setReleasedBy(bom.getReleasedBy());
-        dto.setReleasedAt(bom.getReleasedAt());
-        dto.setCreatedBy(bom.getCreatedBy());
-        dto.setCreatedAt(bom.getCreatedAt());
-        dto.setReasonForRevision(bom.getReasonForRevision());
-        dto.setProductionLine(bom.getProductionLine());
-        dto.setBomType(bom.getBomType());
-        dto.setEffectivityType(bom.getEffectivityType());
-        dto.setCustomFields(bom.getCustomFields());
+        dto.setBomRevisionId(br.getId());
+        dto.setRevision(br.getRevision());
+        dto.setRevisionStatus(br.getRevisionStatus().name());
+        dto.setHasDraft(hasDraft);
+        dto.setDescription(br.getDescription());
+        dto.setEcoId(br.getEcoId());
+        dto.setReasonForRevision(br.getReasonForRevision());
+        dto.setProductionLine(br.getProductionLine());
+        dto.setBomType(br.getBomType());
+        dto.setEffectivityType(br.getEffectivityType());
+        dto.setCustomFields(br.getCustomFields());
+        dto.setSubmittedBy(br.getSubmittedBy());
+        dto.setSubmittedAt(br.getSubmittedAt());
+        dto.setApprovedBy(br.getApprovedBy());
+        dto.setApprovedAt(br.getApprovedAt());
+        dto.setRejectedBy(br.getRejectedBy());
+        dto.setRejectedAt(br.getRejectedAt());
+        dto.setRejectionReason(br.getRejectionReason());
+        dto.setCreatedBy(br.getCreatedBy());
+        dto.setCreatedAt(br.getCreatedAt());
+        dto.setModifiedBy(br.getModifiedBy());
+        dto.setModifiedAt(br.getModifiedAt());
         return dto;
     }
 
     public static BomLineDto toLineDto(BomLine line) {
         BomLineDto dto = new BomLineDto();
         dto.setId(line.getId());
-        dto.setBomId(line.getBomId());
-        dto.setComponentItemId(line.getComponentItemId());
+        dto.setBomRevisionId(line.getBomRevision().getId());
+        dto.setComponentItemRevisionId(line.getComponentItemRevision().getId());
+        dto.setComponentRevision(line.getComponentItemRevision().getRevision());
         dto.setQuantity(line.getQuantity());
         dto.setUnitOfMeasure(line.getUnitOfMeasure());
         dto.setFindNumber(line.getFindNumber());
@@ -50,19 +60,15 @@ public final class BomMapper {
         dto.setEffectiveToUnit(line.getEffectiveToUnit());
         dto.setCreatedBy(line.getCreatedBy());
         dto.setCreatedAt(line.getCreatedAt());
-        return dto;
-    }
 
-    public static BomLineDto toLineDto(BomLine line, ItemMaster item) {
-        BomLineDto dto = toLineDto(line);
-        if (item != null) {
-            dto.setPartNumber(item.getPartNumber());
-            dto.setRevision(item.getRevision());
-            dto.setDescription(item.getDescription());
-            dto.setMakeBuyCode(item.getMakeBuyCode() != null ? item.getMakeBuyCode().name() : null);
-            CounterfeitRiskLevel risk = item.getCounterfeitRiskLevel();
-            dto.setCounterfeitRiskAlert(risk == CounterfeitRiskLevel.HIGH || risk == CounterfeitRiskLevel.CRITICAL);
-            dto.setComponentObsoleted(item.getStatus() == ItemStatus.OBSOLETE);
+        ItemRevision ir = line.getComponentItemRevision();
+        if (ir != null) {
+            dto.setPartNumber(ir.getItem().getPartNumber());
+            dto.setDescription(ir.getDescription());
+            dto.setMakeBuyCode(ir.getMakeBuyCode() != null ? ir.getMakeBuyCode().name() : null);
+            CounterfeitRiskLevel risk = ir.getCounterfeitRiskLevel();
+            dto.setCounterfeitRiskAlert(risk == CounterfeitRiskLevel.HIGH
+                    || risk == CounterfeitRiskLevel.CRITICAL);
         }
         return dto;
     }
