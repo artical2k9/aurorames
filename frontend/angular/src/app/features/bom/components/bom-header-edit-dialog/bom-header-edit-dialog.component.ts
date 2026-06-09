@@ -69,7 +69,7 @@ import { BomDto, PatchBomHeaderRequest } from '../../models/bom.model';
           <app-udf-fields
             moduleKey="BOM_HEADER"
             [udfGroup]="udfGroup"
-            [initialValues]="bom?.customFields ?? {}"
+            [initialValues]="bom.customFields ?? {}"
           />
 
         </form>
