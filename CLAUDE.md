@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at:
-specs/111-service-decomposition/plan.md
+specs/114-revision-management/plan.md
 <!-- SPECKIT END -->
 
 ## Branching Strategy
