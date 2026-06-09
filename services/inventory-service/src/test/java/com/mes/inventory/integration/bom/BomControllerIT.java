@@ -2,11 +2,13 @@ package com.mes.inventory.integration.bom;
 
 import com.mes.inventory.integration.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -19,6 +21,9 @@ class BomControllerIT extends BaseIntegrationTest {
     static final String ORG_ID = "00000000-0000-0000-0000-000000000001";
     static final String BOM_BASE = "/api/v1/boms";
     static final String ITEM_BASE = "/api/v1/item-master";
+
+    @Autowired
+    JdbcTemplate jdbcTemplate;
 
     @Test
     void createBomReturns201WithDraftStatus() {
@@ -303,6 +308,21 @@ class BomControllerIT extends BaseIntegrationTest {
                 Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    // T097: BOM release writes an Envers audit row
+    @Test
+    void releaseBomWritesOneEnversAuditRow() {
+        String token = engineerToken();
+        String parentId = createItem(token, "BOM-AUD-PARENT-001", "A");
+        String bomId = createBom(token, parentId, "REV-A");
+
+        releaseBom(token, bomId);
+
+        Integer auditRows = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM inventory.bill_of_materials_aud WHERE id = ?::uuid",
+                Integer.class, bomId);
+        assertThat(auditRows).isGreaterThanOrEqualTo(1);
     }
 
     // updateLine delegates to enrichLine — regression guard for MES-8 BomControllerTest T203

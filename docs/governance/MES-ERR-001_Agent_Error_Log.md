@@ -446,6 +446,13 @@ registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
 **Fix applied:** Added a local `buildToken(String role)` static method to each class that signs with the class's own `TEST_RSA_KEY`. Removed the delegation to `UserControllerIT.buildToken()`.
 **Rule:** Every IT class that has its own `TEST_RSA_KEY` must have its own `buildToken()` that uses that key. Never delegate token-building to another IT class's static method — the implicit key dependency is invisible at call-site review and only fails at runtime.
 
+## ERR-MES-076 — `docker cp` targeted wrong filename; container ran old JAR after "hot-deploy"
+**Date:** 2026-06-08  **Category:** Deployment — Docker  **Status:** Open
+**Symptom:** `lower(bytea)` 500 error persisted on `GET /api/v1/item-master` after copying the rebuilt inventory-service JAR into the container and running `docker restart inventory-service`. The service started clean, appeared healthy, but still returned 500 on any request that triggered the lower() call. The fix was present in the JAR but not being executed.
+**Root cause:** `docker cp inventory-service-0.1.0-SNAPSHOT.jar inventory-service:/app/inventory-service.jar` copied the file to the wrong filename. The Docker container's CMD/ENTRYPOINT runs `java -jar app.jar`. The new JAR landed at `/app/inventory-service.jar`; the old `/app/app.jar` from the original image build continued executing unchanged. `docker restart` reuses the existing container filesystem — it does not replace files.
+**Fix applied:** Ran `docker cp inventory-service-0.1.0-SNAPSHOT.jar inventory-service:/app/app.jar` (correct target path) then `docker restart inventory-service`. Service came up healthy with no `lower(bytea)` errors.
+**Rule:** Before any `docker cp` hot-deploy, confirm the exact filename the container's entrypoint uses: `docker inspect <container> --format '{{.Config.Cmd}}'`. The target path must match that filename exactly. For all services in this project, the entrypoint is `java -jar app.jar`, so always copy to `/app/app.jar` — never to a path derived from the artifact name (e.g., `/app/inventory-service.jar`). Using the wrong path leaves the old JAR active with zero error output.
+
 ## ERR-MES-075 — New module privileges registered with IAM but never granted to SYSTEM_ADMIN; 403 on first use
 **Date:** 2026-06-08  **Category:** Backend — IAM / Privilege System  **Status:** Promoted 2026-06-08
 **Symptom:** `GET /api/platform/uom` returned `403 Forbidden` with `WWW-Authenticate: Bearer error="insufficient_scope"` immediately after the UOM feature was deployed. The platform-service startup log confirmed `platform privileges registered with IAM service`, yet no user could access the endpoint.

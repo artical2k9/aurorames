@@ -5,6 +5,7 @@ import com.mes.udf.api.JwtClaimsExtractor;
 import com.mes.inventory.itemmaster.api.dto.CreateItemMasterRequest;
 import com.mes.inventory.itemmaster.api.dto.ItemMasterDto;
 import com.mes.inventory.itemmaster.api.dto.ItemMasterMapper;
+import com.mes.inventory.itemmaster.api.dto.PatchAs5553Request;
 import com.mes.inventory.itemmaster.api.dto.PatchItemMasterRequest;
 import com.mes.inventory.itemmaster.domain.Classification;
 import com.mes.inventory.itemmaster.domain.CounterfeitRiskLevel;
@@ -89,6 +90,20 @@ public class ItemMasterController {
             @Valid @RequestBody PatchItemMasterRequest request) {
 
         return ItemMasterMapper.toDto(service.patch(JwtClaimsExtractor.orgId(jwt), itemId, request));
+    }
+
+    @PatchMapping("/{itemId}/as5553")
+    @RequiresPrivilege("item-master:as5553:manage")
+    public ItemMasterDto patchAs5553(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID itemId,
+            @RequestBody PatchAs5553Request request) {
+
+        PatchItemMasterRequest patch = new PatchItemMasterRequest();
+        patch.setCounterfeitRiskLevel(request.getCounterfeitRiskLevel());
+        patch.setApprovedSuppliers(request.getApprovedSuppliers());
+        patch.setVerificationRequired(request.getVerificationRequired());
+        return ItemMasterMapper.toDto(service.patch(JwtClaimsExtractor.orgId(jwt), itemId, patch));
     }
 
     @PostMapping("/{itemId}/obsolete")
