@@ -2,7 +2,7 @@ import {
   AfterViewInit, ChangeDetectorRef, Component, DestroyRef, inject, OnInit, ViewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, debounceTime, distinctUntilChanged, filter } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, filter, catchError, map, of } from 'rxjs';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -19,6 +19,7 @@ import { MenuItem, MessageService } from 'primeng/api';
 import { LucideColumnsSettings } from '@lucide/angular';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { StatusBadgeComponent, BreadcrumbService } from '../../../../shared/ui';
+import { UdfApiService } from '../../../../shared/udf/udf-api.service';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
 import { ClassificationLabelPipe } from '../../pipes/classification-label.pipe';
 import { DEFAULT_ITEM_MASTER_COLUMNS } from '../../constants/default-columns';
@@ -160,7 +161,7 @@ import {
                     <app-status-badge [status]="item.status" />
                   }
                   @default {
-                    {{ item[col.key] ?? '—' }}
+                    {{ getCellValue(item, col) ?? '—' }}
                   }
                 }
               </td>
@@ -242,6 +243,7 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
   private readonly messageService = inject(MessageService);
   private readonly destroyRef     = inject(DestroyRef);
   private readonly cdr            = inject(ChangeDetectorRef);
+  private readonly udfApi         = inject(UdfApiService);
   readonly gridPreference         = inject(GridPreferenceService);
   private readonly breadcrumbSvc  = inject(BreadcrumbService);
 
@@ -297,7 +299,22 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
       { label: 'Master Data' },
       { label: 'Item Master' },
     ]);
-    this.gridPreference.load();
+    this.udfApi.listFields('ITEM_MASTER').pipe(
+      map(udfs => udfs.map((u, i): ColumnDef => ({
+        key: u.fieldKey,
+        label: u.label,
+        visible: false,
+        order: DEFAULT_ITEM_MASTER_COLUMNS.length + i,
+        udf: true,
+      }))),
+      catchError(() => of([])),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: udfCols => {
+        this.gridPreference.load(udfCols);
+        this.cdr.detectChanges();
+      },
+    });
     this.searchSubject.pipe(
       debounceTime(400),
       distinctUntilChanged(),
@@ -338,6 +355,12 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
 
   onColumnsApplied(columns: ColumnDef[]): void {
     this.gridPreference.apply(columns);
+  }
+
+  getCellValue(item: ItemMasterDto, col: ColumnDef): unknown {
+    if (!col.udf) return (item as unknown as Record<string, unknown>)[col.key];
+    const direct = (item as unknown as Record<string, unknown>)[col.key];
+    return direct !== undefined ? direct : item.customFields?.[col.key];
   }
 
   visibleColumns(columns: ColumnDef[]): ColumnDef[] {
