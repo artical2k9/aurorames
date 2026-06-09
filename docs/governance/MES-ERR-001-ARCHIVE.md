@@ -4,6 +4,29 @@
 
 ---
 
+## ERR-MES-078 — New UDF fields invisible in column picker; cell renderer reads wrong property path
+**Date:** 2026-06-09  **Category:** Frontend — Angular / UDF / Column Picker  **Status:** Promoted 2026-06-09
+
+**Symptom:** An admin adds a new UDF to the Item Master (or BOM Line / BOM Browser) module via the UDF admin UI. The field appears in item create/edit forms but never shows up as an option in the column picker on the list screen. Even if a column with a matching key were somehow added, the table cell would render `—` (empty) because the value lives in `item.customFields['fieldKey']` while the renderer reads `item['fieldKey']` directly on the DTO root.
+
+**Root cause:** Two independent gaps:
+
+1. **Column picker gap** — `GridPreferenceService.load()` was called with no arguments. It merged saved user preferences against the static `defaultColumns` array only. UDF field definitions registered in the backend (`GET /api/v1/udf/fields?module=X`) were never fetched, so no `ColumnDef` entries with `udf: true` were injected for dynamic custom fields.
+
+2. **Cell renderer gap** — The table `@default` case used `item[col.key]` (direct DTO property access). UDF values are stored in `dto.customFields[fieldKey]`, not as top-level DTO properties. The two paths are incompatible: `item['my_custom_field']` is always `undefined`; `item.customFields['my_custom_field']` is the actual value.
+
+**Fix applied:** Three-file fix across `item-master-list`, `bom-authoring`, and `bom-browser`:
+
+1. `GridPreferenceService.load()` was extended to accept `dynamicColumns: ColumnDef[]`. The `dynamicColumns` are stored on the instance so `reset()` also includes them.
+
+2. Each list/authoring component now calls `UdfApiService.listFields(moduleKey)` on `ngOnInit`, maps the response to `ColumnDef[]` with `udf: true`, and passes them to `gridPreference.load(udfCols)`. Error path falls back to `[]` so the picker works even when no UDFs are defined.
+
+3. Cell renderers were updated: `getCellValue(item, col)` checks `col.udf` first — for UDF columns it tries the direct DTO property (covers statically-typed fields like `counterfeitRiskLevel`) then falls back to `item.customFields?.[col.key]`. `BomLineDto` and `BomSummaryDto` had `customFields?: Record<string, unknown>` added to their TypeScript interfaces.
+
+**Rule:** Any Angular component that uses `GridPreferenceService` and renders rows from a DTO that may carry `customFields` must follow the pattern documented in CLAUDE.md §Column Picker + UDF Integration.
+
+---
+
 ## ERR-MES-077 — Flyway seed migration omitting NOT NULL audit columns cascades into full IT suite failure
 **Date:** 2026-06-09  **Category:** Backend — Flyway / Database Migration  **Status:** Promoted 2026-06-09
 

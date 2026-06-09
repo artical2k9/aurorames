@@ -4,7 +4,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, of, switchMap } from 'rxjs';
+import { forkJoin, of, switchMap, catchError, map, take } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
@@ -21,6 +21,7 @@ import { BomApiService } from '../../services/bom-api.service';
 import { AddBomLineFormComponent } from '../../components/add-bom-line-form/add-bom-line-form.component';
 import { BomHeaderEditDialogComponent } from '../../components/bom-header-edit-dialog/bom-header-edit-dialog.component';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
+import { UdfApiService } from '../../../../shared/udf/udf-api.service';
 import { DEFAULT_BOM_LINE_COLUMNS } from '../../constants/default-columns';
 import { BomDto, BomLineDto } from '../../models/bom.model';
 import { AsyncPipe } from '@angular/common';
@@ -170,7 +171,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
                           <span class="ba__unit-badge">(Unit)</span>
                         }
                       }
-                      @default { {{ lineValue(line, col.key) }} }
+                      @default { {{ lineValue(line, col) }} }
                     }
                   }
                 </td>
@@ -267,6 +268,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
 export class BomAuthoringComponent implements OnInit {
   private readonly bomApi = inject(BomApiService);
   private readonly itemApi = inject(ItemMasterApiService);
+  private readonly udfApi = inject(UdfApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -301,7 +303,22 @@ export class BomAuthoringComponent implements OnInit {
       { label: 'BOMs' },
       { label: 'Authoring' },
     ]);
-    this.gridPreference.load();
+    this.udfApi.listFields('BOM_LINE').pipe(
+      take(1),
+      map(udfs => udfs.map((u, i): ColumnDef => ({
+        key: u.fieldKey,
+        label: u.label,
+        visible: false,
+        order: DEFAULT_BOM_LINE_COLUMNS.length + i,
+        udf: true,
+      }))),
+      catchError(() => of([])),
+    ).subscribe({
+      next: udfCols => {
+        this.gridPreference.load(udfCols);
+        this.cdr.detectChanges();
+      },
+    });
     this.loadBom();
   }
 
@@ -449,8 +466,10 @@ export class BomAuthoringComponent implements OnInit {
     return this.visibleCols(columns).length;
   }
 
-  lineValue(line: BomLineDto, key: string): string | number {
-    const val = (line as unknown as Record<string, unknown>)[key];
+  lineValue(line: BomLineDto, col: ColumnDef): string {
+    const val = col.udf
+      ? (line.customFields?.[col.key] ?? (line as unknown as Record<string, unknown>)[col.key])
+      : (line as unknown as Record<string, unknown>)[col.key];
     return val != null ? String(val) : '—';
   }
 }

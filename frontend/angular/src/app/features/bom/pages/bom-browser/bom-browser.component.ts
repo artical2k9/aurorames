@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AsyncPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, switchMap, catchError, map, of } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule, TableLazyLoadEvent } from 'primeng/table';
@@ -17,6 +17,7 @@ import { MessageService } from 'primeng/api';
 import { LucideColumnsSettings } from '@lucide/angular';
 import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
+import { UdfApiService } from '../../../../shared/udf/udf-api.service';
 import { BomApiService } from '../../services/bom-api.service';
 import { BomSummaryDto } from '../../models/bom.model';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
@@ -174,7 +175,7 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
                     <app-status-badge [status]="item.bomStatus" />
                   }
                   @default {
-                    {{ item[col.key] ?? '—' }}
+                    {{ getCellValue(item, col) ?? '—' }}
                   }
                 }
               </td>
@@ -230,13 +231,14 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
   `],
 })
 export class BomBrowserComponent implements OnInit, AfterViewInit {
-  private readonly bomApi        = inject(BomApiService);
-  private readonly itemApi       = inject(ItemMasterApiService);
-  private readonly router        = inject(Router);
-  private readonly destroyRef    = inject(DestroyRef);
-  private readonly cdr           = inject(ChangeDetectorRef);
+  private readonly bomApi         = inject(BomApiService);
+  private readonly itemApi        = inject(ItemMasterApiService);
+  private readonly udfApi         = inject(UdfApiService);
+  private readonly router         = inject(Router);
+  private readonly destroyRef     = inject(DestroyRef);
+  private readonly cdr            = inject(ChangeDetectorRef);
   private readonly messageService = inject(MessageService);
-  readonly gridPreference        = inject(GridPreferenceService);
+  readonly gridPreference         = inject(GridPreferenceService);
 
   constructor() {
     inject(BreadcrumbService).set([
@@ -266,7 +268,22 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
   private searchDebounce?: ReturnType<typeof setTimeout>;
 
   ngOnInit(): void {
-    this.gridPreference.load();
+    this.udfApi.listFields('BOM_BROWSER').pipe(
+      map(udfs => udfs.map((u, i): ColumnDef => ({
+        key: u.fieldKey,
+        label: u.label,
+        visible: false,
+        order: DEFAULT_BOM_BROWSER_COLUMNS.length + i,
+        udf: true,
+      }))),
+      catchError(() => of([])),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: udfCols => {
+        this.gridPreference.load(udfCols);
+        this.cdr.detectChanges();
+      },
+    });
     this.itemSearchSubject.pipe(
       debounceTime(300),
       distinctUntilChanged(),
@@ -296,6 +313,12 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
 
   onColumnsApplied(columns: ColumnDef[]): void {
     this.gridPreference.apply(columns);
+  }
+
+  getCellValue(item: BomSummaryDto, col: ColumnDef): unknown {
+    if (!col.udf) return (item as Record<string, unknown>)[col.key];
+    const direct = (item as Record<string, unknown>)[col.key];
+    return direct !== undefined ? direct : item.customFields?.[col.key];
   }
 
   visibleColumns(columns: ColumnDef[]): ColumnDef[] {

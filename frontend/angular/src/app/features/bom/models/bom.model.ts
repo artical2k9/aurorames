@@ -14,6 +14,7 @@ export interface BomSummaryDto {
   itemStatus:      string;
   createdBy:       string;
   createdAt:       string;
+  customFields?:   Record<string, unknown>;
 }
 export type EffectivityMethod = 'NONE' | 'DATE' | 'UNIT';
 
@@ -57,6 +58,7 @@ export interface BomLineDto {
   componentObsoleted: boolean;
   createdBy: string;
   createdAt: string;
+  customFields?: Record<string, unknown>;
 }
 
 export interface BomExplosionNode {

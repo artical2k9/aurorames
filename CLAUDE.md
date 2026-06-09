@@ -438,6 +438,60 @@ When adding any new `@RequiresPrivilege("x:y:z")` annotation:
 
 ---
 
+## Column Picker + UDF Integration — Mandatory for All New List Screens
+
+**ERR-MES-078:** `GridPreferenceService.load()` called without UDF definitions leaves every admin-created custom field invisible in the column picker. Separately, cell renderers that read `item[col.key]` miss values stored in `item.customFields[key]`, so even a correctly-configured column shows `—` for every row.
+
+### Rule — two requirements for every new list screen using GridPreferenceService
+
+**1. Dynamic UDF load** — always fetch UDF definitions and pass them to `load()`:
+
+```typescript
+// ngOnInit (use takeUntilDestroyed if DestroyRef is available, otherwise take(1))
+this.udfApi.listFields('YOUR_MODULE_KEY').pipe(
+  map(udfs => udfs.map((u, i): ColumnDef => ({
+    key: u.fieldKey,
+    label: u.label,
+    visible: false,
+    order: DEFAULT_YOUR_COLUMNS.length + i,
+    udf: true,
+  }))),
+  catchError(() => of([])),
+  takeUntilDestroyed(this.destroyRef),   // or take(1) if no DestroyRef
+).subscribe({
+  next: udfCols => {
+    this.gridPreference.load(udfCols);
+    this.cdr.detectChanges();
+  },
+});
+```
+
+**2. UDF-aware cell renderer** — never read `item[col.key]` directly in the `@default` case; use `getCellValue()`:
+
+```typescript
+getCellValue(item: YourDto, col: ColumnDef): unknown {
+  if (!col.udf) return (item as Record<string, unknown>)[col.key];
+  const direct = (item as Record<string, unknown>)[col.key];
+  return direct !== undefined ? direct : item.customFields?.[col.key];
+}
+```
+
+And in the template:
+```html
+@default { {{ getCellValue(item, col) ?? '—' }} }
+```
+
+**3. DTO interface** — ensure the DTO type includes `customFields?: Record<string, unknown>`.
+
+### Pre-PR check for new list screens
+
+Before raising any PR that adds a new list/table component using `GridPreferenceService`:
+- Confirm `ngOnInit` fetches `udfApi.listFields(moduleKey)` and passes the result to `gridPreference.load()`
+- Confirm `@default` cell uses `getCellValue()` not `item[col.key]`
+- Confirm the row DTO interface has `customFields?: Record<string, unknown>`
+
+---
+
 ## Flyway Seed Migrations — Audit Columns Mandatory
 
 **ERR-MES-077:** V013 seeded `iam.role` with an INSERT that omitted `created_by` and `updated_by` — both NOT NULL on the table. Postgres raised error 23502 on service startup. Spring Boot failed to load the ApplicationContext, and the Testcontainers context-caching mechanism then refused to retry for every subsequent test class, cascading one bad migration into 33 IT failures across the entire inventory-service suite.
