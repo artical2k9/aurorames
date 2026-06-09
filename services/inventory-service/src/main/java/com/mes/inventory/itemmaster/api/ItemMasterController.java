@@ -106,6 +106,15 @@ public class ItemMasterController {
         return ItemMasterMapper.toDto(service.patch(JwtClaimsExtractor.orgId(jwt), itemId, patch));
     }
 
+    @PostMapping("/{itemId}/clone")
+    @RequiresPrivilege("item-master:records:manage")
+    public ItemMasterDto cloneItem(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID itemId) {
+
+        return service.cloneAsTemplate(JwtClaimsExtractor.orgId(jwt), itemId);
+    }
+
     @PostMapping("/{itemId}/obsolete")
     @RequiresPrivilege("item-master:records:manage")
     public ItemMasterDto obsolete(

@@ -4,6 +4,7 @@ import com.mes.udf.domain.ModuleKey;
 import com.mes.udf.service.UdfValidator;
 import com.mes.udf.service.UdfViolation;
 import com.mes.inventory.itemmaster.api.dto.CreateItemMasterRequest;
+import com.mes.inventory.itemmaster.api.dto.ItemMasterDto;
 import com.mes.inventory.itemmaster.api.dto.ItemMasterMapper;
 import com.mes.inventory.itemmaster.api.dto.PatchItemMasterRequest;
 import com.mes.inventory.itemmaster.domain.Classification;
@@ -80,6 +81,16 @@ public class ItemMasterService {
         ItemMaster saved = repository.save(entity);
         eventPublisher.publishUpdated(saved);
         return saved;
+    }
+
+    @Transactional(readOnly = true)
+    public ItemMasterDto cloneAsTemplate(UUID orgId, UUID itemId) {
+        ItemMaster source = get(orgId, itemId);
+        ItemMasterDto template = ItemMasterMapper.toDto(source);
+        template.setId(null);
+        template.setPartNumber(null);
+        template.setRevision(null);
+        return template;
     }
 
     public ItemMaster obsolete(UUID orgId, UUID itemId) {
