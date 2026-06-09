@@ -70,17 +70,20 @@ public abstract class BaseIntegrationTest {
             }
         }
 
-        // Mirrors V007 grants: ENGINEER has view + manage records + bom:manage (no eco:manage).
+        // Mirrors V007/V013 grants.
         @Bean
         @Primary
         PrivilegeCache testPrivilegeCache() {
             return role -> switch (role) {
                 case "SYSTEM_ADMIN" -> Set.of(
                         "item-master:records:view", "item-master:records:manage",
-                        "item-master:bom:manage",  "item-master:udf:manage");
+                        "item-master:bom:manage",  "item-master:udf:manage",
+                        "item-master:as5553:manage");
                 case "ENGINEER" -> Set.of(
                         "item-master:records:view", "item-master:records:manage",
                         "item-master:bom:manage");
+                case "QUALITY_ENGINEER" -> Set.of(
+                        "item-master:records:view", "item-master:as5553:manage");
                 default -> Set.of();
             };
         }

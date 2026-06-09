@@ -2,11 +2,13 @@ package com.mes.engineering.integration.eco;
 
 import com.mes.engineering.integration.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -18,6 +20,9 @@ class EcoControllerIT extends BaseIntegrationTest {
 
     static final String ORG_ID = "00000000-0000-0000-0000-000000000001";
     static final String ECO_BASE = "/api/v1/ecos";
+
+    @Autowired
+    JdbcTemplate jdbcTemplate;
 
     // AS1: create draft → 201
     @Test
@@ -102,6 +107,21 @@ class EcoControllerIT extends BaseIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         List<Object> content = (List<Object>) response.getBody().get("content");
         assertThat(content).isNotEmpty();
+    }
+
+    // T097: ECO approve writes an Envers audit row
+    @Test
+    void approveEcoWritesOneEnversAuditRow() {
+        String token = engineerToken();
+        String ecoId = createEco(token, "Audit ECO");
+
+        restTemplate.exchange(ECO_BASE + "/" + ecoId + "/approve", HttpMethod.POST,
+                bearerRequest(token), Map.class);
+
+        Integer auditRows = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM engineering.engineering_change_order_aud WHERE id = ?::uuid",
+                Integer.class, ecoId);
+        assertThat(auditRows).isGreaterThanOrEqualTo(1);
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

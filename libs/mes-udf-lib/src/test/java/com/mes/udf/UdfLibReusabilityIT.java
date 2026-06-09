@@ -139,6 +139,70 @@ class UdfLibReusabilityIT {
         assertThat(violations).isEmpty();
     }
 
+    // ── BOM_LINE module tests (T194) ──────────────────────────────────────────
+
+    @Test
+    void defineTextFieldOnBomLineModuleSavesEntity() {
+        when(repository.existsByOrgIdAndModuleKeyAndFieldKey(
+                orgId, ModuleKey.BOM_LINE, "ref_des")).thenReturn(false);
+        when(repository.save(any(UdfFieldDefinition.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        UdfFieldDefinitionService service = new UdfFieldDefinitionService(
+                repository, Optional.empty(), Optional.empty(), Optional.empty());
+
+        CreateUdfFieldRequest req = bomLineTextField("ref_des", "Reference Designator", false);
+        UdfFieldDefinition saved = service.define(orgId, req);
+
+        assertThat(saved.getModuleKey()).isEqualTo(ModuleKey.BOM_LINE);
+        assertThat(saved.getFieldKey()).isEqualTo("ref_des");
+    }
+
+    @Test
+    void defineTextFieldOnBomHeaderModuleSavesEntity() {
+        when(repository.existsByOrgIdAndModuleKeyAndFieldKey(
+                orgId, ModuleKey.BOM_HEADER, "drawing_ref")).thenReturn(false);
+        when(repository.save(any(UdfFieldDefinition.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        UdfFieldDefinitionService service = new UdfFieldDefinitionService(
+                repository, Optional.empty(), Optional.empty(), Optional.empty());
+
+        CreateUdfFieldRequest req = bomHeaderTextField("drawing_ref", "Drawing Reference", false);
+        UdfFieldDefinition saved = service.define(orgId, req);
+
+        assertThat(saved.getModuleKey()).isEqualTo(ModuleKey.BOM_HEADER);
+        assertThat(saved.getFieldKey()).isEqualTo("drawing_ref");
+    }
+
+    @Test
+    void validateBomLineRequiredFieldAbsentProducesViolation() {
+        when(repository.findByOrgIdAndModuleKeyAndActiveTrue(orgId, ModuleKey.BOM_LINE))
+                .thenReturn(List.of(bomLineFieldEntity("ref_des", true)));
+
+        List<UdfViolation> violations = validator.validate(
+                orgId, ModuleKey.BOM_LINE, Map.of());
+
+        assertThat(violations).hasSize(1);
+        assertThat(violations.get(0).fieldKey()).isEqualTo("ref_des");
+    }
+
+    @Test
+    void bomLineAndBomHeaderDefinitionsAreIndependent() {
+        when(repository.findByOrgIdAndModuleKeyAndActiveTrue(orgId, ModuleKey.BOM_LINE))
+                .thenReturn(List.of(bomLineFieldEntity("ref_des", true)));
+        when(repository.findByOrgIdAndModuleKeyAndActiveTrue(orgId, ModuleKey.BOM_HEADER))
+                .thenReturn(List.of());
+
+        List<UdfViolation> lineViolations = validator.validate(
+                orgId, ModuleKey.BOM_LINE, Map.of());
+        assertThat(lineViolations).hasSize(1);
+
+        List<UdfViolation> headerViolations = validator.validate(
+                orgId, ModuleKey.BOM_HEADER, Map.of());
+        assertThat(headerViolations).isEmpty();
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private CreateUdfFieldRequest routingTextField(String fieldKey, String label, boolean required) {
@@ -155,6 +219,38 @@ class UdfLibReusabilityIT {
     private UdfFieldDefinition routingFieldEntity(String fieldKey, boolean required) {
         UdfFieldDefinition def = new UdfFieldDefinition();
         def.setModuleKey(ModuleKey.ROUTING);
+        def.setFieldKey(fieldKey);
+        def.setFieldType(UdfFieldType.TEXT);
+        def.setRequired(required);
+        def.setActive(true);
+        return def;
+    }
+
+    private CreateUdfFieldRequest bomLineTextField(String fieldKey, String label, boolean required) {
+        CreateUdfFieldRequest req = new CreateUdfFieldRequest();
+        req.setModuleKey(ModuleKey.BOM_LINE);
+        req.setFieldKey(fieldKey);
+        req.setLabel(label);
+        req.setFieldType(UdfFieldType.TEXT);
+        req.setRequired(required);
+        req.setDisplayOrder(0);
+        return req;
+    }
+
+    private CreateUdfFieldRequest bomHeaderTextField(String fieldKey, String label, boolean required) {
+        CreateUdfFieldRequest req = new CreateUdfFieldRequest();
+        req.setModuleKey(ModuleKey.BOM_HEADER);
+        req.setFieldKey(fieldKey);
+        req.setLabel(label);
+        req.setFieldType(UdfFieldType.TEXT);
+        req.setRequired(required);
+        req.setDisplayOrder(0);
+        return req;
+    }
+
+    private UdfFieldDefinition bomLineFieldEntity(String fieldKey, boolean required) {
+        UdfFieldDefinition def = new UdfFieldDefinition();
+        def.setModuleKey(ModuleKey.BOM_LINE);
         def.setFieldKey(fieldKey);
         def.setFieldType(UdfFieldType.TEXT);
         def.setRequired(required);
