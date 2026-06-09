@@ -1,57 +1,132 @@
-package com.mes.inventory.itemmaster.api.dto;
+package com.mes.inventory.itemmaster.domain;
 
-import com.mes.inventory.itemmaster.domain.Classification;
-import com.mes.inventory.itemmaster.domain.CounterfeitRiskLevel;
-import com.mes.inventory.itemmaster.domain.MakeBuyCode;
-import com.mes.inventory.itemmaster.domain.RevisionStatus;
-import com.mes.inventory.itemmaster.domain.TraceabilityMethod;
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import org.hibernate.annotations.Type;
+import org.hibernate.envers.Audited;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-public class ItemMasterDto {
+@Entity
+@Audited
+@EntityListeners(AuditingEntityListener.class)
+@Table(name = "item_revision", schema = "inventory")
+public class ItemRevision {
 
-    // identity fields
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-    private UUID orgId;
-    private String partNumber;
 
-    // revision fields
-    private UUID revisionId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "item_id", nullable = false)
+    private Item item;
+
+    @Column(name = "revision", nullable = false)
     private Integer revision;
-    private RevisionStatus revisionStatus;
-    private boolean hasDraft;
 
-    // data fields
+    @Enumerated(EnumType.STRING)
+    @Column(name = "revision_status", nullable = false, length = 20)
+    private RevisionStatus revisionStatus = RevisionStatus.DRAFT;
+
+    @Column(name = "description", nullable = false, length = 500)
     private String description;
+
+    @Column(name = "unit_of_measure", nullable = false, length = 20)
     private String unitOfMeasure;
+
+    @Column(name = "cage_code", length = 10)
     private String cageCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "classification", nullable = false, length = 30)
     private Classification classification;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "make_buy_code", nullable = false, length = 10)
     private MakeBuyCode makeBuyCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "traceability_method", nullable = false, length = 15)
     private TraceabilityMethod traceabilityMethod;
-    private boolean shelfLifeControlled;
+
+    @Column(name = "shelf_life_controlled", nullable = false)
+    private boolean shelfLifeControlled = false;
+
+    @Column(name = "shelf_life_days")
     private Integer shelfLifeDays;
+
+    @Column(name = "step_part_ref", length = 255)
     private String stepPartRef;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "counterfeit_risk_level", length = 10)
     private CounterfeitRiskLevel counterfeitRiskLevel;
+
+    @Type(JsonBinaryType.class)
+    @Column(name = "approved_suppliers", columnDefinition = "jsonb")
     private List<String> approvedSuppliers;
-    private boolean verificationRequired;
+
+    @Column(name = "verification_required", nullable = false)
+    private boolean verificationRequired = false;
+
+    @Type(JsonBinaryType.class)
+    @Column(name = "custom_fields", columnDefinition = "jsonb")
     private Map<String, Object> customFields;
 
-    // workflow audit fields
+    @Column(name = "submitted_by", length = 255)
     private String submittedBy;
+
+    @Column(name = "submitted_at")
     private Instant submittedAt;
+
+    @Column(name = "approved_by", length = 255)
     private String approvedBy;
+
+    @Column(name = "approved_at")
     private Instant approvedAt;
+
+    @Column(name = "rejected_by", length = 255)
     private String rejectedBy;
+
+    @Column(name = "rejected_at")
     private Instant rejectedAt;
+
+    @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
 
-    // system audit fields
+    @CreatedBy
+    @Column(name = "created_by", nullable = false, updatable = false, length = 255)
     private String createdBy;
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @LastModifiedBy
+    @Column(name = "modified_by", nullable = false, length = 255)
     private String modifiedBy;
+
+    @LastModifiedDate
+    @Column(name = "modified_at", nullable = false)
     private Instant modifiedAt;
 
     // ── Getters and setters ───────────────────────────────────────────────────
@@ -60,32 +135,12 @@ public class ItemMasterDto {
         return id;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
+    public Item getItem() {
+        return item;
     }
 
-    public UUID getOrgId() {
-        return orgId;
-    }
-
-    public void setOrgId(UUID orgId) {
-        this.orgId = orgId;
-    }
-
-    public String getPartNumber() {
-        return partNumber;
-    }
-
-    public void setPartNumber(String partNumber) {
-        this.partNumber = partNumber;
-    }
-
-    public UUID getRevisionId() {
-        return revisionId;
-    }
-
-    public void setRevisionId(UUID revisionId) {
-        this.revisionId = revisionId;
+    public void setItem(Item item) {
+        this.item = item;
     }
 
     public Integer getRevision() {
@@ -102,14 +157,6 @@ public class ItemMasterDto {
 
     public void setRevisionStatus(RevisionStatus revisionStatus) {
         this.revisionStatus = revisionStatus;
-    }
-
-    public boolean isHasDraft() {
-        return hasDraft;
-    }
-
-    public void setHasDraft(boolean hasDraft) {
-        this.hasDraft = hasDraft;
     }
 
     public String getDescription() {
@@ -276,31 +323,15 @@ public class ItemMasterDto {
         return createdBy;
     }
 
-    public void setCreatedBy(String createdBy) {
-        this.createdBy = createdBy;
-    }
-
     public Instant getCreatedAt() {
         return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
     }
 
     public String getModifiedBy() {
         return modifiedBy;
     }
 
-    public void setModifiedBy(String modifiedBy) {
-        this.modifiedBy = modifiedBy;
-    }
-
     public Instant getModifiedAt() {
         return modifiedAt;
-    }
-
-    public void setModifiedAt(Instant modifiedAt) {
-        this.modifiedAt = modifiedAt;
     }
 }

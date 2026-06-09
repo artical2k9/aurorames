@@ -5,8 +5,6 @@ import com.mes.inventory.integration.BaseIntegrationTest;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -108,9 +106,4 @@ class BomReleasedEventIT extends BaseIntegrationTest {
         return null;
     }
 
-    private HttpEntity<?> bearerRequest(String token) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
-        return new HttpEntity<>(headers);
-    }
 }

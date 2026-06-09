@@ -36,10 +36,12 @@ public class InventoryServiceApplication implements ApplicationListener<Applicat
     public void onApplicationEvent(ApplicationReadyEvent event) {
         try {
             privilegeRegistryClient.register("item-master", List.of(
-                    new PrivilegeRegistration("item-master:records:view",   "View item master records"),
-                    new PrivilegeRegistration("item-master:records:manage", "Create and update item master records"),
-                    new PrivilegeRegistration("item-master:bom:manage",     "Author and release BOM revisions"),
-                    new PrivilegeRegistration("item-master:udf:manage",     "Define and delete UDF fields")
+                    new PrivilegeRegistration("item-master:records:view",     "View item master records"),
+                    new PrivilegeRegistration("item-master:records:manage",   "Create and update item master records"),
+                    new PrivilegeRegistration("item-master:revisions:approve",
+                            "Approve or reject item revision submissions"),
+                    new PrivilegeRegistration("item-master:bom:manage",       "Author and release BOM revisions"),
+                    new PrivilegeRegistration("item-master:udf:manage",       "Define and delete UDF fields")
             ));
             privilegeHealthIndicator.markRegistered();
             LOG.info("item-master privileges registered with IAM service");

@@ -14,23 +14,18 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * FR-016a — AS5553 counterfeit risk fields are managed exclusively via
- * PATCH /item-master/{id}/as5553, which requires item-master:as5553:manage.
- * ENGINEER does not hold this privilege and must receive 403.
+ * FR-016a — AS5553 counterfeit risk fields managed via PATCH /item-master/{id}/as5553.
  */
 class AS5553IT extends BaseIntegrationTest {
 
     static final String ORG_ID  = "00000000-0000-0000-0000-000000000001";
     static final String BASE_URL = "/api/v1/item-master";
 
-    // ── T192 / FR-016a: QUALITY_ENGINEER can set AS5553 fields ──────────────
-
     @Test
     void qualityEngineerPatchesAs5553FieldsReturns200() {
         String engineerToken = buildToken(ORG_ID, List.of("ENGINEER"));
         String qeToken = buildToken(ORG_ID, List.of("QUALITY_ENGINEER"));
-
-        String itemId = createItem(engineerToken, "AS5553-QE-001", "A");
+        String itemId = createItem(engineerToken, "AS5553-QE-001");
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 BASE_URL + "/" + itemId + "/as5553",
@@ -46,12 +41,10 @@ class AS5553IT extends BaseIntegrationTest {
         assertThat(response.getBody()).extractingByKey("verificationRequired").isEqualTo(true);
     }
 
-    // ── T192 / FR-016a: ENGINEER is forbidden from AS5553 endpoint ──────────
-
     @Test
     void engineerPatchAs5553Returns403() {
         String engineerToken = buildToken(ORG_ID, List.of("ENGINEER"));
-        String itemId = createItem(engineerToken, "AS5553-ENG-001", "A");
+        String itemId = createItem(engineerToken, "AS5553-ENG-001");
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 BASE_URL + "/" + itemId + "/as5553",
@@ -62,14 +55,11 @@ class AS5553IT extends BaseIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
-    // ── T088: BOM explosion node sets counterfeitRiskAlert for HIGH-risk item ─
-
     @Test
     void listWithCounterfeitRiskLevelHighReturnsMatchingItem() {
         String engineerToken = buildToken(ORG_ID, List.of("ENGINEER"));
         String qeToken = buildToken(ORG_ID, List.of("QUALITY_ENGINEER"));
-
-        String itemId = createItem(engineerToken, "AS5553-RISK-HIGH-001", "A");
+        String itemId = createItem(engineerToken, "AS5553-RISK-HIGH-001");
 
         restTemplate.exchange(
                 BASE_URL + "/" + itemId + "/as5553",
@@ -77,12 +67,12 @@ class AS5553IT extends BaseIntegrationTest {
                 jsonRequest(qeToken, Map.of("counterfeitRiskLevel", "HIGH")),
                 Map.class);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(engineerToken);
+        HttpHeaders getHeaders = new HttpHeaders();
+        getHeaders.setBearerAuth(engineerToken);
         ResponseEntity<Map> response = restTemplate.exchange(
                 BASE_URL + "?counterfeitRiskLevel=HIGH",
                 HttpMethod.GET,
-                new HttpEntity<>(headers),
+                new HttpEntity<>(getHeaders),
                 Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -93,12 +83,10 @@ class AS5553IT extends BaseIntegrationTest {
         assertThat(found).isTrue();
     }
 
-    // ── helpers ───────────────────────────────────────────────────────────────
-
-    private String createItem(String token, String partNumber, String revision) {
+    private String createItem(String token, String partNumber) {
         ResponseEntity<Map> response = restTemplate.exchange(
                 BASE_URL, HttpMethod.POST,
-                jsonRequest(token, baseItemRequest(partNumber, revision)),
+                jsonRequest(token, baseItemRequest(partNumber, "IGNORED")),
                 Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         String path = response.getHeaders().getLocation().getPath();

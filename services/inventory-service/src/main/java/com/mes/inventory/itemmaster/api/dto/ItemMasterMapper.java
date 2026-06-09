@@ -10,7 +10,6 @@ public final class ItemMasterMapper {
         ItemMasterDto dto = new ItemMasterDto();
         dto.setId(entity.getId());
         dto.setPartNumber(entity.getPartNumber());
-        dto.setRevision(entity.getRevision());
         dto.setDescription(entity.getDescription());
         dto.setUnitOfMeasure(entity.getUnitOfMeasure());
         dto.setCageCode(entity.getCageCode());
@@ -24,7 +23,6 @@ public final class ItemMasterMapper {
         dto.setApprovedSuppliers(entity.getApprovedSuppliers());
         dto.setVerificationRequired(entity.isVerificationRequired());
         dto.setCustomFields(entity.getCustomFields());
-        dto.setStatus(entity.getStatus());
         dto.setCreatedBy(entity.getCreatedBy());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setModifiedBy(entity.getModifiedBy());
