@@ -11,6 +11,8 @@ CREATE TABLE inventory.bom_aud (
     parent_item_id UUID,
     created_by     VARCHAR(255),
     created_at     TIMESTAMPTZ,
+    revend         INT4,
+    revend_tstmp   TIMESTAMPTZ,
     CONSTRAINT pk_bom_identity_aud PRIMARY KEY (id, rev),
     CONSTRAINT fk_bom_aud_rev      FOREIGN KEY (rev) REFERENCES inventory.revinfo (rev)
 );
@@ -40,6 +42,8 @@ CREATE TABLE inventory.bom_revision_aud (
     created_at           TIMESTAMPTZ,
     modified_by          VARCHAR(255),
     modified_at          TIMESTAMPTZ,
+    revend               INT4,
+    revend_tstmp         TIMESTAMPTZ,
     CONSTRAINT pk_bom_revision_aud     PRIMARY KEY (id, rev),
     CONSTRAINT fk_bom_revision_aud_rev FOREIGN KEY (rev) REFERENCES inventory.revinfo (rev)
 );
