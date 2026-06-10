@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -143,7 +144,7 @@ public class BomService {
         bomRevisionRepository.delete(draft);
     }
 
-    public BomLine addLine(UUID orgId, UUID bomId, CreateBomLineRequest req) {
+    public BomLineDto addLine(UUID orgId, UUID bomId, CreateBomLineRequest req) {
         Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
 
@@ -203,7 +204,7 @@ public class BomService {
             itemMasterEventPublisher.publishAs5553RiskAdded(componentRevision);
         }
 
-        return saved;
+        return BomMapper.toLineDto(saved);
     }
 
     @Transactional(readOnly = true)
@@ -220,12 +221,8 @@ public class BomService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
-    public BomLineDto enrichLine(BomLine line) {
-        return BomMapper.toLineDto(line);
-    }
 
-    public BomLine updateLine(UUID orgId, UUID bomId, UUID lineId, UpdateBomLineRequest req) {
+    public BomLineDto updateLine(UUID orgId, UUID bomId, UUID lineId, UpdateBomLineRequest req) {
         Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
         BomRevision draft = bomRevisionRepository
@@ -237,7 +234,7 @@ public class BomService {
                 .orElseThrow(() -> new BomNotFoundException("BOM line not found: " + lineId));
         applyScalarUpdates(line, draft.getId(), req);
         applyEffectivityUpdates(line, draft.getId(), lineId, req);
-        return bomLineRepository.save(line);
+        return BomMapper.toLineDto(bomLineRepository.save(line));
     }
 
     public void deleteLine(UUID orgId, UUID bomId, UUID lineId) {
@@ -256,10 +253,34 @@ public class BomService {
     public BomDto patchHeader(UUID orgId, UUID bomId, PatchBomHeaderRequest req) {
         Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        BomRevision draft = bomRevisionRepository
-                .findByBomIdAndRevisionStatus(bom.getId(), RevisionStatus.DRAFT)
-                .orElseThrow(() -> new BomConflictException(
-                        "Cannot modify a BOM that is not in DRAFT status"));
+
+        List<BomRevision> all = bomRevisionRepository.findAllByBomId(bom.getId());
+
+        boolean hasPending = all.stream()
+                .anyMatch(r -> r.getRevisionStatus() == RevisionStatus.PENDING_APPROVAL);
+        if (hasPending) {
+            throw new BomConflictException("Cannot edit BOM while a revision is pending approval");
+        }
+
+        BomRevision draft = all.stream()
+                .filter(r -> r.getRevisionStatus() == RevisionStatus.DRAFT)
+                .findFirst()
+                .orElse(null);
+
+        if (draft == null) {
+            int maxRevision = all.stream()
+                    .mapToInt(BomRevision::getRevision)
+                    .max()
+                    .orElse(-1);
+            BomRevision lastApproved = all.stream()
+                    .filter(r -> r.getRevisionStatus() == RevisionStatus.APPROVED)
+                    .max(Comparator.comparingInt(BomRevision::getRevision))
+                    .orElseThrow(() -> new BomConflictException(
+                            "Cannot edit: no approved revision exists to base the draft on"));
+            draft = copyBomRevision(lastApproved, maxRevision + 1, bom);
+            draft = bomRevisionRepository.save(draft);
+        }
+
         if (req.getDescription() != null) {
             draft.setDescription(req.getDescription());
         }
@@ -309,6 +330,20 @@ public class BomService {
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    private BomRevision copyBomRevision(BomRevision source, int newRevision, Bom bom) {
+        BomRevision copy = new BomRevision();
+        copy.setBom(bom);
+        copy.setRevision(newRevision);
+        copy.setDescription(source.getDescription());
+        copy.setEcoId(source.getEcoId());
+        copy.setReasonForRevision(source.getReasonForRevision());
+        copy.setProductionLine(source.getProductionLine());
+        copy.setBomType(source.getBomType());
+        copy.setEffectivityType(source.getEffectivityType());
+        copy.setCustomFields(source.getCustomFields());
+        return copy;
+    }
 
     private static BomRevisionSummaryDto toBomRevisionSummaryDto(BomRevision br) {
         BomRevisionSummaryDto dto = new BomRevisionSummaryDto();

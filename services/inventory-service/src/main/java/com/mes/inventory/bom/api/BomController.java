@@ -18,7 +18,6 @@ import com.mes.inventory.itemmaster.api.dto.RejectRevisionRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -135,10 +134,10 @@ public class BomController {
             @Valid @RequestBody CreateBomLineRequest request) {
 
         var orgId = JwtClaimsExtractor.orgId(jwt);
-        var line = bomService.addLine(orgId, bomId, request);
+        var dto = bomService.addLine(orgId, bomId, request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}").buildAndExpand(line.getId()).toUri();
-        return ResponseEntity.created(location).body(bomService.enrichLine(line));
+                .path("/{id}").buildAndExpand(dto.getId()).toUri();
+        return ResponseEntity.created(location).body(dto);
     }
 
     @PatchMapping("/{bomId}/lines/{lineId}")
@@ -150,7 +149,7 @@ public class BomController {
             @Valid @RequestBody UpdateBomLineRequest request) {
 
         var orgId = JwtClaimsExtractor.orgId(jwt);
-        return bomService.enrichLine(bomService.updateLine(orgId, bomId, lineId, request));
+        return bomService.updateLine(orgId, bomId, lineId, request);
     }
 
     @GetMapping("/headers")
@@ -161,7 +160,7 @@ public class BomController {
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        var pageable = PageRequest.of(page, size);
         return bomService.listSummaries(JwtClaimsExtractor.orgId(jwt), search, pageable);
     }
 

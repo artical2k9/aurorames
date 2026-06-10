@@ -77,6 +77,7 @@ public interface BomRevisionRepository extends JpaRepository<BomRevision, UUID> 
               AND (:search IS NULL OR :search = ''
                    OR LOWER(i.part_number) LIKE LOWER(CONCAT('%', :search, '%'))
                    OR LOWER(br.description) LIKE LOWER(CONCAT('%', :search, '%')))
+            ORDER BY b.created_at DESC
             """,
            countQuery = """
             SELECT COUNT(DISTINCT b.id)
