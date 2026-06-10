@@ -7,14 +7,16 @@ import { of, throwError } from 'rxjs';
 import { BomExplosionComponent } from './bom-explosion.component';
 import { BomApiService } from '../../services/bom-api.service';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
-import { BomDto, BomExplosionNode } from '../../models/bom.model';
+import { BomDto, BomExplosionNode, RevisionStatus } from '../../models/bom.model';
 
 const MOCK_BOM: BomDto = {
   id: 'bom-1',
   orgId: 'org-1',
   parentItemId: 'item-1',
-  bomRevision: 'A',
-  status: 'RELEASED',
+  bomRevisionId: 'bom-rev-1',
+  revision: 0,
+  revisionStatus: 'APPROVED' as RevisionStatus,
+  hasDraft: false,
   createdBy: 'user',
   createdAt: '2026-01-01T00:00:00Z',
 };

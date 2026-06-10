@@ -16,14 +16,14 @@ import { SelectModule } from 'primeng/select';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { LucideColumnsSettings } from '@lucide/angular';
-import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
+import { BreadcrumbService } from '../../../../shared/ui';
 import { BomApiService } from '../../services/bom-api.service';
 import { AddBomLineFormComponent } from '../../components/add-bom-line-form/add-bom-line-form.component';
 import { BomHeaderEditDialogComponent } from '../../components/bom-header-edit-dialog/bom-header-edit-dialog.component';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
 import { DEFAULT_BOM_LINE_COLUMNS } from '../../constants/default-columns';
-import { BomDto, BomLineDto } from '../../models/bom.model';
+import { BomDto, BomLineDto, RevisionStatus } from '../../models/bom.model';
 import { AsyncPipe } from '@angular/common';
 import { PopoverModule } from 'primeng/popover';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
@@ -36,7 +36,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     CommonModule, AsyncPipe, FormsModule, RouterLink,
     TableModule, ButtonModule, TagModule, DialogModule, MessageModule,
     ToastModule, ConfirmDialogModule, PopoverModule, SelectModule, InputNumberModule,
-    StatusBadgeComponent, LucideColumnsSettings,
+    LucideColumnsSettings,
     AddBomLineFormComponent, BomHeaderEditDialogComponent, ColumnPickerComponent,
   ],
   providers: [
@@ -74,7 +74,8 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
                         optionLabel="label" optionValue="value"
                         styleClass="ba__rev-select"
                         (onChange)="onRevisionChange($event.value)" />
-              <app-status-badge [status]="bom.status" />
+              <p-tag [value]="revisionStatusLabel(bom.revisionStatus)"
+                     [severity]="revisionStatusSeverity(bom.revisionStatus)" />
               @if (bom.description) {
                 <span class="ba__desc">{{ bom.description }}</span>
               }
@@ -90,7 +91,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
         </div>
 
         <!-- Toolbar -->
-        @if (bom.status === 'DRAFT') {
+        @if (bom.revisionStatus === 'DRAFT') {
           <div class="ba__toolbar">
             <p-button label="← Explosion View" [text]="true" size="small"
                       (onClick)="goToExplosion()" />
@@ -100,8 +101,10 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
                       (onClick)="addingLine = !addingLine" />
             <p-button label="Save Draft" severity="secondary" size="small"
                       [disabled]="!isDirty" (onClick)="saveDraft()" />
-            <p-button label="Submit for Review" severity="success" size="small"
-                      [loading]="releasing" (onClick)="confirmRelease()" />
+            <p-button label="Cancel Draft" severity="danger" [text]="true" size="small"
+                      [loading]="cancelling" (onClick)="confirmCancelDraft()" />
+            <p-button label="Submit for Approval" severity="success" size="small"
+                      [loading]="submitting" (onClick)="confirmSubmit()" />
             <p-button [rounded]="true" [text]="true"
                       aria-label="Customise columns"
                       (onClick)="colPickerPanel.toggle($event)">
@@ -143,7 +146,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
               @for (col of visibleCols(columns); track col.key) {
                 <th>{{ col.label }}</th>
               }
-              @if (bom.status === 'DRAFT') {
+              @if (bom.revisionStatus === 'DRAFT') {
                 <th style="width:8rem">Actions</th>
               }
             </tr>
@@ -176,7 +179,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
                   }
                 </td>
               }
-              @if (bom.status === 'DRAFT') {
+              @if (bom.revisionStatus === 'DRAFT') {
                 <td>
                   @if (editingLineId === line.id) {
                     <p-button label="Save" severity="primary" size="small"
@@ -196,7 +199,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
 
           <ng-template pTemplate="emptymessage" let-columns>
             <tr>
-              <td [attr.colspan]="visibleColCount(columns) + (bom.status === 'DRAFT' ? 1 : 0)">
+              <td [attr.colspan]="visibleColCount(columns) + (bom.revisionStatus === 'DRAFT' ? 1 : 0)">
                 No lines added yet.
               </td>
             </tr>
@@ -283,7 +286,8 @@ export class BomAuthoringComponent implements OnInit {
   lines: BomLineDto[] = [];
   loading = false;
   loadError = false;
-  releasing = false;
+  submitting = false;
+  cancelling = false;
   savingLine = false;
   addingLine = false;
   showHeaderEdit = false;
@@ -338,13 +342,13 @@ export class BomAuthoringComponent implements OnInit {
         this.selectedRevisionId = bom.id;
         this.parentItem = item;
         this.lines = lines;
-        this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.bomRevision, value: r.id }));
+        this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.revision, value: r.bomId }));
         this.loading = false;
         this.breadcrumbSvc.set([
           { label: 'Engineering' },
           { label: 'Item Master', route: ['/item-master'] },
           { label: item.partNumber, route: ['/item-master', bom.parentItemId, 'boms'] },
-          { label: 'Rev ' + bom.bomRevision },
+          { label: 'Rev ' + bom.revision },
         ]);
         this.cdr.detectChanges();
       },
@@ -382,28 +386,65 @@ export class BomAuthoringComponent implements OnInit {
     });
   }
 
-  confirmRelease(): void {
+  confirmSubmit(): void {
     this.confirmationService.confirm({
-      message: `Release BOM Rev ${this.bom?.bomRevision}? This cannot be undone.`,
-      accept: () => this.releaseBom(),
+      message: `Submit BOM Rev ${this.bom?.revision} for approval? The BOM will become read-only.`,
+      accept: () => this.submitForApproval(),
     });
   }
 
-  releaseBom(): void {
-    this.releasing = true;
-    this.bomApi.release(this.bomId).subscribe({
+  submitForApproval(): void {
+    this.submitting = true;
+    this.bomApi.submitBom(this.bomId).subscribe({
       next: bom => {
         this.bom = bom;
-        this.releasing = false;
+        this.submitting = false;
         this.isDirty = false;
-        this.messageService.add({ severity: 'success', summary: 'BOM released' });
+        this.messageService.add({ severity: 'success', summary: 'BOM submitted for approval' });
         this.cdr.detectChanges();
       },
       error: () => {
-        this.releasing = false;
-        this.messageService.add({ severity: 'error', summary: 'Release failed' });
+        this.submitting = false;
+        this.messageService.add({ severity: 'error', summary: 'Submit failed' });
+        this.cdr.detectChanges();
       },
     });
+  }
+
+  confirmCancelDraft(): void {
+    this.confirmationService.confirm({
+      message: `Cancel BOM Rev ${this.bom?.revision} draft? This cannot be undone.`,
+      accept: () => this.cancelDraft(),
+    });
+  }
+
+  cancelDraft(): void {
+    this.cancelling = true;
+    this.bomApi.cancelBomDraft(this.bomId).subscribe({
+      next: () => {
+        this.cancelling = false;
+        this.messageService.add({ severity: 'info', summary: 'Draft cancelled' });
+        this.router.navigate(['/bom', this.bom?.parentItemId]);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.cancelling = false;
+        this.messageService.add({ severity: 'error', summary: 'Cancel draft failed' });
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  revisionStatusLabel(s: RevisionStatus): string {
+    if (s === 'PENDING_APPROVAL') return 'Pending';
+    if (s === 'APPROVED') return 'Approved';
+    return 'Draft';
+  }
+
+  revisionStatusSeverity(s: RevisionStatus): 'info' | 'warn' | 'success' | 'secondary' {
+    if (s === 'APPROVED') return 'success';
+    if (s === 'PENDING_APPROVAL') return 'warn';
+    return 'secondary';
   }
 
   startLineEdit(line: BomLineDto): void {

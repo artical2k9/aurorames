@@ -15,25 +15,23 @@ import { AutoCompleteModule, AutoCompleteCompleteEvent, AutoCompleteSelectEvent 
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { LucideColumnsSettings } from '@lucide/angular';
-import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
+import { BreadcrumbService } from '../../../../shared/ui';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
 import { BomApiService } from '../../services/bom-api.service';
-import { BomSummaryDto } from '../../models/bom.model';
+import { BomSummaryDto, RevisionStatus } from '../../models/bom.model';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
-import { ItemMasterDto, Classification } from '../../../item-master/models/item-master.model';
-import { ClassificationLabelPipe } from '../../../item-master/pipes/classification-label.pipe';
+import { ItemMasterDto } from '../../../item-master/models/item-master.model';
 
 const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
-  { key: 'partNumber',      label: 'Part Number',     visible: true,  order: 0, locked: true },
-  { key: 'revision',        label: 'Rev',             visible: true,  order: 1, locked: true },
-  { key: 'itemDescription', label: 'Description',     visible: true,  order: 2, locked: true },
-  { key: 'classification',  label: 'Classification',  visible: true,  order: 3 },
-  { key: 'unitOfMeasure',   label: 'Unit of Measure', visible: true,  order: 4 },
-  { key: 'itemStatus',      label: 'Item Status',     visible: true,  order: 5 },
-  { key: 'bomRevision',     label: 'BOM Rev',         visible: true,  order: 6 },
-  { key: 'bomStatus',       label: 'BOM Status',      visible: true,  order: 7 },
-  { key: 'createdBy',       label: 'Created By',      visible: false, order: 8 },
+  { key: 'partNumber',         label: 'Part Number',     visible: true,  order: 0, locked: true },
+  { key: 'itemRevision',       label: 'Item Rev',        visible: true,  order: 1, locked: true },
+  { key: 'description',        label: 'BOM Description', visible: true,  order: 2 },
+  { key: 'revision',           label: 'BOM Rev',         visible: true,  order: 3 },
+  { key: 'revisionStatus',     label: 'BOM Status',      visible: true,  order: 4 },
+  { key: 'itemRevisionStatus', label: 'Item Status',     visible: true,  order: 5 },
+  { key: 'hasDraft',           label: 'Has Draft',       visible: false, order: 6 },
+  { key: 'createdBy',          label: 'Created By',      visible: false, order: 7 },
 ];
 
 @Component({
@@ -43,7 +41,7 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
     AsyncPipe, FormsModule,
     TableModule, ButtonModule, InputTextModule, MessageModule, PopoverModule, TagModule,
     DialogModule, AutoCompleteModule, ToastModule,
-    ColumnPickerComponent, StatusBadgeComponent, ClassificationLabelPipe,
+    ColumnPickerComponent,
     LucideColumnsSettings,
   ],
   providers: [
@@ -122,10 +120,6 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
           </p-autocomplete>
         </div>
         <div class="bb__field">
-          <label>BOM Revision <span class="bb__req">*</span></label>
-          <input pInputText [(ngModel)]="newBomRevision" placeholder="e.g. A" />
-        </div>
-        <div class="bb__field">
           <label>Description</label>
           <input pInputText [(ngModel)]="newBomDescription" placeholder="Optional" />
         </div>
@@ -134,7 +128,7 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
                     (onClick)="closeCreateDialog()" />
           <p-button label="Create" severity="primary" size="small"
                     [loading]="creating"
-                    [disabled]="!selectedItemId || !newBomRevision.trim()"
+                    [disabled]="!selectedItemId"
                     (onClick)="submitCreate()" />
         </ng-template>
       </p-dialog>
@@ -163,16 +157,20 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
             @for (col of visibleColumns(columns); track col.key) {
               <td [class.bb__pn]="col.key === 'partNumber'">
                 @switch (col.key) {
-                  @case ('classification') {
-                    <p-tag [value]="asClassification(item.classification) | classificationLabel"
-                           [severity]="classificationSeverity(asClassification(item.classification))"
-                           [class]="classificationClass(asClassification(item.classification))" />
+                  @case ('revisionStatus') {
+                    <p-tag [value]="revisionStatusLabel(item.revisionStatus)"
+                           [severity]="revisionStatusSeverity(item.revisionStatus)" />
                   }
-                  @case ('itemStatus') {
-                    <app-status-badge [status]="item.itemStatus" />
+                  @case ('itemRevisionStatus') {
+                    <p-tag [value]="revisionStatusLabel(asRevisionStatus(item.itemRevisionStatus))"
+                           [severity]="revisionStatusSeverity(asRevisionStatus(item.itemRevisionStatus))" />
                   }
-                  @case ('bomStatus') {
-                    <app-status-badge [status]="item.bomStatus" />
+                  @case ('hasDraft') {
+                    @if (item.hasDraft) {
+                      <p-tag value="Draft pending" severity="warn" />
+                    } @else {
+                      —
+                    }
                   }
                   @default {
                     {{ getCellValue(item, col) ?? '—' }}
@@ -226,8 +224,6 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
     .bb__suggestion-rev { font-size: 0.8rem; color: var(--p-text-muted-color); }
     .bb__suggestion-desc { font-size: 0.85rem; color: var(--p-text-muted-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
 
-    :host ::ng-deep .p-tag.tag-raw-material { background: #0D9488 !important; color: #fff !important; }
-    :host ::ng-deep .p-tag.tag-service      { background: #7C3AED !important; color: #fff !important; }
   `],
 })
 export class BomBrowserComponent implements OnInit, AfterViewInit {
@@ -259,7 +255,6 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
   selectedItem: ItemMasterDto | null = null;
   selectedItemId = '';
   itemSuggestions: ItemMasterDto[] = [];
-  newBomRevision = '';
   newBomDescription = '';
   creating = false;
   createError = '';
@@ -346,7 +341,6 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
     this.selectedItem = null;
     this.selectedItemId = '';
     this.itemSuggestions = [];
-    this.newBomRevision = '';
     this.newBomDescription = '';
     this.creating = false;
     this.createError = '';
@@ -362,12 +356,11 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
   }
 
   submitCreate(): void {
-    if (!this.selectedItemId || !this.newBomRevision.trim()) { return; }
+    if (!this.selectedItemId) { return; }
     this.creating = true;
     this.createError = '';
     this.bomApi.create({
       parentItemId: this.selectedItemId,
-      bomRevision: this.newBomRevision.trim(),
       description: this.newBomDescription.trim() || undefined,
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: bom => {
@@ -384,24 +377,20 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
     });
   }
 
-  asClassification(value: string): Classification {
-    return value as Classification;
+  asRevisionStatus(s: string): RevisionStatus {
+    return s as RevisionStatus;
   }
 
-  classificationSeverity(c: Classification): 'info' | 'warn' | 'secondary' | 'success' | 'danger' | undefined {
-    switch (c) {
-      case 'PURCHASED_PART': return 'info';
-      case 'FABRICATED':     return 'warn';
-      case 'ASSEMBLY':       return 'success';
-      case 'COTS':           return 'secondary';
-      default:               return undefined;
-    }
+  revisionStatusLabel(s: RevisionStatus): string {
+    if (s === 'PENDING_APPROVAL') return 'Pending';
+    if (s === 'APPROVED') return 'Approved';
+    return 'Draft';
   }
 
-  classificationClass(c: Classification): string {
-    if (c === 'RAW_MATERIAL') return 'tag-raw-material';
-    if (c === 'SERVICE')      return 'tag-service';
-    return '';
+  revisionStatusSeverity(s: RevisionStatus): 'info' | 'warn' | 'success' | 'secondary' {
+    if (s === 'APPROVED') return 'success';
+    if (s === 'PENDING_APPROVAL') return 'warn';
+    return 'secondary';
   }
 
   private load(page: number): void {

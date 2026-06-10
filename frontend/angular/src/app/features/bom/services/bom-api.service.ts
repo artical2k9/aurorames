@@ -17,9 +17,9 @@ export class BomApiService {
   private readonly http = inject(HttpClient);
   private readonly base = '/api/v1/boms';
 
-  listForItem(parentItemId: string): Observable<BomDto[]> {
+  listForItem(parentItemId: string): Observable<BomSummaryDto[]> {
     const params = new HttpParams().set('parentItemId', parentItemId);
-    return this.http.get<BomDto[]>(this.base, { params });
+    return this.http.get<BomSummaryDto[]>(this.base, { params });
   }
 
   listHeaders(search?: string, page = 0, size = 20): Observable<Page<BomSummaryDto>> {
@@ -52,8 +52,16 @@ export class BomApiService {
     return this.http.delete<void>(`${this.base}/${bomId}/lines/${lineId}`);
   }
 
-  release(bomId: string): Observable<BomDto> {
-    return this.http.post<BomDto>(`${this.base}/${bomId}/release`, {});
+  submitBom(bomId: string): Observable<BomDto> {
+    return this.http.post<BomDto>(`${this.base}/${bomId}/submit`, {});
+  }
+
+  approveBom(bomId: string): Observable<BomDto> {
+    return this.http.post<BomDto>(`${this.base}/${bomId}/approve`, {});
+  }
+
+  cancelBomDraft(bomId: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${bomId}/draft`);
   }
 
   explode(
