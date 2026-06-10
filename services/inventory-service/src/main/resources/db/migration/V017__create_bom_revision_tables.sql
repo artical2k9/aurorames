@@ -13,8 +13,8 @@ CREATE TABLE inventory.bom (
     CONSTRAINT fk_bom_parent_item  FOREIGN KEY (parent_item_id) REFERENCES inventory.item (id)
 );
 
-CREATE INDEX idx_bom_org        ON inventory.bom (org_id);
-CREATE INDEX idx_bom_parent_item ON inventory.bom (parent_item_id);
+CREATE INDEX idx_bom_org             ON inventory.bom (org_id);
+CREATE INDEX idx_bom_identity_item    ON inventory.bom (parent_item_id);
 
 CREATE TABLE inventory.bom_revision (
     id                   UUID          NOT NULL DEFAULT gen_random_uuid(),
