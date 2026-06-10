@@ -1,0 +1,579 @@
+openapi: 3.1.0
+info:
+  title: Inventory Service — Revision Management API
+  description: New and updated endpoints for MES-114 automated revision numbering
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8082/api/v1
+    description: Gateway dev proxy
+
+paths:
+
+  # ─── Item Master — updated list ──────────────────────────────────────────
+  /item-master:
+    get:
+      summary: List items (one row per item identity, showing current revision)
+      description: |
+        Returns one entry per item identity. Each entry shows the highest-revision
+        APPROVED data (or DRAFT if no APPROVED exists). hasDraft=true if a DRAFT
+        co-exists with an APPROVED revision.
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, PENDING_APPROVAL, APPROVED]
+          description: Filter by revisionStatus
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Paged list of items
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedItemMasterDto'
+
+  /item-master/{id}:
+    get:
+      summary: Get item by identity UUID
+      parameters:
+        - $ref: '#/components/parameters/itemId'
+        - name: revisionStatus
+          in: query
+          schema:
+            type: string
+            enum: [DRAFT, PENDING_APPROVAL, APPROVED]
+          description: Return a specific revision status (defaults to latest APPROVED, then DRAFT)
+      responses:
+        '200':
+          description: Item with current revision data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemMasterDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      summary: Edit item (creates or updates DRAFT revision)
+      description: |
+        If the item has an APPROVED revision and no DRAFT, automatically creates a new
+        DRAFT at revision = maxApproved + 1, then applies the patch.
+        If a DRAFT already exists, patches it in place.
+        HTTP 409 if the revision is in PENDING_APPROVAL status.
+      parameters:
+        - $ref: '#/components/parameters/itemId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchItemMasterRequest'
+      responses:
+        '200':
+          description: Updated item revision (DRAFT status)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemMasterDto'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /item-master/{id}/submit:
+    post:
+      summary: Submit DRAFT revision for approval
+      parameters:
+        - $ref: '#/components/parameters/itemId'
+      responses:
+        '200':
+          description: Revision now in PENDING_APPROVAL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemMasterDto'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /item-master/{id}/approve:
+    post:
+      summary: Approve a PENDING_APPROVAL revision
+      parameters:
+        - $ref: '#/components/parameters/itemId'
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Revision now APPROVED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemMasterDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /item-master/{id}/reject:
+    post:
+      summary: Reject a PENDING_APPROVAL revision — returns it to DRAFT with a documented reason
+      parameters:
+        - $ref: '#/components/parameters/itemId'
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectRevisionRequest'
+      responses:
+        '200':
+          description: Revision returned to DRAFT; rejectedBy/rejectedAt/rejectionReason stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ItemMasterDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Rejection reason is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+
+  /item-master/{id}/draft:
+    delete:
+      summary: Cancel and hard-delete the current DRAFT revision
+      parameters:
+        - $ref: '#/components/parameters/itemId'
+      responses:
+        '204':
+          description: Draft deleted
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /item-master/{id}/revisions:
+    get:
+      summary: List all revisions for an item (P2)
+      parameters:
+        - $ref: '#/components/parameters/itemId'
+      responses:
+        '200':
+          description: All revisions ordered by revision ASC
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ItemRevisionSummaryDto'
+
+  # ─── BOM — revision workflow ──────────────────────────────────────────────
+  /boms/{id}/submit:
+    post:
+      summary: Submit BOM DRAFT for approval
+      parameters:
+        - $ref: '#/components/parameters/bomId'
+      responses:
+        '200':
+          description: BOM revision now PENDING_APPROVAL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BomDto'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /boms/{id}/approve:
+    post:
+      summary: Approve a BOM PENDING_APPROVAL revision
+      parameters:
+        - $ref: '#/components/parameters/bomId'
+      responses:
+        '200':
+          description: BOM revision now APPROVED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BomDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /boms/{id}/reject:
+    post:
+      summary: Reject a BOM PENDING_APPROVAL revision — returns it to DRAFT with a documented reason
+      parameters:
+        - $ref: '#/components/parameters/bomId'
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectRevisionRequest'
+      responses:
+        '200':
+          description: BOM revision returned to DRAFT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BomDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Rejection reason is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+
+  /boms/{id}/draft:
+    delete:
+      summary: Cancel and hard-delete BOM DRAFT (+ all attached BOM lines)
+      parameters:
+        - $ref: '#/components/parameters/bomId'
+      responses:
+        '204':
+          description: Draft and lines deleted
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /boms/{id}/revisions:
+    get:
+      summary: List all BOM revisions (P2)
+      parameters:
+        - $ref: '#/components/parameters/bomId'
+      responses:
+        '200':
+          description: All BOM revisions ordered by revision ASC
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BomRevisionSummaryDto'
+
+components:
+
+  parameters:
+    itemId:
+      name: id
+      in: path
+      required: true
+      description: Item identity UUID
+      schema:
+        type: string
+        format: uuid
+    bomId:
+      name: id
+      in: path
+      required: true
+      description: BOM identity UUID
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    Conflict:
+      description: State conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+    Forbidden:
+      description: Insufficient privilege
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+
+  schemas:
+    RevisionStatus:
+      type: string
+      enum: [DRAFT, PENDING_APPROVAL, APPROVED]
+
+    ItemMasterDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Item identity UUID
+        revisionId:
+          type: string
+          format: uuid
+          description: ItemRevision UUID
+        orgId:
+          type: string
+          format: uuid
+        partNumber:
+          type: string
+        revision:
+          type: integer
+          description: System-assigned integer (0, 1, 2…)
+        revisionStatus:
+          $ref: '#/components/schemas/RevisionStatus'
+        hasDraft:
+          type: boolean
+          description: true when a DRAFT revision currently exists for this item (set on draft initiation; cleared on approve or hard-delete)
+        description:
+          type: string
+        unitOfMeasure:
+          type: string
+        cageCode:
+          type: string
+        classification:
+          type: string
+        makeBuyCode:
+          type: string
+        traceabilityMethod:
+          type: string
+        shelfLifeControlled:
+          type: boolean
+        shelfLifeDays:
+          type: integer
+        stepPartRef:
+          type: string
+        counterfeitRiskLevel:
+          type: string
+        approvedSuppliers:
+          type: array
+          items:
+            type: string
+        verificationRequired:
+          type: boolean
+        customFields:
+          type: object
+          additionalProperties: true
+        submittedBy:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        approvedBy:
+          type: string
+        approvedAt:
+          type: string
+          format: date-time
+        rejectedBy:
+          type: string
+        rejectedAt:
+          type: string
+          format: date-time
+        rejectionReason:
+          type: string
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        modifiedBy:
+          type: string
+        modifiedAt:
+          type: string
+          format: date-time
+
+    PagedItemMasterDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemMasterDto'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+        pageNumber:
+          type: integer
+
+    ItemRevisionSummaryDto:
+      type: object
+      properties:
+        revisionId:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+        revisionStatus:
+          $ref: '#/components/schemas/RevisionStatus'
+        description:
+          type: string
+        approvedBy:
+          type: string
+        approvedAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    BomDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: BOM identity UUID
+        bomRevisionId:
+          type: string
+          format: uuid
+        orgId:
+          type: string
+          format: uuid
+        parentItemId:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+        revisionStatus:
+          $ref: '#/components/schemas/RevisionStatus'
+        hasDraft:
+          type: boolean
+        description:
+          type: string
+        ecoId:
+          type: string
+          format: uuid
+        reasonForRevision:
+          type: string
+        productionLine:
+          type: string
+        bomType:
+          type: string
+        effectivityType:
+          type: string
+        customFields:
+          type: object
+        submittedBy:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        approvedBy:
+          type: string
+        approvedAt:
+          type: string
+          format: date-time
+        rejectedBy:
+          type: string
+        rejectedAt:
+          type: string
+          format: date-time
+        rejectionReason:
+          type: string
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        modifiedBy:
+          type: string
+        modifiedAt:
+          type: string
+          format: date-time
+
+    BomRevisionSummaryDto:
+      type: object
+      properties:
+        bomRevisionId:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+        revisionStatus:
+          $ref: '#/components/schemas/RevisionStatus'
+        description:
+          type: string
+        approvedBy:
+          type: string
+        approvedAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    RejectRevisionRequest:
+      type: object
+      required: [rejectionReason]
+      properties:
+        rejectionReason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Non-empty reason the approver is returning this revision to DRAFT
+
+    PatchItemMasterRequest:
+      type: object
+      description: All fields optional — only provided fields are updated
+      properties:
+        description:
+          type: string
+        unitOfMeasure:
+          type: string
+        cageCode:
+          type: string
+        classification:
+          type: string
+        makeBuyCode:
+          type: string
+        traceabilityMethod:
+          type: string
+        shelfLifeControlled:
+          type: boolean
+        shelfLifeDays:
+          type: integer
+        stepPartRef:
+          type: string
+        counterfeitRiskLevel:
+          type: string
+        approvedSuppliers:
+          type: array
+          items:
+            type: string
+        verificationRequired:
+          type: boolean
+        customFields:
+          type: object
+
+    ErrorBody:
+      type: object
+      properties:
+        message:
+          type: string
+        status:
+          type: integer
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

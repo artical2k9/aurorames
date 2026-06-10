@@ -1,7 +1,7 @@
 package com.mes.inventory.unit.bom.service;
 
+import com.mes.inventory.bom.api.dto.BomDto;
 import com.mes.inventory.bom.api.dto.BomExplosionNode;
-import com.mes.inventory.bom.domain.BillOfMaterials;
 import com.mes.inventory.bom.service.BomExportService;
 import org.junit.jupiter.api.Test;
 
@@ -70,27 +70,18 @@ class BomExportServiceTest {
     }
 
     @Test
-    void toPdf_returnsNonEmptyByteArray() {
-        BillOfMaterials bom = new BillOfMaterials();
-        bom.setBomRevision("REV-A");
-        bom.setParentItemId(UUID.randomUUID());
-        bom.setOrgId(UUID.randomUUID());
-
+    void toPdfFromDto_returnsNonEmptyByteArray() {
+        BomDto dto = bomDto(0);
         BomExplosionNode node = node("PN-PDF", "A", "PDF part", 1, false);
 
-        byte[] pdf = service.toPdf(bom, List.of(node));
+        byte[] pdf = service.toPdfFromDto(dto, List.of(node));
         assertThat(pdf).isNotEmpty();
-        // PDF files start with the %PDF magic bytes
         assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
     }
 
     @Test
-    void toPdf_handlesNullRevisionAndDescription() {
-        BillOfMaterials bom = new BillOfMaterials();
-        bom.setBomRevision("REV-B");
-        bom.setParentItemId(UUID.randomUUID());
-        bom.setOrgId(UUID.randomUUID());
-
+    void toPdfFromDto_handlesNullRevisionAndDescription() {
+        BomDto dto = bomDto(null);
         BomExplosionNode node = new BomExplosionNode();
         node.setPartNumber("PN-NULL");
         node.setRevision(null);
@@ -98,53 +89,41 @@ class BomExportServiceTest {
         node.setDepth(1);
         node.setCounterfeitRiskAlert(false);
 
-        byte[] pdf = service.toPdf(bom, List.of(node));
+        byte[] pdf = service.toPdfFromDto(dto, List.of(node));
         assertThat(pdf).isNotEmpty();
     }
 
     @Test
-    void toPdf_handlesCounterfeitRiskAlert() {
-        BillOfMaterials bom = new BillOfMaterials();
-        bom.setBomRevision("REV-C");
-        bom.setParentItemId(UUID.randomUUID());
-        bom.setOrgId(UUID.randomUUID());
-
+    void toPdfFromDto_handlesCounterfeitRiskAlert() {
+        BomDto dto = bomDto(2);
         BomExplosionNode node = node("PN-RISK", "A", "Risky part", 1, true);
 
-        byte[] pdf = service.toPdf(bom, List.of(node));
+        byte[] pdf = service.toPdfFromDto(dto, List.of(node));
         assertThat(pdf).isNotEmpty();
     }
 
     @Test
-    void toPdf_handlesDeepNestedNodes() {
-        BillOfMaterials bom = new BillOfMaterials();
-        bom.setBomRevision("REV-DEEP");
-        bom.setParentItemId(UUID.randomUUID());
-        bom.setOrgId(UUID.randomUUID());
-
+    void toPdfFromDto_handlesDeepNestedNodes() {
+        BomDto dto = bomDto(3);
         BomExplosionNode parent = node("PARENT", "A", "parent", 1, false);
         BomExplosionNode child = node("CHILD", "A", "child", 2, false);
         BomExplosionNode grandchild = node("GRANDCHILD", "A", "grandchild", 3, false);
         child.setChildren(List.of(grandchild));
         parent.setChildren(List.of(child));
 
-        byte[] pdf = service.toPdf(bom, List.of(parent));
+        byte[] pdf = service.toPdfFromDto(dto, List.of(parent));
         assertThat(pdf).isNotEmpty();
     }
 
     @Test
-    void toPdf_handlesManyNodes_paginationPath() {
-        BillOfMaterials bom = new BillOfMaterials();
-        bom.setBomRevision("REV-MANY");
-        bom.setParentItemId(UUID.randomUUID());
-        bom.setOrgId(UUID.randomUUID());
-
+    void toPdfFromDto_handlesManyNodes_paginationPath() {
+        BomDto dto = bomDto(0);
         List<BomExplosionNode> nodes = new ArrayList<>();
         for (int i = 0; i < 60; i++) {
             nodes.add(node("PN-" + i, "A", "Part " + i + " description text here", 1, i % 5 == 0));
         }
 
-        byte[] pdf = service.toPdf(bom, nodes);
+        byte[] pdf = service.toPdfFromDto(dto, nodes);
         assertThat(pdf).isNotEmpty();
     }
 
@@ -156,8 +135,15 @@ class BomExportServiceTest {
 
         byte[] csv = service.toCsv(List.of(parent));
         String text = new String(csv, java.nio.charset.StandardCharsets.UTF_8);
-        // depth-2 node gets 2 spaces of indentation
         assertThat(text).contains("  CHILD");
+    }
+
+    private static BomDto bomDto(Integer revision) {
+        BomDto dto = new BomDto();
+        dto.setId(UUID.randomUUID());
+        dto.setRevision(revision);
+        dto.setRevisionStatus("DRAFT");
+        return dto;
     }
 
     private static BomExplosionNode node(String partNumber, String revision, String description,

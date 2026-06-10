@@ -19,22 +19,23 @@ public class EffectivityValidator {
         this.bomLineRepository = bomLineRepository;
     }
 
-    public void validateNewLine(UUID bomId, CreateBomLineRequest req) {
-        validateDateOverlap(bomId, req.getFindNumber(), req.getEffectivityMethod(),
+    public void validateNewLine(UUID bomRevisionId, CreateBomLineRequest req) {
+        validateDateOverlap(bomRevisionId, req.getFindNumber(), req.getEffectivityMethod(),
                 req.getEffectiveFromDate(), req.getEffectiveToDate(), null);
     }
 
-    public void validateUpdateLine(UUID bomId, String findNumber, EffectivityMethod method,
+    public void validateUpdateLine(UUID bomRevisionId, String findNumber, EffectivityMethod method,
                                    LocalDate fromDate, LocalDate toDate, UUID excludeLineId) {
-        validateDateOverlap(bomId, findNumber, method, fromDate, toDate, excludeLineId);
+        validateDateOverlap(bomRevisionId, findNumber, method, fromDate, toDate, excludeLineId);
     }
 
-    private void validateDateOverlap(UUID bomId, String findNumber, EffectivityMethod method,
+    private void validateDateOverlap(UUID bomRevisionId, String findNumber, EffectivityMethod method,
                                      LocalDate fromDate, LocalDate toDate, UUID excludeLineId) {
         if (method != EffectivityMethod.DATE) {
             return;
         }
-        List<BomLine> existing = bomLineRepository.findAllByBomIdAndFindNumber(bomId, findNumber);
+        List<BomLine> existing = bomLineRepository.findAllByBomRevisionIdAndFindNumber(
+                bomRevisionId, findNumber);
         LocalDate newFrom = fromDate;
         LocalDate newTo = toDate != null ? toDate : LocalDate.MAX;
 
@@ -45,8 +46,8 @@ public class EffectivityValidator {
                     || existingFrom == null) {
                 continue;
             }
-            LocalDate existingTo = line.getEffectiveToDate() != null ? line.getEffectiveToDate() : LocalDate.MAX;
-            // Overlap: newFrom <= existingTo AND existingFrom <= newTo
+            LocalDate existingTo = line.getEffectiveToDate() != null
+                    ? line.getEffectiveToDate() : LocalDate.MAX;
             if (!newFrom.isAfter(existingTo) && !existingFrom.isAfter(newTo)) {
                 throw new EffectivityOverlapException(findNumber, line.getId());
             }

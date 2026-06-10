@@ -6,16 +6,15 @@ import java.util.UUID;
 public class BomSummaryDto {
 
     private UUID bomId;
-    private String bomRevision;
-    private String bomStatus;
-    private String bomDescription;
+    private UUID bomRevisionId;
+    private Integer revision;
+    private String revisionStatus;
+    private boolean hasDraft;
+    private String description;
     private UUID parentItemId;
     private String partNumber;
-    private String revision;
-    private String itemDescription;
-    private String classification;
-    private String unitOfMeasure;
-    private String itemStatus;
+    private Integer itemRevision;
+    private String itemRevisionStatus;
     private String createdBy;
     private Instant createdAt;
 
@@ -27,28 +26,44 @@ public class BomSummaryDto {
         this.bomId = bomId;
     }
 
-    public String getBomRevision() {
-        return bomRevision;
+    public UUID getBomRevisionId() {
+        return bomRevisionId;
     }
 
-    public void setBomRevision(String bomRevision) {
-        this.bomRevision = bomRevision;
+    public void setBomRevisionId(UUID bomRevisionId) {
+        this.bomRevisionId = bomRevisionId;
     }
 
-    public String getBomStatus() {
-        return bomStatus;
+    public Integer getRevision() {
+        return revision;
     }
 
-    public void setBomStatus(String bomStatus) {
-        this.bomStatus = bomStatus;
+    public void setRevision(Integer revision) {
+        this.revision = revision;
     }
 
-    public String getBomDescription() {
-        return bomDescription;
+    public String getRevisionStatus() {
+        return revisionStatus;
     }
 
-    public void setBomDescription(String bomDescription) {
-        this.bomDescription = bomDescription;
+    public void setRevisionStatus(String revisionStatus) {
+        this.revisionStatus = revisionStatus;
+    }
+
+    public boolean isHasDraft() {
+        return hasDraft;
+    }
+
+    public void setHasDraft(boolean hasDraft) {
+        this.hasDraft = hasDraft;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public UUID getParentItemId() {
@@ -67,44 +82,20 @@ public class BomSummaryDto {
         this.partNumber = partNumber;
     }
 
-    public String getRevision() {
-        return revision;
+    public Integer getItemRevision() {
+        return itemRevision;
     }
 
-    public void setRevision(String revision) {
-        this.revision = revision;
+    public void setItemRevision(Integer itemRevision) {
+        this.itemRevision = itemRevision;
     }
 
-    public String getItemDescription() {
-        return itemDescription;
+    public String getItemRevisionStatus() {
+        return itemRevisionStatus;
     }
 
-    public void setItemDescription(String itemDescription) {
-        this.itemDescription = itemDescription;
-    }
-
-    public String getClassification() {
-        return classification;
-    }
-
-    public void setClassification(String classification) {
-        this.classification = classification;
-    }
-
-    public String getUnitOfMeasure() {
-        return unitOfMeasure;
-    }
-
-    public void setUnitOfMeasure(String unitOfMeasure) {
-        this.unitOfMeasure = unitOfMeasure;
-    }
-
-    public String getItemStatus() {
-        return itemStatus;
-    }
-
-    public void setItemStatus(String itemStatus) {
-        this.itemStatus = itemStatus;
+    public void setItemRevisionStatus(String itemRevisionStatus) {
+        this.itemRevisionStatus = itemRevisionStatus;
     }
 
     public String getCreatedBy() {

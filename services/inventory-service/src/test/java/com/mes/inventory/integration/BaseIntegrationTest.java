@@ -77,8 +77,10 @@ public abstract class BaseIntegrationTest {
             return role -> switch (role) {
                 case "SYSTEM_ADMIN" -> Set.of(
                         "item-master:records:view", "item-master:records:manage",
+                        "item-master:revisions:approve",
                         "item-master:bom:manage",  "item-master:udf:manage",
-                        "item-master:as5553:manage");
+                        "item-master:as5553:manage",
+                        "bom:revisions:approve");
                 case "ENGINEER" -> Set.of(
                         "item-master:records:view", "item-master:records:manage",
                         "item-master:bom:manage");
@@ -171,6 +173,12 @@ public abstract class BaseIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(token);
         return new HttpEntity<>(body, headers);
+    }
+
+    protected HttpEntity<?> bearerRequest(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        return new HttpEntity<>(headers);
     }
 
     protected static Map<String, Object> baseItemRequest(String partNumber, String revision) {

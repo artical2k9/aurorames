@@ -1,40 +1,49 @@
-export type BomStatus = 'DRAFT' | 'RELEASED' | 'OBSOLETE';
+export type RevisionStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED';
 
 export interface BomSummaryDto {
-  bomId:           string;
-  bomRevision:     string;
-  bomStatus:       BomStatus;
-  bomDescription:  string | null;
-  parentItemId:    string;
-  partNumber:      string;
-  revision:        string;
-  itemDescription: string;
-  classification:  string;
-  unitOfMeasure:   string | null;
-  itemStatus:      string;
-  createdBy:       string;
-  createdAt:       string;
-  customFields?:   Record<string, unknown>;
+  bomId:              string;
+  bomRevisionId:      string;
+  revision:           number;
+  revisionStatus:     RevisionStatus;
+  hasDraft:           boolean;
+  description:        string | null;
+  parentItemId:       string;
+  partNumber:         string;
+  itemRevision:       number;
+  itemRevisionStatus: string;
+  createdBy:          string;
+  createdAt:          string;
+  customFields?:      Record<string, unknown>;
 }
+
 export type EffectivityMethod = 'NONE' | 'DATE' | 'UNIT';
 
 export interface BomDto {
-  id: string;
-  orgId: string;
-  parentItemId: string;
-  bomRevision: string;
-  status: BomStatus;
-  description?: string;
-  ecoId?: string;
-  releasedBy?: string;
-  releasedAt?: string;
-  createdBy: string;
-  createdAt: string;
+  id:               string;
+  orgId:            string;
+  parentItemId:     string;
+  bomRevisionId:    string;
+  revision:         number;
+  revisionStatus:   RevisionStatus;
+  hasDraft:         boolean;
+  description?:     string;
+  ecoId?:           string;
   reasonForRevision?: string;
-  productionLine?: string;
-  bomType?: string;
+  productionLine?:  string;
+  bomType?:         string;
   effectivityType?: string;
-  customFields?: Record<string, unknown>;
+  customFields?:    Record<string, unknown>;
+  submittedBy?:     string;
+  submittedAt?:     string;
+  approvedBy?:      string;
+  approvedAt?:      string;
+  rejectedBy?:      string;
+  rejectedAt?:      string;
+  rejectionReason?: string;
+  createdBy:        string;
+  createdAt:        string;
+  modifiedBy?:      string;
+  modifiedAt?:      string;
 }
 
 export interface BomLineDto {
@@ -79,16 +88,15 @@ export interface BomExplosionNode {
 
 export interface CreateBomRequest {
   parentItemId: string;
-  bomRevision: string;
   description?: string;
   ecoId?: string;
 }
 
 export interface CreateBomLineRequest {
-  componentItemId: string;
+  componentItemRevisionId: string;
   quantity: number;
-  unitOfMeasure?: string;
-  findNumber?: string;
+  unitOfMeasure: string;
+  findNumber: string;
   referenceDesignators?: string;
   effectivityMethod?: EffectivityMethod;
   effectiveFromDate?: string;

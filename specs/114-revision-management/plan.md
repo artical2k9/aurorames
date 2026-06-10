@@ -1,0 +1,239 @@
+# Implementation Plan: Automated Revision Numbering — Item Master & BOM
+
+**Branch**: `114-revision-management` | **Date**: 2026-06-09 | **Spec**: [spec.md](spec.md)
+
+**Input**: Jira Epic MES-114 — P3 · Automated Revision Numbering — Item Master & BOM
+
+---
+
+## Summary
+
+Restructure `inventory-service` to separate item identity from item version data, and BOM identity from BOM version data, using a parent/child ("Option B") model. Replace free-form `VARCHAR(20)` revision fields with system-managed `INTEGER` sequences. Introduce a `RevisionStatus` lifecycle (`DRAFT → PENDING_APPROVAL → APPROVED`), enforced at the service layer. Migrate all existing rows via Flyway — each migrated row receives `revision_status = APPROVED` and a sequential integer starting at 0. New privileges `item-master:revisions:approve` and `bom:revisions:approve` are auto-granted to `SYSTEM_ADMIN` on service restart.
+
+---
+
+## Technical Context
+
+**Language/Version**: Java 21 (Eclipse Temurin) — matches existing inventory-service
+
+**Primary Dependencies**: Spring Boot 3.3, Spring Data JPA + Hibernate 6, Flyway, Hibernate Envers, Spring Kafka, lib-common-security, SpringDoc OpenAPI, Testcontainers
+
+**Storage**: PostgreSQL 16, schema `inventory` — existing schema; no new schema needed
+
+**Testing**: JUnit 5, Mockito (unit), Testcontainers PostgreSQL + Kafka (integration)
+
+**Target Platform**: Docker container — existing `inventory-service` deployment, port 8094
+
+**Project Type**: Schema refactoring + new API endpoints within existing REST microservice
+
+**Performance Goals**: `GET /api/v1/item-master` list ≤ 500 ms p95 (unchanged from MES-8 SC-001). BOM explosion ≤ 2 s p95 (unchanged).
+
+**Constraints**: Only one DRAFT revision per item/BOM at any time — enforced by PostgreSQL partial unique index. APPROVED revisions immutable. FK chain: `bom_line → bom_revision → bom → item (identity)`.
+
+**Scale/Scope**: No new service. Pure refactoring within `inventory-service`.
+
+---
+
+## Constitution Check
+
+| Gate | Principle | Status |
+|---|---|---|
+| Does this feature have an approved spec before this plan was created? | I — Spec-First | ✅ PASS — spec.md written and committed before plan created |
+| Are test tasks listed BEFORE implementation tasks for every user story? | II — TDD | ✅ PASS — tasks.md will follow Red-Green-Refactor order per template |
+| Is there a defect-registration step in the task list? | II — TDD | ✅ PASS — standard defect task included |
+| Has a human reviewed and approved this AI-generated plan? | III — AI-Approved | ⏳ PENDING — awaiting owner review |
+| Does the spec include a "Compliance References" section? | IV — Compliance by Design | ✅ PASS — AS9100D, AS9102, ISA-95 cited |
+| Are all affected AS / ISA / NIST standards cited? | IV — Compliance by Design | ✅ PASS — see spec Compliance References table |
+| Do all data mutations produce an audit log entry? | V — Auditability | ✅ PASS — Envers `@Audited` on all new entities; `approved_by`/`approved_at` fields; Kafka events |
+| Do new data models map to ISA-95 Part 2? | VI — ISA-95/ISA-88 | ✅ PASS — `item` = Material Class identity; `item_revision` = versioned Material Class; `bom_revision` = Process Segment version |
+| Is authentication delegated to Keycloak? | VII — Security-First | ✅ PASS — no auth changes; existing JWT + lib-common-security |
+| Is all data scoped by `organisation_id`? | IX — Multi-Org Isolation | ✅ PASS — `org_id` on `item` and `bom` identity tables; all queries filter by org_id from JWT |
+| Are integration endpoints idempotent? | VIII — Integration Integrity | ✅ PASS — submit/approve are idempotent (409 if already in target status); Kafka events carry UUID dedup key |
+| Are shop floor timestamps from source? | X — Data Accuracy | N/A — configuration data, not real-time shop floor |
+
+---
+
+## Complexity Tracking
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|---|---|---|
+| Schema migration replaces two core tables | AS9100D §8.4.3 requires immutable approved revisions with integer sequences | Keeping VARCHAR revision and layering status on top would still allow duplicate revision strings; index constraints on text are fragile |
+| `bom_line` FK changes from `bom_id → bill_of_materials` to `bom_revision_id → bom_revision` | BOM lines must belong to a specific revision, not just the BOM identity — this is the core traceability requirement | Keeping `bom_id` and adding `bom_revision_id` as optional would create ambiguity and require dual-path logic in explosion service |
+
+---
+
+## Project Structure
+
+### Documentation (this feature)
+
+```
+specs/114-revision-management/
+├── plan.md           ← this file
+├── research.md       ← Phase 0 decisions
+├── data-model.md     ← entity definitions, DDL, migration sequence
+├── quickstart.md     ← dev notes for local migration testing
+├── contracts/
+│   └── inventory-service-revision-api.yaml
+└── tasks.md          ← generated by /speckit-tasks (not yet created)
+```
+
+### Modified Source Directories
+
+```
+services/inventory-service/
+└── src/
+    ├── main/
+    │   ├── java/com/mes/inventory/
+    │   │   ├── itemmaster/
+    │   │   │   ├── domain/
+    │   │   │   │   ├── Item.java                 NEW — identity entity
+    │   │   │   │   ├── ItemRevision.java          NEW — versioned entity
+    │   │   │   │   └── RevisionStatus.java        NEW — DRAFT/PENDING_APPROVAL/APPROVED
+    │   │   │   ├── repository/
+    │   │   │   │   ├── ItemRepository.java        NEW
+    │   │   │   │   └── ItemRevisionRepository.java NEW
+    │   │   │   ├── service/
+    │   │   │   │   └── ItemMasterService.java     MODIFIED — revision workflow
+    │   │   │   └── api/
+    │   │   │       ├── ItemMasterController.java  MODIFIED — new endpoints
+    │   │   │       └── dto/
+    │   │   │           ├── ItemRevisionDto.java   NEW
+    │   │   │           └── ItemRevisionMapper.java NEW
+    │   │   └── bom/
+    │   │       ├── domain/
+    │   │       │   ├── Bom.java                  NEW — identity entity
+    │   │       │   └── BomRevision.java           NEW — versioned entity
+    │   │       ├── repository/
+    │   │       │   ├── BomRepository.java         MODIFIED — split
+    │   │       │   └── BomRevisionRepository.java NEW
+    │   │       ├── service/
+    │   │       │   └── BomService.java            MODIFIED — revision workflow
+    │   │       └── api/
+    │   │           ├── BomController.java         MODIFIED — new endpoints
+    │   │           └── dto/
+    │   │               └── BomRevisionDto.java    NEW
+    │   └── resources/db/migration/
+    │       ├── V014__create_item_revision_tables.sql   NEW
+    │       ├── V015__migrate_item_master_to_revisions.sql NEW
+    │       ├── V016__create_item_revision_envers.sql   NEW
+    │       ├── V017__create_bom_revision_tables.sql    NEW
+    │       ├── V018__migrate_bom_to_revisions.sql      NEW
+    │       ├── V019__create_bom_revision_envers.sql    NEW
+    │       ├── V020__migrate_bom_line_fks.sql          NEW
+    │       ├── V021__update_bom_line_envers.sql        NEW
+    │       └── V022__drop_legacy_tables.sql             NEW
+    └── test/
+        └── java/com/mes/inventory/
+            ├── unit/itemmaster/
+            │   └── ItemRevisionServiceTest.java   NEW
+            └── integration/
+                ├── itemmaster/ItemRevisionIT.java NEW
+                └── bom/BomRevisionIT.java         NEW
+
+frontend/angular/src/app/features/
+├── item-master/
+│   ├── models/item-master.model.ts               MODIFIED — add RevisionStatus, ItemRevisionDto
+│   ├── pages/
+│   │   ├── item-master-list/                      MODIFIED — revision status badge + hasDraft flag
+│   │   ├── item-master-edit/                      MODIFIED — workflow buttons (Submit / Cancel Draft)
+│   │   └── item-master-detail/                    MODIFIED — Approve button + revision badge
+│   └── services/item-master-api.service.ts        MODIFIED — submit/approve/cancel endpoints
+└── bom/
+    ├── models/bom.model.ts                        MODIFIED — add RevisionStatus, BomRevisionDto
+    ├── pages/
+    │   ├── bom-browser/                            MODIFIED — revision status badge + hasDraft flag
+    │   └── bom-authoring/                         MODIFIED — workflow buttons
+    └── services/bom-api.service.ts                MODIFIED — submit/approve/cancel endpoints
+```
+
+---
+
+## Phase 0 — Research
+
+See [research.md](research.md) for full decisions. Key outcomes:
+
+1. **Schema approach** — Option B (parent/child) chosen. Avoids the fragility of VARCHAR revision dedup; enables clean revision history without Envers traversal.
+2. **Migration strategy** — Flyway data migration scripts (V015, V018, V020); all migrated rows get `revision_status = APPROVED`, `revision` integer assigned by `ROW_NUMBER() OVER (PARTITION BY org_id, part_number ORDER BY created_at ASC) - 1`.
+3. **Envers** — Old `item_master_aud` and `bill_of_materials_aud` tables are renamed to `*_legacy` (not dropped). New `@Audited` entities get new `_aud` tables (V016, V019). This preserves pre-migration audit history.
+4. **One-draft constraint** — PostgreSQL partial unique index `WHERE revision_status = 'DRAFT'` on `(item_id)` and `(bom_id)` respectively. No application-layer lock needed.
+5. **APPROVED immutability** — service rejects PATCH on an approved revision with HTTP 409. A new DRAFT is auto-created at `max(approved_revision) + 1`.
+6. **API URL compatibility** — Existing `/api/v1/item-master/**` and `/api/v1/boms/**` URLs preserved. New revision workflow endpoints added at `/api/v1/item-master/{id}/submit`, `/approve`, `/draft` (DELETE). No breaking URL changes.
+7. **BOM auto-copy on edit** — When editing an APPROVED BOM, `BomService.createDraft()` copies all `bom_line` rows from the last APPROVED revision into the new DRAFT revision. This preserves the "working" configuration.
+8. **Kafka events** — Two new event types: `ITEM_REVISION_APPROVED` and `BOM_REVISION_APPROVED` published to existing topics (`work-order.item-master.events`, `work-order.bom.events`).
+9. **Envers note (ERR-MES-057)** — Every new `@Audited` entity requires a corresponding `_aud` table in the same migration that creates the entity table. V016 and V019 handle this.
+10. **Old tables** — `item_master` and `bill_of_materials` are renamed to `*_old` after migration, then dropped in V022 after FK constraints are validated.
+
+---
+
+## Phase 1 — Design
+
+See [data-model.md](data-model.md) for full entity definitions and SQL DDL.
+See [contracts/inventory-service-revision-api.yaml](contracts/inventory-service-revision-api.yaml) for full OpenAPI contract.
+
+### Flyway Migration Sequence
+
+| Migration | Contents |
+|---|---|
+| V014 | CREATE `inventory.item` (identity) + `inventory.item_revision` (versioned data) tables |
+| V015 | DATA: INSERT into `item` + `item_revision` from `item_master`; revision = ROW_NUMBER()-1 ordered by `created_at` per `(org_id, part_number)` group; `revision_status = 'APPROVED'` |
+| V016 | CREATE `item_aud`, `item_revision_aud` Envers tables; RENAME `item_master_aud` → `item_master_aud_legacy` |
+| V017 | CREATE `inventory.bom` (identity) + `inventory.bom_revision` (versioned data) tables; FK `bom.parent_item_id → inventory.item` |
+| V018 | DATA: INSERT into `bom` + `bom_revision` from `bill_of_materials`; revision = ROW_NUMBER()-1 ordered by `created_at` per `(org_id, parent_item_id)` group; `revision_status = 'APPROVED'` |
+| V019 | CREATE `bom_aud`, `bom_revision_aud` Envers tables; RENAME `bill_of_materials_aud` → `bill_of_materials_aud_legacy` |
+| V020 | ALTER `bom_line`: ADD `bom_revision_id` UUID NULL, ADD `component_item_revision_id` UUID NULL; UPDATE both columns from migration mapping tables; ADD FKs; DROP OLD FKs `bom_id` + `component_item_id`; ALTER NOT NULL |
+| V021 | ADD `bom_revision_id` + `component_item_revision_id` columns to `bom_line_aud`; REMOVE old audit columns `bom_id` + `component_item_id` from `bom_line_aud` |
+| V022 | DROP TABLE `inventory.bill_of_materials`; DROP TABLE `inventory.item_master` — privilege registration handled automatically by `InventoryServiceApplication` manifest on startup via ERR-MES-075 auto-grant; no SQL INSERT needed |
+
+### New Privilege Registration
+
+New keys added to `InventoryServiceApplication` startup manifest:
+
+```json
+{ "privilegeKey": "item-master:revisions:approve", "description": "Submit item master drafts for approval and approve pending revisions" },
+{ "privilegeKey": "bom:revisions:approve",          "description": "Submit BOM drafts for approval and approve pending revisions" }
+```
+
+**Role–Privilege Matrix** (new privileges only):
+
+| Privilege | SYSTEM_ADMIN | ENGINEER | QUALITY_ENGINEER |
+|---|---|---|---|
+| `item-master:revisions:approve` | ✅ | — | — |
+| `bom:revisions:approve` | ✅ | — | — |
+
+### Key Service-Layer Rules
+
+- **One draft at a time**: `ItemRevisionRepository.findByItemIdAndStatus(itemId, DRAFT)` — if present, reject new draft with HTTP 409.
+- **APPROVED immutability**: `ItemMasterService.patch()` checks `revision.getRevisionStatus() == APPROVED` → HTTP 409 ("Approved revisions are immutable — create a new draft").
+- **Auto-copy BOM lines**: `BomService.createDraft(bomId)` copies all `BomLine` rows from `lastApprovedRevision` into the new draft `BomRevision`. Component item revision FKs are preserved (they reference specific approved item revisions).
+- **Component validation**: `BomService.addLine()` verifies `componentItemRevisionId` resolves to an `ItemRevision` with `revisionStatus == APPROVED`; HTTP 422 if not.
+- **Submit**: sets `revisionStatus = PENDING_APPROVAL`, `submittedBy = actor`, `submittedAt = now()`.
+- **Approve**: sets `revisionStatus = APPROVED`, `approvedBy = actor`, `approvedAt = now()`; publishes Kafka event.
+- **Cancel draft**: hard-deletes the DRAFT `ItemRevision` or `BomRevision` (+ cascade deletes `BomLine` rows for BOM drafts); HTTP 204.
+
+### Kafka Events (additions)
+
+```json
+{
+  "eventType": "ITEM_REVISION_APPROVED | BOM_REVISION_APPROVED",
+  "entityType": "ItemRevision | BomRevision",
+  "entityId": "uuid (revision id)",
+  "orgId": "uuid",
+  "actorId": "keycloak-sub",
+  "occurredAt": "ISO-8601",
+  "payload": { "itemId": "...", "revision": 0, "approvedBy": "...", "approvedAt": "..." }
+}
+```
+
+---
+
+## PR Strategy
+
+| PR | Phases | Scope | CI Anchor | Notes |
+|---|---|---|---|---|
+| PR 1 | Backend — Item | V014–V016 + `Item`, `ItemRevision`, `RevisionStatus` entities + `ItemRevisionRepository` + `ItemMasterService` revision methods + Controller endpoints (submit, approve, cancel draft, list revisions) + unit + IT | `./gradlew :services:inventory-service:check` | Depends on Develop. Includes Envers tables (V016) per ERR-MES-057. Migration must not break existing IT suite. |
+| PR 2 | Backend — BOM | V017–V022 + `Bom`, `BomRevision` entities + `BomRevisionRepository` + `BomService` revision methods + BOM line FK migration + Controller revision endpoints + unit + IT | `./gradlew :services:inventory-service:check` | Depends on PR 1 merged. V020 (bom_line FK migration) is the high-risk migration — must be tested against a populated DB in IT. |
+| PR 3 | Frontend — Item | Update item master TypeScript models + item-master-list (revision badge + hasDraft flag) + item-master-edit (Submit / Cancel Draft buttons) + item-master-detail (Approve button) + api.service methods | `ng build --configuration=production` | Depends on PR 1 merged. Backend endpoints must be live. |
+| PR 4 | Frontend — BOM | Update BOM TypeScript models + bom-browser (revision badge) + bom-authoring (Submit / Approve / Cancel Draft) + bom-api.service methods | `ng build --configuration=production` | Depends on PR 2 and PR 3 merged. |
+| PR 5 | P2 — History | `GET /api/v1/item-master/{id}/revisions` + `GET /api/v1/boms/{id}/revisions` backend endpoints + IT + optional frontend revision history tab | `./gradlew :services:inventory-service:check` | Depends on PR 1 + PR 2 merged. P2 priority — can be deferred post-P1 PRs. |
+
+**Sequencing note**: PR 3 and PR 4 are frontend-only and can be raised independently once their respective backend PRs (PR 1 and PR 2) are merged to Develop. PR 5 is explicitly P2 and should not block the P1 PRs from shipping.

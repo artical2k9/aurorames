@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at:
-specs/111-service-decomposition/plan.md
+specs/114-revision-management/plan.md
 <!-- SPECKIT END -->
 
 ## Branching Strategy
@@ -413,6 +413,24 @@ Before writing a private helper method with branching logic in a controller or s
 Before raising any PR that adds private methods to a controller:
 - Grep the diff for `private static` or `private` methods with `if`/ternary branches.
 - For each match: confirm a unit test covers all branches — either directly or via a shared utility's tests.
+
+---
+
+## Integration Test Inheritance — Mandatory
+
+**ERR-MES-080:** JUnit 5 inherits `@Test` methods from superclasses. An IT class that extends another concrete IT class (e.g. `extends ItemMasterControllerIT`) re-runs all the parent's `@Test` methods in its own context. The Testcontainers DB is shared with no rollback between classes, so part numbers inserted by the parent run are still present — every inherited POST that creates the same part number gets 409 CONFLICT. This cascades to the subclass's own tests because their `createItemAndGetId()` setup calls also fail.
+
+### Rule — IT classes must extend BaseIntegrationTest directly
+
+Every integration test class **must** extend `BaseIntegrationTest` and never extend another concrete IT class that contains `@Test` methods. Inline all helpers (`engineerToken`, `createItemAndGetId`, etc.) within the class.
+
+### Pre-PR check for any PR adding new IT classes
+
+Before raising any PR that adds or modifies integration test classes:
+```bash
+grep -rn "extends.*IT\b" services/ --include="*IT.java"
+```
+Every match where the parent is a concrete IT class (not `BaseIntegrationTest`) is a violation — fix before raising the PR.
 
 ---
 

@@ -6,19 +6,23 @@ import { ActivatedRoute } from '@angular/router';
 import { of } from 'rxjs';
 import { ItemMasterCreateComponent } from './item-master-create.component';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
-import { UdfApiService } from '../../services/udf-api.service';
+import { UdfApiService } from '../../../../shared/udf/udf-api.service';
+import { PlatformApiService } from '../../../../shared/platform';
+import { BreadcrumbService } from '../../../../shared/ui';
 
 const MOCK_ITEM = {
   id: 'abc-123',
+  revisionId: 'rev-1',
   orgId: 'org-1',
   partNumber: 'PN-001',
-  revision: 'A',
+  revision: 0,
+  revisionStatus: 'APPROVED' as const,
+  hasDraft: false,
   description: 'Test part',
   unitOfMeasure: 'EA',
   classification: 'ASSEMBLY' as const,
   makeBuyCode: 'MAKE' as const,
   traceabilityMethod: 'SERIAL' as const,
-  status: 'ACTIVE' as const,
   shelfLifeControlled: false,
   verificationRequired: false,
   createdBy: 'user',
@@ -38,9 +42,9 @@ describe('ItemMasterCreateComponent', () => {
     create: vi.fn().mockReturnValue(of(CREATED_ITEM)),
   };
 
-  const mockUdf = {
-    listFields: vi.fn().mockReturnValue(of([])),
-  };
+  const mockUdf        = { listFields: vi.fn().mockReturnValue(of([])) };
+  const mockPlatform   = { listUom: vi.fn().mockReturnValue(of([])) };
+  const mockBreadcrumb = { set: vi.fn() };
 
   function setupComponent(queryParams: Record<string, string> = {}) {
     TestBed.overrideProvider(ActivatedRoute, {
@@ -62,13 +66,11 @@ describe('ItemMasterCreateComponent', () => {
         provideRouter([]),
         { provide: ItemMasterApiService, useValue: mockApi },
         { provide: UdfApiService, useValue: mockUdf },
+        { provide: PlatformApiService, useValue: mockPlatform },
+        { provide: BreadcrumbService, useValue: mockBreadcrumb },
         {
           provide: ActivatedRoute,
-          useValue: {
-            snapshot: {
-              queryParamMap: { get: () => null },
-            },
-          },
+          useValue: { snapshot: { queryParamMap: { get: () => null } } },
         },
       ],
     }).compileComponents();
@@ -87,18 +89,20 @@ describe('ItemMasterCreateComponent', () => {
   it('canSave() returns false when form valid but no Make/Buy selected', () => {
     setupComponent();
     component.form.patchValue({
-      partNumber: 'PN-001', revision: 'A', description: 'Desc',
-      unitOfMeasure: 'EA', classification: 'ASSEMBLY', traceabilityMethod: 'SERIAL',
+      partNumber: 'PN-001', description: 'Desc',
+      unitOfMeasure: 'EA', classification: 'ASSEMBLY',
     });
+    component.toggleTrace('SERIAL');
     expect(component.canSave()).toBe(false);
   });
 
-  it('canSave() returns true when form valid and Make selected', () => {
+  it('canSave() returns true when form valid, Make selected, and traceability set', () => {
     setupComponent();
     component.form.patchValue({
-      partNumber: 'PN-001', revision: 'A', description: 'Desc',
-      unitOfMeasure: 'EA', classification: 'ASSEMBLY', traceabilityMethod: 'SERIAL',
+      partNumber: 'PN-001', description: 'Desc',
+      unitOfMeasure: 'EA', classification: 'ASSEMBLY',
     });
+    component.toggleTrace('SERIAL');
     component.toggleMake();
     expect(component.canSave()).toBe(true);
   });
@@ -121,11 +125,10 @@ describe('ItemMasterCreateComponent', () => {
     expect(spy).toHaveBeenCalledWith(['/item-master']);
   });
 
-  it('pre-fills form on cloneFrom query param (excluding partNumber/revision)', () => {
+  it('pre-fills form on cloneFrom query param (excluding partNumber)', () => {
     setupComponent({ cloneFrom: 'abc-123' });
     expect(component.form.value.description).toBe('Test part');
     expect(component.form.value.partNumber).toBe('');
-    expect(component.form.value.revision).toBe('');
     expect(component.makeActive).toBe(true);
     expect(component.buyActive).toBe(false);
   });

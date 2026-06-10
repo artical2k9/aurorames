@@ -5,7 +5,7 @@ import com.mes.udf.api.JwtClaimsExtractor;
 import com.mes.inventory.bom.api.dto.BomDto;
 import com.mes.inventory.bom.api.dto.BomExplosionNode;
 import com.mes.inventory.bom.api.dto.BomLineDto;
-import com.mes.inventory.bom.api.dto.BomMapper;
+import com.mes.inventory.bom.api.dto.BomRevisionSummaryDto;
 import com.mes.inventory.bom.api.dto.BomSummaryDto;
 import com.mes.inventory.bom.api.dto.CreateBomLineRequest;
 import com.mes.inventory.bom.api.dto.CreateBomRequest;
@@ -14,7 +14,10 @@ import com.mes.inventory.bom.api.dto.UpdateBomLineRequest;
 import com.mes.inventory.bom.service.BomExplosionService;
 import com.mes.inventory.bom.service.BomExportService;
 import com.mes.inventory.bom.service.BomService;
+import com.mes.inventory.itemmaster.api.dto.RejectRevisionRequest;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -35,9 +38,6 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 
 @RestController
 @RequestMapping("/api/v1/boms")
@@ -61,10 +61,10 @@ public class BomController {
             @Valid @RequestBody CreateBomRequest request) {
 
         var orgId = JwtClaimsExtractor.orgId(jwt);
-        var bom = bomService.createBom(orgId, request);
+        var dto = bomService.createBom(orgId, request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}").buildAndExpand(bom.getId()).toUri();
-        return ResponseEntity.created(location).body(BomMapper.toDto(bom));
+                .path("/{id}").buildAndExpand(dto.getId()).toUri();
+        return ResponseEntity.created(location).body(dto);
     }
 
     @GetMapping("/{bomId}")
@@ -73,17 +73,48 @@ public class BomController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID bomId) {
 
-        return BomMapper.toDto(bomService.getBom(JwtClaimsExtractor.orgId(jwt), bomId));
+        return bomService.getBom(JwtClaimsExtractor.orgId(jwt), bomId);
     }
 
-    @PostMapping("/{bomId}/release")
+    @PostMapping("/{bomId}/submit")
     @RequiresPrivilege("item-master:bom:manage")
-    public BomDto releaseBom(
+    public BomDto submitDraft(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID bomId) {
 
-        return BomMapper.toDto(bomService.releaseBom(JwtClaimsExtractor.orgId(jwt), bomId,
-                JwtClaimsExtractor.nullSafeSubject(jwt)));
+        return bomService.submitDraft(JwtClaimsExtractor.orgId(jwt), bomId,
+                JwtClaimsExtractor.nullSafeSubject(jwt));
+    }
+
+    @PostMapping("/{bomId}/approve")
+    @RequiresPrivilege("bom:revisions:approve")
+    public BomDto approveDraft(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID bomId) {
+
+        return bomService.approveDraft(JwtClaimsExtractor.orgId(jwt), bomId,
+                JwtClaimsExtractor.nullSafeSubject(jwt));
+    }
+
+    @PostMapping("/{bomId}/reject")
+    @RequiresPrivilege("bom:revisions:approve")
+    public BomDto rejectDraft(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID bomId,
+            @Valid @RequestBody RejectRevisionRequest request) {
+
+        return bomService.rejectDraft(JwtClaimsExtractor.orgId(jwt), bomId,
+                JwtClaimsExtractor.nullSafeSubject(jwt), request.getRejectionReason());
+    }
+
+    @DeleteMapping("/{bomId}/draft")
+    @RequiresPrivilege("item-master:bom:manage")
+    public ResponseEntity<Void> cancelDraft(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID bomId) {
+
+        bomService.cancelDraft(JwtClaimsExtractor.orgId(jwt), bomId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{bomId}/lines")
@@ -103,10 +134,10 @@ public class BomController {
             @Valid @RequestBody CreateBomLineRequest request) {
 
         var orgId = JwtClaimsExtractor.orgId(jwt);
-        var line = bomService.addLine(orgId, bomId, request);
+        var dto = bomService.addLine(orgId, bomId, request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
-                .path("/{id}").buildAndExpand(line.getId()).toUri();
-        return ResponseEntity.created(location).body(bomService.enrichLine(line));
+                .path("/{id}").buildAndExpand(dto.getId()).toUri();
+        return ResponseEntity.created(location).body(dto);
     }
 
     @PatchMapping("/{bomId}/lines/{lineId}")
@@ -118,17 +149,7 @@ public class BomController {
             @Valid @RequestBody UpdateBomLineRequest request) {
 
         var orgId = JwtClaimsExtractor.orgId(jwt);
-        return bomService.enrichLine(bomService.updateLine(orgId, bomId, lineId, request));
-    }
-
-    @GetMapping
-    @RequiresPrivilege("item-master:bom:manage")
-    public List<BomDto> listForItem(
-            @AuthenticationPrincipal Jwt jwt,
-            @RequestParam UUID parentItemId) {
-
-        return bomService.listByItem(JwtClaimsExtractor.orgId(jwt), parentItemId).stream()
-                .map(BomMapper::toDto).toList();
+        return bomService.updateLine(orgId, bomId, lineId, request);
     }
 
     @GetMapping("/headers")
@@ -139,7 +160,7 @@ public class BomController {
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        var pageable = PageRequest.of(page, size);
         return bomService.listSummaries(JwtClaimsExtractor.orgId(jwt), search, pageable);
     }
 
@@ -161,7 +182,7 @@ public class BomController {
             @PathVariable UUID bomId,
             @Valid @RequestBody PatchBomHeaderRequest request) {
 
-        return BomMapper.toDto(bomService.patchHeader(JwtClaimsExtractor.orgId(jwt), bomId, request));
+        return bomService.patchHeader(JwtClaimsExtractor.orgId(jwt), bomId, request);
     }
 
     @GetMapping("/{bomId}/explosion")
@@ -174,7 +195,18 @@ public class BomController {
             @RequestParam(required = false) String asOfUnit,
             @RequestParam(required = false, defaultValue = "0") int maxDepth) {
 
-        return explosionService.explode(JwtClaimsExtractor.orgId(jwt), bomId, format, asOfDate, asOfUnit, maxDepth);
+        return explosionService.explode(JwtClaimsExtractor.orgId(jwt), bomId, format,
+                asOfDate, asOfUnit, maxDepth);
+    }
+
+    /** T086 — Revision history for a BOM, ordered by revision ASC. */
+    @GetMapping("/{bomId}/revisions")
+    @RequiresPrivilege("item-master:bom:manage")
+    public List<BomRevisionSummaryDto> listRevisions(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID bomId) {
+
+        return bomService.listRevisions(JwtClaimsExtractor.orgId(jwt), bomId);
     }
 
     @GetMapping("/{bomId}/explosion/download")
@@ -190,10 +222,10 @@ public class BomController {
 
         var orgId = JwtClaimsExtractor.orgId(jwt);
         var nodes = explosionService.explode(orgId, bomId, format, asOfDate, asOfUnit, maxDepth);
-        var bom = bomService.getBom(orgId, bomId);
+        var dto = bomService.getBom(orgId, bomId);
 
         if ("pdf".equalsIgnoreCase(download)) {
-            byte[] pdf = exportService.toPdf(bom, nodes);
+            byte[] pdf = exportService.toPdfFromDto(dto, nodes);
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION,
                             "attachment; filename=\"bom-" + bomId + ".pdf\"")

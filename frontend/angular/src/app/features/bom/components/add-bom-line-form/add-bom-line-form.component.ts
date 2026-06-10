@@ -50,14 +50,14 @@ import { debounceTime, distinctUntilChanged, Subject, switchMap } from 'rxjs';
                 <div class="ablf__suggestion">
                   <span class="ablf__suggestion-pn">{{ item.partNumber }}</span>
                   <span class="ablf__suggestion-rev">Rev {{ item.revision }}</span>
-                  <span class="ablf__suggestion-desc">{{ item.description }}</span>
+                  <span class="ablf__suggestion-desc">— {{ item.description }}</span>
                 </div>
               </ng-template>
             </p-autocomplete>
           </div>
 
           <div class="ablf__field">
-            <label>Find #</label>
+            <label>Find # <span class="ablf__req">*</span></label>
             <input pInputText formControlName="findNumber" placeholder="e.g. 10" />
           </div>
 
@@ -67,7 +67,7 @@ import { debounceTime, distinctUntilChanged, Subject, switchMap } from 'rxjs';
           </div>
 
           <div class="ablf__field">
-            <label>Unit</label>
+            <label>Unit <span class="ablf__req">*</span></label>
             <input pInputText formControlName="unitOfMeasure"
                    [attr.readonly]="true" placeholder="—"
                    title="Inherited from item master" class="ablf__uom-readonly" />
@@ -149,7 +149,7 @@ export class AddBomLineFormComponent implements OnInit {
   suggestions: ItemMasterDto[] = [];
   serverError = '';
   saving = false;
-  selectedItemId = '';
+  selectedRevisionId = '';
 
   private readonly searchSubject = new Subject<string>();
 
@@ -160,10 +160,10 @@ export class AddBomLineFormComponent implements OnInit {
   ];
 
   form = this.fb.group({
-    componentSearch: [null as ItemMasterDto | null],
-    findNumber:         [''],
+    componentSearch:    [null as ItemMasterDto | null],
+    findNumber:         ['', Validators.required],
     quantity:           [null as number | null, Validators.required],
-    unitOfMeasure:      [''],
+    unitOfMeasure:      ['', Validators.required],
     effectivityMethod:  ['NONE' as EffectivityMethod],
     effectiveFromDate:  [null as Date | null],
     effectiveToDate:    [null as Date | null],
@@ -180,7 +180,7 @@ export class AddBomLineFormComponent implements OnInit {
     this.searchSubject.pipe(
       debounceTime(250),
       distinctUntilChanged(),
-      switchMap(q => this.itemApi.list({ search: q, page: 0, size: 10 })),
+      switchMap(q => this.itemApi.list({ search: q, page: 0, size: 10, revisionStatus: 'APPROVED' })),
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(page => { this.suggestions = page.content; this.cdr.detectChanges(); });
   }
@@ -191,12 +191,15 @@ export class AddBomLineFormComponent implements OnInit {
 
   onItemSelect(event: AutoCompleteSelectEvent): void {
     const item = event.value as ItemMasterDto;
-    this.selectedItemId = item.id;
+    this.selectedRevisionId = item.revisionId;
     this.form.patchValue({ unitOfMeasure: item.unitOfMeasure ?? '' });
   }
 
   canSave(): boolean {
-    return !!this.selectedItemId && this.form.get('quantity')?.valid === true;
+    return !!this.selectedRevisionId
+      && this.form.get('quantity')?.valid === true
+      && !!this.form.get('findNumber')?.value?.trim()
+      && !!this.form.get('unitOfMeasure')?.value?.trim();
   }
 
   cancel(): void {
@@ -212,10 +215,10 @@ export class AddBomLineFormComponent implements OnInit {
       d ? d.toISOString().substring(0, 10) : undefined;
 
     const req: CreateBomLineRequest = {
-      componentItemId: this.selectedItemId,
+      componentItemRevisionId: this.selectedRevisionId,
       quantity: v.quantity!,
-      unitOfMeasure: v.unitOfMeasure || undefined,
-      findNumber: v.findNumber || undefined,
+      unitOfMeasure: v.unitOfMeasure!,
+      findNumber: v.findNumber!,
       referenceDesignators: v.referenceDesignators || undefined,
       effectivityMethod: (v.effectivityMethod as EffectivityMethod) || undefined,
       effectiveFromDate: this.effectivity === 'DATE' ? formatDate(v.effectiveFromDate) : undefined,

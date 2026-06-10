@@ -1,4 +1,4 @@
-import { Component, EventEmitter, inject, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, inject, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -19,7 +19,8 @@ import { BomDto, PatchBomHeaderRequest } from '../../models/bom.model';
     UdfFieldsComponent,
   ],
   template: `
-    <p-dialog header="Edit BOM Header" [(visible)]="visible" [modal]="true"
+    <p-dialog [header]="'Edit BOM Header' + (bom ? ' — Rev ' + bom.revision : '')"
+              [(visible)]="visible" [modal]="true"
               [style]="{ width: '500px' }"
               (visibleChange)="visibleChange.emit($event)">
 
@@ -28,11 +29,11 @@ import { BomDto, PatchBomHeaderRequest } from '../../models/bom.model';
       }
 
       @if (bom) {
-        <form [formGroup]="form" class="bhd__form">
+        <form [formGroup]="form" class="bhd__form" [class.bhd__form--readonly]="bom.revisionStatus !== 'DRAFT'">
 
           <div class="bhd__field">
-            <label>Part Number</label>
-            <span class="bhd__readonly">🔒 {{ bom.parentItemId }}</span>
+            <label>BOM Revision</label>
+            <span class="bhd__readonly">Rev {{ bom.revision }} · {{ bom.revisionStatus }}</span>
           </div>
 
           <div class="bhd__field">
@@ -79,12 +80,15 @@ import { BomDto, PatchBomHeaderRequest } from '../../models/bom.model';
         <p-button label="Cancel" severity="secondary" size="small"
                   (onClick)="close()" />
         <p-button label="Save Changes" severity="primary" size="small"
-                  [loading]="saving" (onClick)="save()" />
+                  [loading]="saving"
+                  [disabled]="bom?.revisionStatus !== 'DRAFT'"
+                  (onClick)="save()" />
       </ng-template>
     </p-dialog>
   `,
   styles: [`
     .bhd__form { display: flex; flex-direction: column; gap: 0.75rem; }
+    .bhd__form--readonly { pointer-events: none; opacity: 0.65; }
     .bhd__field { display: flex; flex-direction: column; gap: 0.25rem; }
     .bhd__readonly { font-size: 0.8125rem; color: var(--p-text-muted-color); }
     .bhd__section-header {
@@ -103,6 +107,7 @@ export class BomHeaderEditDialogComponent implements OnChanges {
 
   private readonly bomApi = inject(BomApiService);
   private readonly fb = inject(FormBuilder);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   saving = false;
   serverError = '';
@@ -170,10 +175,12 @@ export class BomHeaderEditDialogComponent implements OnChanges {
       next: bom => {
         this.saving = false;
         this.saved.emit(bom);
+        this.cdr.detectChanges();
       },
       error: (err: { status: number; error?: { message?: string } }) => {
         this.saving = false;
         this.serverError = err.error?.message ?? 'Failed to save';
+        this.cdr.detectChanges();
       },
     });
   }

@@ -10,12 +10,13 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { TextareaModule } from 'primeng/textarea';
 import { MessageModule } from 'primeng/message';
 import { SkeletonModule } from 'primeng/skeleton';
+import { TagModule } from 'primeng/tag';
 import { BreadcrumbService } from '../../../../shared/ui';
-import { StatusBadgeComponent } from '../../../../shared/ui/status-badge/status-badge.component';
 import { UdfFieldsComponent } from '../../../../shared/udf/udf-fields.component';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
 import {
   ItemMasterDto, Classification, CounterfeitRiskLevel, MakeBuyCode, TraceabilityMethod,
+  RevisionStatus,
 } from '../../models/item-master.model';
 import { PlatformApiService } from '../../../../shared/platform';
 
@@ -26,7 +27,7 @@ import { PlatformApiService } from '../../../../shared/platform';
     CommonModule, ReactiveFormsModule,
     ButtonModule, InputTextModule, SelectModule,
     ToggleSwitchModule, InputNumberModule, TextareaModule, MessageModule, SkeletonModule,
-    StatusBadgeComponent, UdfFieldsComponent,
+    TagModule, UdfFieldsComponent,
   ],
   template: `
     <div class="imed">
@@ -35,17 +36,20 @@ import { PlatformApiService } from '../../../../shared/platform';
         <div class="imed__title-row">
           @if (item) {
             <h2 class="imed__title">{{ item.partNumber }} / Rev {{ item.revision }}</h2>
-            <app-status-badge [status]="item.status" />
+            <p-tag [value]="revisionStatusLabel(item.revisionStatus)"
+                   [severity]="revisionStatusSeverity(item.revisionStatus)" />
           } @else {
             <h2 class="imed__title">Edit Item</h2>
           }
         </div>
         <div class="imed__header-actions">
-          @if (item && item.status !== 'OBSOLETE') {
-            <p-button label="Obsolete this item" [link]="true" severity="danger" size="small"
-                      [loading]="obsoleting" (onClick)="obsoleteItem()" />
+          @if (item && item.revisionStatus === 'DRAFT') {
+            <p-button label="Submit for Approval" severity="secondary" size="small"
+                      [loading]="submitting" (onClick)="submitDraft()" />
+            <p-button label="Cancel Draft" [link]="true" severity="danger" size="small"
+                      (onClick)="cancelDraft()" />
           }
-          <p-button label="Cancel" severity="secondary" size="small" (onClick)="cancel()" />
+          <p-button label="Back" severity="secondary" size="small" (onClick)="cancel()" />
           <p-button label="Save Changes" severity="primary" size="small"
                     [loading]="saving" [disabled]="!canSave()" (onClick)="save()" />
         </div>
@@ -77,7 +81,12 @@ import { PlatformApiService } from '../../../../shared/platform';
           </div>
         }
 
-        <form [formGroup]="form" class="imed__form">
+        @if (item.revisionStatus === 'PENDING_APPROVAL') {
+          <p-message severity="info" text="This revision is pending approval and cannot be edited." styleClass="imed__pending-banner" />
+        }
+
+        <form [formGroup]="form" class="imed__form"
+              [class.imed__form--readonly]="item.revisionStatus === 'PENDING_APPROVAL'">
           <div class="imed__two-col">
 
             <!-- Left: Core Identification -->
@@ -253,6 +262,8 @@ import { PlatformApiService } from '../../../../shared/platform';
     .imed__hint-text { font-size: 0.75rem; color: var(--p-text-muted-color); margin-top: 0.2rem; }
 
     .imed__not-found { padding: 2rem; text-align: center; color: var(--p-text-muted-color); }
+    .imed__pending-banner { margin-bottom: 0.75rem; }
+    .imed__form--readonly { pointer-events: none; opacity: 0.65; }
   `],
 })
 export class ItemMasterEditComponent implements OnInit {
@@ -269,7 +280,7 @@ export class ItemMasterEditComponent implements OnInit {
   serverErrors: string[] = [];
   loading = true;
   saving = false;
-  obsoleting = false;
+  submitting = false;
 
   makeActive = false;
   buyActive = false;
@@ -412,7 +423,8 @@ export class ItemMasterEditComponent implements OnInit {
   canSave(): boolean {
     return this.form.valid
       && this.derivedMakeBuyCode !== null
-      && this.selectedTraceability.size > 0;
+      && this.selectedTraceability.size > 0
+      && this.item?.revisionStatus !== 'PENDING_APPROVAL';
   }
 
   toggleMake(): void {
@@ -489,16 +501,38 @@ export class ItemMasterEditComponent implements OnInit {
     this.router.navigate(['/item-master', this.itemId]);
   }
 
-  obsoleteItem(): void {
-    this.obsoleting = true;
-    this.api.obsolete(this.itemId).subscribe({
+  submitDraft(): void {
+    this.submitting = true;
+    this.api.submit(this.itemId).subscribe({
       next: item => {
         this.item = item;
-        this.obsoleting = false;
+        this.submitting = false;
         this.cdr.detectChanges();
       },
-      error: () => { this.obsoleting = false; this.cdr.detectChanges(); },
+      error: () => { this.submitting = false; this.cdr.detectChanges(); },
     });
+  }
+
+  cancelDraft(): void {
+    this.api.cancelDraft(this.itemId).subscribe({
+      next: () => {
+        this.router.navigate(['/item-master']);
+        this.cdr.detectChanges();
+      },
+      error: () => { this.cdr.detectChanges(); },
+    });
+  }
+
+  revisionStatusLabel(s: RevisionStatus): string {
+    if (s === 'PENDING_APPROVAL') return 'Pending';
+    if (s === 'APPROVED') return 'Approved';
+    return 'Draft';
+  }
+
+  revisionStatusSeverity(s: RevisionStatus): 'info' | 'warn' | 'success' | 'secondary' {
+    if (s === 'APPROVED') return 'success';
+    if (s === 'PENDING_APPROVAL') return 'warn';
+    return 'secondary';
   }
 
   save(): void {

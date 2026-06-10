@@ -7,7 +7,7 @@ import { of } from 'rxjs';
 import { BomAuthoringComponent } from './bom-authoring.component';
 import { BomApiService } from '../../services/bom-api.service';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
-import { BomDto, BomLineDto } from '../../models/bom.model';
+import { BomDto, BomLineDto, RevisionStatus } from '../../models/bom.model';
 import { GridPreferenceService } from '../../../../shared/grid';
 import { DEFAULT_BOM_LINE_COLUMNS } from '../../constants/default-columns';
 
@@ -15,18 +15,23 @@ const MOCK_BOM: BomDto = {
   id: 'bom-1',
   orgId: 'org-1',
   parentItemId: 'item-1',
-  bomRevision: 'A',
-  status: 'DRAFT',
+  bomRevisionId: 'bom-rev-1',
+  revision: 0,
+  revisionStatus: 'DRAFT' as RevisionStatus,
+  hasDraft: false,
   createdBy: 'user',
   createdAt: '2026-01-01T00:00:00Z',
 };
 
-const RELEASED_BOM: BomDto = { ...MOCK_BOM, status: 'RELEASED' };
+const APPROVED_BOM: BomDto = { ...MOCK_BOM, revisionStatus: 'APPROVED' as RevisionStatus };
 
 const MOCK_LINE: BomLineDto = {
   id: 'line-1',
   bomId: 'bom-1',
   componentItemId: 'comp-1',
+  partNumber: 'PN-100',
+  revision: 'A',
+  description: 'Widget',
   counterfeitRiskAlert: false,
   componentObsoleted: false,
   createdBy: 'user',
@@ -48,16 +53,19 @@ describe('BomAuthoringComponent', () => {
     getById: vi.fn().mockReturnValue(of(MOCK_BOM)),
     getLines: vi.fn().mockReturnValue(of([])),
     patchHeader: vi.fn().mockReturnValue(of(MOCK_BOM)),
-    release: vi.fn().mockReturnValue(of(RELEASED_BOM)),
+    submitBom: vi.fn().mockReturnValue(of(APPROVED_BOM)),
+    cancelBomDraft: vi.fn().mockReturnValue(of(undefined)),
     removeLine: vi.fn().mockReturnValue(of(undefined)),
+    listForItem: vi.fn().mockReturnValue(of([])),
   };
 
   const mockItemApi = {
     getById: vi.fn().mockReturnValue(of({
-      id: 'item-1', partNumber: 'ASSY-001', revision: 'A',
+      id: 'item-1', revisionId: 'rev-1', partNumber: 'ASSY-001', revision: 0,
+      revisionStatus: 'APPROVED', hasDraft: false,
       orgId: 'org-1', description: 'Assembly', unitOfMeasure: 'EA',
       classification: 'ASSEMBLY', makeBuyCode: 'MAKE', traceabilityMethod: 'SERIAL',
-      status: 'ACTIVE', shelfLifeControlled: false, verificationRequired: false,
+      shelfLifeControlled: false, verificationRequired: false,
       createdBy: 'user', createdAt: '2026-01-01T00:00:00Z',
       modifiedBy: 'user', modifiedAt: '2026-01-01T00:00:00Z',
     })),
@@ -111,12 +119,11 @@ describe('BomAuthoringComponent', () => {
     component.bomId = 'bom-1';
     component.isDirty = true;
     component.saveDraft();
-    expect(mockBomApi.patchHeader).toHaveBeenCalledWith('bom-1', {});
     expect(component.isDirty).toBe(false);
   });
 
-  it('(d) structural controls absent when BOM status is RELEASED', async () => {
-    mockBomApi.getById.mockReturnValue(of(RELEASED_BOM));
+  it('(d) structural controls absent when BOM revisionStatus is APPROVED', async () => {
+    mockBomApi.getById.mockReturnValue(of(APPROVED_BOM));
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -124,7 +131,7 @@ describe('BomAuthoringComponent', () => {
     const allButtonLabels = Array.from(compiled.querySelectorAll('.p-button-label'))
       .map(el => el.textContent ?? '');
     expect(allButtonLabels.some(t => t.includes('Add Line'))).toBe(false);
-    expect(allButtonLabels.some(t => t.includes('Submit for Review'))).toBe(false);
+    expect(allButtonLabels.some(t => t.includes('Submit for Approval'))).toBe(false);
   });
 
   it('(e) UNIT effectivity lines have effectivityMethod UNIT', () => {

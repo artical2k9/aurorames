@@ -3,7 +3,7 @@ package com.mes.inventory.config;
 import com.mes.udf.service.UdfAffectedRecordsFinder;
 import com.mes.udf.service.UdfUsageChecker;
 import com.mes.udf.service.UdfValueNullifier;
-import com.mes.inventory.itemmaster.repository.ItemMasterRepository;
+import com.mes.inventory.itemmaster.repository.ItemRevisionRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.AuditorAware;
@@ -51,21 +51,22 @@ public class AppConfig {
     public UdfUsageChecker udfUsageChecker(JdbcTemplate jdbcTemplate) {
         return (orgId, fieldKey) -> {
             Long count = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM inventory.item_master"
-                    + " WHERE org_id = ? AND jsonb_exists(custom_fields, ?)",
+                    "SELECT COUNT(*) FROM inventory.item_revision ir"
+                    + " JOIN inventory.item i ON i.id = ir.item_id"
+                    + " WHERE i.org_id = ? AND jsonb_exists(ir.custom_fields, ?)",
                     Long.class, orgId, fieldKey);
             return count != null ? count : 0L;
         };
     }
 
     @Bean
-    public UdfValueNullifier udfValueNullifier(ItemMasterRepository repository,
+    public UdfValueNullifier udfValueNullifier(ItemRevisionRepository repository,
                                                UdfAffectedRecordsFinder finder) {
         return (orgId, fieldKey) -> finder.findAffectedIds(orgId, fieldKey).forEach(id ->
-                repository.findByOrgIdAndId(orgId, id).ifPresent(item -> {
-                    if (item.getCustomFields() != null) {
-                        item.getCustomFields().remove(fieldKey);
-                        repository.save(item);
+                repository.findById(id).ifPresent(revision -> {
+                    if (revision.getCustomFields() != null) {
+                        revision.getCustomFields().remove(fieldKey);
+                        repository.save(revision);
                     }
                 }));
     }
@@ -73,8 +74,9 @@ public class AppConfig {
     @Bean
     public UdfAffectedRecordsFinder udfAffectedRecordsFinder(JdbcTemplate jdbcTemplate) {
         return (orgId, fieldKey) -> jdbcTemplate.queryForList(
-                "SELECT id FROM inventory.item_master"
-                + " WHERE org_id = ? AND jsonb_exists(custom_fields, ?)",
+                "SELECT ir.id FROM inventory.item_revision ir"
+                + " JOIN inventory.item i ON i.id = ir.item_id"
+                + " WHERE i.org_id = ? AND jsonb_exists(ir.custom_fields, ?)",
                 UUID.class, orgId, fieldKey);
     }
 }

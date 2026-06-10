@@ -1,13 +1,17 @@
 package com.mes.inventory.bom.domain;
 
+import com.mes.inventory.itemmaster.domain.ItemRevision;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import org.hibernate.envers.Audited;
 import org.springframework.data.annotation.CreatedBy;
@@ -31,11 +35,13 @@ public class BomLine {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "bom_id", nullable = false)
-    private UUID bomId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "bom_revision_id", nullable = false)
+    private BomRevision bomRevision;
 
-    @Column(name = "component_item_id", nullable = false)
-    private UUID componentItemId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "component_item_revision_id", nullable = false)
+    private ItemRevision componentItemRevision;
 
     @Column(name = "quantity", nullable = false, precision = 18, scale = 6)
     private BigDecimal quantity;
@@ -87,20 +93,20 @@ public class BomLine {
         return id;
     }
 
-    public UUID getBomId() {
-        return bomId;
+    public BomRevision getBomRevision() {
+        return bomRevision;
     }
 
-    public void setBomId(UUID bomId) {
-        this.bomId = bomId;
+    public void setBomRevision(BomRevision bomRevision) {
+        this.bomRevision = bomRevision;
     }
 
-    public UUID getComponentItemId() {
-        return componentItemId;
+    public ItemRevision getComponentItemRevision() {
+        return componentItemRevision;
     }
 
-    public void setComponentItemId(UUID componentItemId) {
-        this.componentItemId = componentItemId;
+    public void setComponentItemRevision(ItemRevision componentItemRevision) {
+        this.componentItemRevision = componentItemRevision;
     }
 
     public BigDecimal getQuantity() {

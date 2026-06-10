@@ -6,19 +6,23 @@ import { ActivatedRoute } from '@angular/router';
 import { of } from 'rxjs';
 import { ItemMasterEditComponent } from './item-master-edit.component';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
-import { UdfApiService } from '../../services/udf-api.service';
+import { UdfApiService } from '../../../../shared/udf/udf-api.service';
+import { PlatformApiService } from '../../../../shared/platform';
+import { BreadcrumbService } from '../../../../shared/ui';
 
 const MOCK_ITEM = {
   id: 'abc-123',
+  revisionId: 'rev-1',
   orgId: 'org-1',
   partNumber: 'PN-001',
-  revision: 'A',
+  revision: 0,
+  revisionStatus: 'APPROVED' as const,
+  hasDraft: false,
   description: 'Test part',
   unitOfMeasure: 'EA',
   classification: 'ASSEMBLY' as const,
   makeBuyCode: 'EITHER' as const,
   traceabilityMethod: 'SERIAL' as const,
-  status: 'ACTIVE' as const,
   shelfLifeControlled: false,
   verificationRequired: true,
   stepPartRef: 'S000-BRKT-001',
@@ -35,12 +39,13 @@ describe('ItemMasterEditComponent', () => {
   const mockApi = {
     getById: vi.fn().mockReturnValue(of(MOCK_ITEM)),
     patch: vi.fn().mockReturnValue(of(MOCK_ITEM)),
-    obsolete: vi.fn().mockReturnValue(of({ ...MOCK_ITEM, status: 'OBSOLETE' as const })),
+    submit: vi.fn().mockReturnValue(of({ ...MOCK_ITEM, revisionStatus: 'PENDING_APPROVAL' as const })),
+    cancelDraft: vi.fn().mockReturnValue(of(undefined)),
   };
 
-  const mockUdf = {
-    listFields: vi.fn().mockReturnValue(of([])),
-  };
+  const mockUdf      = { listFields: vi.fn().mockReturnValue(of([])) };
+  const mockPlatform = { listUom: vi.fn().mockReturnValue(of([])) };
+  const mockBreadcrumb = { set: vi.fn() };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -49,13 +54,11 @@ describe('ItemMasterEditComponent', () => {
         provideRouter([]),
         { provide: ItemMasterApiService, useValue: mockApi },
         { provide: UdfApiService, useValue: mockUdf },
+        { provide: PlatformApiService, useValue: mockPlatform },
+        { provide: BreadcrumbService, useValue: mockBreadcrumb },
         {
           provide: ActivatedRoute,
-          useValue: {
-            snapshot: {
-              paramMap: { get: () => 'abc-123' },
-            },
-          },
+          useValue: { snapshot: { paramMap: { get: () => 'abc-123' } } },
         },
       ],
     }).compileComponents();
@@ -83,11 +86,13 @@ describe('ItemMasterEditComponent', () => {
     expect(component.derivedMakeBuyCode).toBe('EITHER');
   });
 
-  it('breadcrumbs include partNumber and revision after item loads', () => {
+  it('sets breadcrumbs including partNumber after item loads', () => {
     fixture.detectChanges();
-    const last = component.breadcrumbs[component.breadcrumbs.length - 1];
-    expect(last.label).toContain('PN-001');
-    expect(last.label).toContain('A');
+    expect(mockBreadcrumb.set).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ label: expect.stringContaining('PN-001') }),
+      ]),
+    );
   });
 
   it('canSave() returns true when form valid', () => {

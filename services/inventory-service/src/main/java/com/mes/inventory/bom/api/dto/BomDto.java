@@ -9,19 +9,28 @@ public class BomDto {
     private UUID id;
     private UUID orgId;
     private UUID parentItemId;
-    private String bomRevision;
-    private String status;
+    private UUID bomRevisionId;
+    private Integer revision;
+    private String revisionStatus;
+    private boolean hasDraft;
     private String description;
     private UUID ecoId;
-    private String releasedBy;
-    private Instant releasedAt;
-    private String createdBy;
-    private Instant createdAt;
     private String reasonForRevision;
     private String productionLine;
     private String bomType;
     private String effectivityType;
     private Map<String, Object> customFields;
+    private String submittedBy;
+    private Instant submittedAt;
+    private String approvedBy;
+    private Instant approvedAt;
+    private String rejectedBy;
+    private Instant rejectedAt;
+    private String rejectionReason;
+    private String createdBy;
+    private Instant createdAt;
+    private String modifiedBy;
+    private Instant modifiedAt;
 
     public UUID getId() {
         return id;
@@ -47,20 +56,36 @@ public class BomDto {
         this.parentItemId = parentItemId;
     }
 
-    public String getBomRevision() {
-        return bomRevision;
+    public UUID getBomRevisionId() {
+        return bomRevisionId;
     }
 
-    public void setBomRevision(String bomRevision) {
-        this.bomRevision = bomRevision;
+    public void setBomRevisionId(UUID bomRevisionId) {
+        this.bomRevisionId = bomRevisionId;
     }
 
-    public String getStatus() {
-        return status;
+    public Integer getRevision() {
+        return revision;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public void setRevision(Integer revision) {
+        this.revision = revision;
+    }
+
+    public String getRevisionStatus() {
+        return revisionStatus;
+    }
+
+    public void setRevisionStatus(String revisionStatus) {
+        this.revisionStatus = revisionStatus;
+    }
+
+    public boolean isHasDraft() {
+        return hasDraft;
+    }
+
+    public void setHasDraft(boolean hasDraft) {
+        this.hasDraft = hasDraft;
     }
 
     public String getDescription() {
@@ -77,38 +102,6 @@ public class BomDto {
 
     public void setEcoId(UUID ecoId) {
         this.ecoId = ecoId;
-    }
-
-    public String getReleasedBy() {
-        return releasedBy;
-    }
-
-    public void setReleasedBy(String releasedBy) {
-        this.releasedBy = releasedBy;
-    }
-
-    public Instant getReleasedAt() {
-        return releasedAt;
-    }
-
-    public void setReleasedAt(Instant releasedAt) {
-        this.releasedAt = releasedAt;
-    }
-
-    public String getCreatedBy() {
-        return createdBy;
-    }
-
-    public void setCreatedBy(String createdBy) {
-        this.createdBy = createdBy;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Instant createdAt) {
-        this.createdAt = createdAt;
     }
 
     public String getReasonForRevision() {
@@ -149,5 +142,93 @@ public class BomDto {
 
     public void setCustomFields(Map<String, Object> customFields) {
         this.customFields = customFields;
+    }
+
+    public String getSubmittedBy() {
+        return submittedBy;
+    }
+
+    public void setSubmittedBy(String submittedBy) {
+        this.submittedBy = submittedBy;
+    }
+
+    public Instant getSubmittedAt() {
+        return submittedAt;
+    }
+
+    public void setSubmittedAt(Instant submittedAt) {
+        this.submittedAt = submittedAt;
+    }
+
+    public String getApprovedBy() {
+        return approvedBy;
+    }
+
+    public void setApprovedBy(String approvedBy) {
+        this.approvedBy = approvedBy;
+    }
+
+    public Instant getApprovedAt() {
+        return approvedAt;
+    }
+
+    public void setApprovedAt(Instant approvedAt) {
+        this.approvedAt = approvedAt;
+    }
+
+    public String getRejectedBy() {
+        return rejectedBy;
+    }
+
+    public void setRejectedBy(String rejectedBy) {
+        this.rejectedBy = rejectedBy;
+    }
+
+    public Instant getRejectedAt() {
+        return rejectedAt;
+    }
+
+    public void setRejectedAt(Instant rejectedAt) {
+        this.rejectedAt = rejectedAt;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
+
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
+    }
+
+    public String getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(String createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getModifiedBy() {
+        return modifiedBy;
+    }
+
+    public void setModifiedBy(String modifiedBy) {
+        this.modifiedBy = modifiedBy;
+    }
+
+    public Instant getModifiedAt() {
+        return modifiedAt;
+    }
+
+    public void setModifiedAt(Instant modifiedAt) {
+        this.modifiedAt = modifiedAt;
     }
 }

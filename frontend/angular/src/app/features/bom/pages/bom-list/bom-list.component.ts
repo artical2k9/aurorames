@@ -4,14 +4,15 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
+import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import { FormsModule } from '@angular/forms';
-import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
+import { BreadcrumbService } from '../../../../shared/ui';
 import { BomApiService } from '../../services/bom-api.service';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
-import { BomDto, CreateBomRequest } from '../../models/bom.model';
+import { BomSummaryDto, CreateBomRequest, RevisionStatus } from '../../models/bom.model';
 import { ItemMasterDto } from '../../../item-master/models/item-master.model';
 
 @Component({
@@ -19,8 +20,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    TableModule, ButtonModule, DialogModule, InputTextModule, MessageModule,
-    StatusBadgeComponent,
+    TableModule, ButtonModule, TagModule, DialogModule, InputTextModule, MessageModule,
   ],
   template: `
     <div class="bl">
@@ -41,7 +41,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
                styleClass="p-datatable-gridlines p-datatable-sm">
         <ng-template pTemplate="header">
           <tr>
-            <th>BOM Revision</th>
+            <th>BOM Rev</th>
             <th>Status</th>
             <th>Description</th>
             <th>Created By</th>
@@ -50,16 +50,19 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
         </ng-template>
         <ng-template pTemplate="body" let-bom>
           <tr>
-            <td>{{ bom.bomRevision }}</td>
-            <td><app-status-badge [status]="bom.status" /></td>
+            <td>{{ bom.revision }}</td>
+            <td>
+              <p-tag [value]="revisionStatusLabel(bom.revisionStatus)"
+                     [severity]="revisionStatusSeverity(bom.revisionStatus)" />
+            </td>
             <td>{{ bom.description ?? '—' }}</td>
             <td>{{ bom.createdBy }}</td>
             <td>
               <div class="bl__actions">
                 <p-button label="Author" [text]="true" size="small"
-                          (onClick)="navigateToAuthoring(bom.id)" />
+                          (onClick)="navigateToAuthoring(bom.bomId)" />
                 <p-button label="Explode" [text]="true" size="small"
-                          (onClick)="navigateToExplosion(bom.id)" />
+                          (onClick)="navigateToExplosion(bom.bomId)" />
               </div>
             </td>
           </tr>
@@ -76,10 +79,6 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
           <p-message severity="error" [text]="createError" />
         }
         <div class="bl__field">
-          <label>BOM Revision <span class="bl__req">*</span></label>
-          <input pInputText [(ngModel)]="newRevision" placeholder="e.g. A" />
-        </div>
-        <div class="bl__field" style="margin-top:0.75rem">
           <label>Description</label>
           <input pInputText [(ngModel)]="newDescription" placeholder="Optional" />
         </div>
@@ -87,7 +86,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
           <p-button label="Cancel" severity="secondary" size="small"
                     (onClick)="closeCreate()" />
           <p-button label="Save" severity="primary" size="small"
-                    [loading]="creating" [disabled]="!newRevision.trim()"
+                    [loading]="creating"
                     (onClick)="createBom()" />
         </ng-template>
       </p-dialog>
@@ -103,7 +102,6 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     .bl__parent { font-weight: 400; font-size: 1rem; color: var(--p-text-muted-color); }
     .bl__actions { display: flex; gap: 0.125rem; }
     .bl__field { display: flex; flex-direction: column; gap: 0.3rem; }
-    .bl__req { color: #EF4444; }
   `],
 })
 export class BomListComponent implements OnInit {
@@ -117,13 +115,12 @@ export class BomListComponent implements OnInit {
 
   itemId = '';
   parentItem: ItemMasterDto | null = null;
-  boms: BomDto[] = [];
+  boms: BomSummaryDto[] = [];
   loading = false;
 
   showCreate = false;
   creating = false;
   createError = '';
-  newRevision = '';
   newDescription = '';
 
   ngOnInit(): void {
@@ -158,18 +155,15 @@ export class BomListComponent implements OnInit {
 
   closeCreate(): void {
     this.showCreate = false;
-    this.newRevision = '';
     this.newDescription = '';
     this.createError = '';
   }
 
   createBom(): void {
-    if (!this.newRevision.trim()) return;
     this.creating = true;
     this.createError = '';
     const req: CreateBomRequest = {
       parentItemId: this.itemId,
-      bomRevision: this.newRevision.trim(),
       description: this.newDescription.trim() || undefined,
     };
     this.bomApi.create(req).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -181,7 +175,20 @@ export class BomListComponent implements OnInit {
       error: (err: { error?: { message?: string } }) => {
         this.creating = false;
         this.createError = err.error?.message ?? 'Failed to create BOM revision';
+        this.cdr.detectChanges();
       },
     });
+  }
+
+  revisionStatusLabel(s: RevisionStatus): string {
+    if (s === 'PENDING_APPROVAL') return 'Pending';
+    if (s === 'APPROVED') return 'Approved';
+    return 'Draft';
+  }
+
+  revisionStatusSeverity(s: RevisionStatus): 'info' | 'warn' | 'success' | 'secondary' {
+    if (s === 'APPROVED') return 'success';
+    if (s === 'PENDING_APPROVAL') return 'warn';
+    return 'secondary';
   }
 }

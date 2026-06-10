@@ -1,9 +1,12 @@
 package com.mes.inventory.bom.service;
 
 import com.mes.inventory.bom.api.dto.BomExplosionNode;
-import com.mes.inventory.bom.domain.BillOfMaterials;
+import com.mes.inventory.bom.domain.Bom;
+import com.mes.inventory.bom.domain.BomRevision;
 import com.mes.inventory.bom.repository.BomLineRepository;
 import com.mes.inventory.bom.repository.BomRepository;
+import com.mes.inventory.bom.repository.BomRevisionRepository;
+import com.mes.inventory.itemmaster.domain.RevisionStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,23 +25,32 @@ import java.util.stream.Collectors;
 public class BomExplosionService {
 
     private final BomRepository bomRepository;
+    private final BomRevisionRepository bomRevisionRepository;
     private final BomLineRepository bomLineRepository;
     private final int maxDepth;
 
     public BomExplosionService(BomRepository bomRepository,
+                               BomRevisionRepository bomRevisionRepository,
                                BomLineRepository bomLineRepository,
                                @Value("${mes.bom.max-depth:50}") int maxDepth) {
         this.bomRepository = bomRepository;
+        this.bomRevisionRepository = bomRevisionRepository;
         this.bomLineRepository = bomLineRepository;
         this.maxDepth = maxDepth;
     }
 
     public List<BomExplosionNode> explode(UUID orgId, UUID bomId, String format,
-                                           LocalDate asOfDate, String asOfUnit, int requestMaxDepth) {
-        BillOfMaterials bom = bomRepository.findByOrgIdAndId(orgId, bomId)
+                                           LocalDate asOfDate, String asOfUnit,
+                                           int requestMaxDepth) {
+        Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException("BOM not found: " + bomId));
 
-        List<Object[]> rows = bomLineRepository.findExplosionRows(bomId);
+        BomRevision displayRevision = resolveDisplayRevision(bom);
+        if (displayRevision == null) {
+            return List.of();
+        }
+
+        List<Object[]> rows = bomLineRepository.findExplosionRows(displayRevision.getId());
 
         for (Object[] row : rows) {
             int depth = ((Number) row[2]).intValue();
@@ -63,7 +75,21 @@ public class BomExplosionService {
         return nodes;
     }
 
-    private List<Object[]> filterByEffectivity(List<Object[]> rows, LocalDate asOfDate, String asOfUnit) {
+    private BomRevision resolveDisplayRevision(Bom bom) {
+        List<BomRevision> all = bomRevisionRepository.findAllByBomId(bom.getId());
+        for (RevisionStatus status : new RevisionStatus[]{
+                RevisionStatus.APPROVED, RevisionStatus.PENDING_APPROVAL, RevisionStatus.DRAFT}) {
+            for (BomRevision r : all) {
+                if (r.getRevisionStatus() == status) {
+                    return r;
+                }
+            }
+        }
+        return null;
+    }
+
+    private List<Object[]> filterByEffectivity(List<Object[]> rows, LocalDate asOfDate,
+                                                String asOfUnit) {
         if (asOfDate == null && asOfUnit == null) {
             return rows;
         }
@@ -128,13 +154,15 @@ public class BomExplosionService {
         node.setParentItemId((String) row[1]);
         node.setDepth(((Number) row[2]).intValue());
         node.setPartNumber((String) row[3]);
-        node.setRevision((String) row[4]);
+        // column 4 is the integer revision — convert to String for display
+        node.setRevision(row[4] != null ? String.valueOf(row[4]) : null);
         node.setDescription((String) row[5]);
         node.setUnitOfMeasure((String) row[6]);
 
         String riskLevel = (String) row[7];
         node.setCounterfeitRiskAlert("HIGH".equals(riskLevel) || "CRITICAL".equals(riskLevel));
-        node.setComponentObsoleted("OBSOLETE".equals(row[8]));
+        // column 8 = revision_status; no OBSOLETE status in new schema
+        node.setComponentObsoleted(false);
         node.setFindNumber((String) row[14]);
         if (row[15] != null) {
             node.setQuantity(new BigDecimal(row[15].toString()));
@@ -153,7 +181,8 @@ public class BomExplosionService {
         return topLevel;
     }
 
-    private void populateChildren(BomExplosionNode node, Map<String, List<BomExplosionNode>> byParent) {
+    private void populateChildren(BomExplosionNode node,
+                                  Map<String, List<BomExplosionNode>> byParent) {
         List<BomExplosionNode> children = byParent.getOrDefault(node.getComponentItemId(), List.of());
         node.setChildren(children.isEmpty() ? List.of() : new ArrayList<>(children));
         children.forEach(child -> populateChildren(child, byParent));

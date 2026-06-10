@@ -7,14 +7,16 @@ import { of, throwError } from 'rxjs';
 import { BomExplosionComponent } from './bom-explosion.component';
 import { BomApiService } from '../../services/bom-api.service';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
-import { BomDto, BomExplosionNode } from '../../models/bom.model';
+import { BomDto, BomExplosionNode, RevisionStatus } from '../../models/bom.model';
 
 const MOCK_BOM: BomDto = {
   id: 'bom-1',
   orgId: 'org-1',
   parentItemId: 'item-1',
-  bomRevision: 'A',
-  status: 'RELEASED',
+  bomRevisionId: 'bom-rev-1',
+  revision: 0,
+  revisionStatus: 'APPROVED' as RevisionStatus,
+  hasDraft: false,
   createdBy: 'user',
   createdAt: '2026-01-01T00:00:00Z',
 };
@@ -45,14 +47,17 @@ describe('BomExplosionComponent', () => {
   const mockBomApi = {
     getById: vi.fn().mockReturnValue(of(MOCK_BOM)),
     explode: vi.fn().mockReturnValue(of([MOCK_NODE])),
+    listForItem: vi.fn().mockReturnValue(of([])),
+    downloadExplosion: vi.fn().mockReturnValue(of(new Blob(['test']))),
   };
 
   const mockItemApi = {
     getById: vi.fn().mockReturnValue(of({
-      id: 'item-1', partNumber: 'ASSY-001', revision: 'A',
+      id: 'item-1', revisionId: 'rev-1', partNumber: 'ASSY-001', revision: 0,
+      revisionStatus: 'APPROVED', hasDraft: false,
       orgId: 'org-1', description: 'Assembly', unitOfMeasure: 'EA',
       classification: 'ASSEMBLY', makeBuyCode: 'MAKE', traceabilityMethod: 'SERIAL',
-      status: 'ACTIVE', shelfLifeControlled: false, verificationRequired: false,
+      shelfLifeControlled: false, verificationRequired: false,
       createdBy: 'user', createdAt: '2026-01-01T00:00:00Z',
       modifiedBy: 'user', modifiedAt: '2026-01-01T00:00:00Z',
     })),
@@ -96,29 +101,25 @@ describe('BomExplosionComponent', () => {
     expect(component.nodes.find(n => n.counterfeitRiskAlert)).toBeTruthy();
   });
 
-  it('(c) CSV button calls window.open with correct URL including format param', () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+  it('(c) CSV button calls bomApi.downloadExplosion with correct format and fileType', () => {
     component.bomId = 'bom-1';
     component.selectedFormat = 'flat';
     component.asOfDate = null;
     component.maxDepth = 0;
     component.downloadCsv();
-    expect(openSpy).toHaveBeenCalledWith(
-      '/api/v1/boms/bom-1/explosion/download?format=flat&download=csv',
+    expect(mockBomApi.downloadExplosion).toHaveBeenCalledWith(
+      'bom-1', 'flat', 'csv', undefined, undefined,
     );
-    openSpy.mockRestore();
   });
 
-  it('(d) PDF button calls window.open with download=pdf param', () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+  it('(d) PDF button calls bomApi.downloadExplosion with pdf fileType', () => {
     component.bomId = 'bom-1';
     component.selectedFormat = 'flat';
     component.asOfDate = null;
     component.maxDepth = 0;
     component.downloadPdf();
-    expect(openSpy).toHaveBeenCalledWith(
-      '/api/v1/boms/bom-1/explosion/download?format=flat&download=pdf',
+    expect(mockBomApi.downloadExplosion).toHaveBeenCalledWith(
+      'bom-1', 'flat', 'pdf', undefined, undefined,
     );
-    openSpy.mockRestore();
   });
 });

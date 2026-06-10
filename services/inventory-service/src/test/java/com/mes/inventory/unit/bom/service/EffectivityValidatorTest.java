@@ -49,7 +49,7 @@ class EffectivityValidatorTest {
         req.setFindNumber("F-001");
         req.setEffectiveFromDate(LocalDate.of(2025, 1, 1));
 
-        when(bomLineRepository.findAllByBomIdAndFindNumber(bomId, "F-001"))
+        when(bomLineRepository.findAllByBomRevisionIdAndFindNumber(bomId, "F-001"))
                 .thenReturn(Collections.emptyList());
 
         assertThatCode(() -> validator.validateNewLine(bomId, req))
@@ -72,7 +72,7 @@ class EffectivityValidatorTest {
         req.setEffectiveFromDate(LocalDate.of(2025, 7, 1));
         req.setEffectiveToDate(LocalDate.of(2025, 12, 31));
 
-        when(bomLineRepository.findAllByBomIdAndFindNumber(bomId, "F-001"))
+        when(bomLineRepository.findAllByBomRevisionIdAndFindNumber(bomId, "F-001"))
                 .thenReturn(List.of(existing));
 
         assertThatCode(() -> validator.validateNewLine(bomId, req))
@@ -95,7 +95,7 @@ class EffectivityValidatorTest {
         req.setEffectiveFromDate(LocalDate.of(2025, 6, 1));
         req.setEffectiveToDate(LocalDate.of(2025, 9, 30));
 
-        when(bomLineRepository.findAllByBomIdAndFindNumber(bomId, "F-001"))
+        when(bomLineRepository.findAllByBomRevisionIdAndFindNumber(bomId, "F-001"))
                 .thenReturn(List.of(existing));
 
         assertThatThrownBy(() -> validator.validateNewLine(bomId, req))
@@ -118,7 +118,7 @@ class EffectivityValidatorTest {
         req.setEffectiveFromDate(LocalDate.of(2026, 1, 1));
         req.setEffectiveToDate(null);
 
-        when(bomLineRepository.findAllByBomIdAndFindNumber(bomId, "F-001"))
+        when(bomLineRepository.findAllByBomRevisionIdAndFindNumber(bomId, "F-001"))
                 .thenReturn(List.of(existing));
 
         assertThatThrownBy(() -> validator.validateNewLine(bomId, req))
@@ -136,7 +136,7 @@ class EffectivityValidatorTest {
         excluded.setEffectiveFromDate(LocalDate.of(2025, 1, 1));
         excluded.setEffectiveToDate(LocalDate.of(2025, 12, 31));
 
-        when(bomLineRepository.findAllByBomIdAndFindNumber(bomId, "F-001"))
+        when(bomLineRepository.findAllByBomRevisionIdAndFindNumber(bomId, "F-001"))
                 .thenReturn(List.of(excluded));
 
         assertThatCode(() -> validator.validateUpdateLine(
@@ -154,7 +154,7 @@ class EffectivityValidatorTest {
         unitLine.setEffectivityMethod(EffectivityMethod.UNIT);
         unitLine.setEffectiveFromDate(null);
 
-        when(bomLineRepository.findAllByBomIdAndFindNumber(bomId, "F-001"))
+        when(bomLineRepository.findAllByBomRevisionIdAndFindNumber(bomId, "F-001"))
                 .thenReturn(List.of(unitLine));
 
         assertThatCode(() -> validator.validateUpdateLine(
@@ -172,7 +172,7 @@ class EffectivityValidatorTest {
         nullFromLine.setEffectivityMethod(EffectivityMethod.DATE);
         nullFromLine.setEffectiveFromDate(null);
 
-        when(bomLineRepository.findAllByBomIdAndFindNumber(bomId, "F-001"))
+        when(bomLineRepository.findAllByBomRevisionIdAndFindNumber(bomId, "F-001"))
                 .thenReturn(List.of(nullFromLine));
 
         assertThatCode(() -> validator.validateUpdateLine(

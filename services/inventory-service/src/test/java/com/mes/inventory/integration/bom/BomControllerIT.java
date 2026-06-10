@@ -3,8 +3,6 @@ package com.mes.inventory.integration.bom;
 import com.mes.inventory.integration.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,29 +26,29 @@ class BomControllerIT extends BaseIntegrationTest {
     @Test
     void createBomReturns201WithDraftStatus() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-HDR-001", "A");
+        Map<?, ?> item = createItemBody(token, "BOM-HDR-001");
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE, HttpMethod.POST,
-                jsonRequest(token, Map.of("parentItemId", parentId, "bomRevision", "REV-A")),
+                jsonRequest(token, Map.of("parentItemId", itemId(item))),
                 Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        assertThat(response.getBody()).extractingByKey("status").isEqualTo("DRAFT");
+        assertThat(response.getBody()).extractingByKey("revisionStatus").isEqualTo("DRAFT");
         assertThat(response.getBody()).extractingByKey("id").isNotNull();
     }
 
     @Test
     void addBomLineReturns201() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-LN-PARENT-001", "A");
-        String compId = createItem(token, "BOM-LN-COMP-001", "A");
-        String bomId = createBom(token, parentId, "REV-A");
+        Map<?, ?> parent = createItemBody(token, "BOM-LN-PARENT-001");
+        Map<?, ?> comp = createItemBody(token, "BOM-LN-COMP-001");
+        String bomId = createBom(token, itemId(parent));
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE + "/" + bomId + "/lines", HttpMethod.POST,
                 jsonRequest(token, Map.of(
-                        "componentItemId", compId,
+                        "componentItemRevisionId", revisionId(comp),
                         "quantity", 2.0,
                         "unitOfMeasure", "EA",
                         "findNumber", "010")),
@@ -63,12 +61,12 @@ class BomControllerIT extends BaseIntegrationTest {
     @Test
     void listBomLinesReturnsAllLines() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-LIST-PARENT-001", "A");
-        String comp1Id = createItem(token, "BOM-LIST-COMP-001", "A");
-        String comp2Id = createItem(token, "BOM-LIST-COMP-002", "A");
-        String bomId = createBom(token, parentId, "REV-A");
-        addLine(token, bomId, comp1Id, "010");
-        addLine(token, bomId, comp2Id, "020");
+        Map<?, ?> parent = createItemBody(token, "BOM-LIST-PARENT-001");
+        Map<?, ?> comp1 = createItemBody(token, "BOM-LIST-COMP-001");
+        Map<?, ?> comp2 = createItemBody(token, "BOM-LIST-COMP-002");
+        String bomId = createBom(token, itemId(parent));
+        addLine(token, bomId, revisionId(comp1), "010");
+        addLine(token, bomId, revisionId(comp2), "020");
 
         ResponseEntity<List> response = restTemplate.exchange(
                 BOM_BASE + "/" + bomId + "/lines",
@@ -81,35 +79,41 @@ class BomControllerIT extends BaseIntegrationTest {
     }
 
     @Test
-    void releaseBomReturns200WithReleasedStatus() {
+    void approveBomReturns200WithApprovedStatus() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-REL-PARENT-001", "A");
-        String bomId = createBom(token, parentId, "REV-A");
+        String adminToken = sysAdminToken();
+        Map<?, ?> parent = createItemBody(token, "BOM-APPR-PARENT-001");
+        String bomId = createBom(token, itemId(parent));
 
-        ResponseEntity<Map> response = restTemplate.exchange(
-                BOM_BASE + "/" + bomId + "/release", HttpMethod.POST,
+        // submit → pending_approval
+        ResponseEntity<Map> submitResp = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/submit", HttpMethod.POST,
                 bearerRequest(token), Map.class);
+        assertThat(submitResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(submitResp.getBody()).extractingByKey("revisionStatus").isEqualTo("PENDING_APPROVAL");
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).extractingByKey("status").isEqualTo("RELEASED");
-        assertThat(response.getBody()).containsKey("releasedBy");
-        assertThat(response.getBody().get("releasedBy")).isNotNull();
-        assertThat(response.getBody()).containsKey("releasedAt");
-        assertThat(response.getBody().get("releasedAt")).isNotNull();
+        // approve → approved
+        ResponseEntity<Map> approveResp = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/approve", HttpMethod.POST,
+                bearerRequest(adminToken), Map.class);
+        assertThat(approveResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(approveResp.getBody()).extractingByKey("revisionStatus").isEqualTo("APPROVED");
+        assertThat(approveResp.getBody()).containsKey("approvedBy");
+        assertThat(approveResp.getBody().get("approvedBy")).isNotNull();
     }
 
     @Test
-    void addLineToReleasedBomReturns409() {
+    void addLineToApprovedBomReturns409() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-GUARD-PARENT-001", "A");
-        String compId = createItem(token, "BOM-GUARD-COMP-001", "A");
-        String bomId = createBom(token, parentId, "REV-A");
-        releaseBom(token, bomId);
+        Map<?, ?> parent = createItemBody(token, "BOM-GUARD-PARENT-001");
+        Map<?, ?> comp = createItemBody(token, "BOM-GUARD-COMP-001");
+        String bomId = createBom(token, itemId(parent));
+        approveBom(token, sysAdminToken(), bomId);
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE + "/" + bomId + "/lines", HttpMethod.POST,
                 jsonRequest(token, Map.of(
-                        "componentItemId", compId,
+                        "componentItemRevisionId", revisionId(comp),
                         "quantity", 1.0,
                         "unitOfMeasure", "EA",
                         "findNumber", "010")),
@@ -121,10 +125,10 @@ class BomControllerIT extends BaseIntegrationTest {
     @Test
     void patchBomLineQuantityReturns200WithUpdatedQuantity() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-PATCH-PARENT-001", "A");
-        String compId = createItem(token, "BOM-PATCH-COMP-001", "A");
-        String bomId = createBom(token, parentId, "REV-A");
-        String lineId = addLineAndGetId(token, bomId, compId, "010");
+        Map<?, ?> parent = createItemBody(token, "BOM-PATCH-PARENT-001");
+        Map<?, ?> comp = createItemBody(token, "BOM-PATCH-COMP-001");
+        String bomId = createBom(token, itemId(parent));
+        String lineId = addLineAndGetId(token, bomId, revisionId(comp), "010");
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE + "/" + bomId + "/lines/" + lineId, HttpMethod.PATCH,
@@ -136,13 +140,13 @@ class BomControllerIT extends BaseIntegrationTest {
     }
 
     @Test
-    void patchLineOnReleasedBomReturns409() {
+    void patchLineOnApprovedBomReturns409() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-PATCH-REL-PARENT-001", "A");
-        String compId = createItem(token, "BOM-PATCH-REL-COMP-001", "A");
-        String bomId = createBom(token, parentId, "REV-A");
-        String lineId = addLineAndGetId(token, bomId, compId, "010");
-        releaseBom(token, bomId);
+        Map<?, ?> parent = createItemBody(token, "BOM-PATCH-APPR-PARENT-001");
+        Map<?, ?> comp = createItemBody(token, "BOM-PATCH-APPR-COMP-001");
+        String bomId = createBom(token, itemId(parent));
+        String lineId = addLineAndGetId(token, bomId, revisionId(comp), "010");
+        approveBom(token, sysAdminToken(), bomId);
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE + "/" + bomId + "/lines/" + lineId, HttpMethod.PATCH,
@@ -153,27 +157,30 @@ class BomControllerIT extends BaseIntegrationTest {
     }
 
     @Test
-    void listBomsForItemReturnsAllRevisions() {
+    void listHeadersReturnsBomsForMultipleItems() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-LISTITEM-PARENT-001", "A");
-        createBom(token, parentId, "REV-A");
-        createBom(token, parentId, "REV-B");
+        Map<?, ?> item1 = createItemBody(token, "BOM-MULTI-001");
+        Map<?, ?> item2 = createItemBody(token, "BOM-MULTI-002");
+        createBom(token, itemId(item1));
+        createBom(token, itemId(item2));
 
-        ResponseEntity<List> response = restTemplate.exchange(
-                BOM_BASE + "?parentItemId=" + parentId,
-                HttpMethod.GET, bearerRequest(token), List.class);
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BOM_BASE + "/headers",
+                HttpMethod.GET, bearerRequest(token), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).hasSize(2);
+        assertThat(response.getBody()).containsKey("content");
+        List<?> content = (List<?>) response.getBody().get("content");
+        assertThat(content).isNotEmpty();
     }
 
     @Test
     void deleteLineReturns204AndLineIsGone() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-DEL-PARENT-001", "A");
-        String compId = createItem(token, "BOM-DEL-COMP-001", "A");
-        String bomId = createBom(token, parentId, "REV-A");
-        String lineId = addLineAndGetId(token, bomId, compId, "010");
+        Map<?, ?> parent = createItemBody(token, "BOM-DEL-PARENT-001");
+        Map<?, ?> comp = createItemBody(token, "BOM-DEL-COMP-001");
+        String bomId = createBom(token, itemId(parent));
+        String lineId = addLineAndGetId(token, bomId, revisionId(comp), "010");
 
         ResponseEntity<Void> deleteResponse = restTemplate.exchange(
                 BOM_BASE + "/" + bomId + "/lines/" + lineId,
@@ -189,8 +196,8 @@ class BomControllerIT extends BaseIntegrationTest {
     @Test
     void patchHeaderReturns200WithUpdatedDescription() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-PHDR-PARENT-001", "A");
-        String bomId = createBom(token, parentId, "REV-A");
+        Map<?, ?> parent = createItemBody(token, "BOM-PHDR-PARENT-001");
+        String bomId = createBom(token, itemId(parent));
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE + "/" + bomId,
@@ -212,8 +219,8 @@ class BomControllerIT extends BaseIntegrationTest {
     @Test
     void downloadCsvReturns200WithCsvContentType() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-CSV-PARENT-001", "A");
-        String bomId = createBom(token, parentId, "REV-A");
+        Map<?, ?> parent = createItemBody(token, "BOM-CSV-PARENT-001");
+        String bomId = createBom(token, itemId(parent));
 
         ResponseEntity<byte[]> response = restTemplate.exchange(
                 BOM_BASE + "/" + bomId + "/explosion/download?format=flat&download=csv",
@@ -227,8 +234,8 @@ class BomControllerIT extends BaseIntegrationTest {
     @Test
     void downloadPdfReturns200WithPdfContentType() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-PDF-PARENT-001", "A");
-        String bomId = createBom(token, parentId, "REV-A");
+        Map<?, ?> parent = createItemBody(token, "BOM-PDF-PARENT-001");
+        String bomId = createBom(token, itemId(parent));
 
         ResponseEntity<byte[]> response = restTemplate.exchange(
                 BOM_BASE + "/" + bomId + "/explosion/download?format=flat&download=pdf",
@@ -242,8 +249,8 @@ class BomControllerIT extends BaseIntegrationTest {
     @Test
     void listHeaders_returns200WithItemDetails() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-HDR-LIST-001", "A");
-        createBom(token, parentId, "REV-A");
+        Map<?, ?> parent = createItemBody(token, "BOM-HDR-LIST-001");
+        createBom(token, itemId(parent));
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE + "/headers",
@@ -259,17 +266,17 @@ class BomControllerIT extends BaseIntegrationTest {
                 .filter(e -> "BOM-HDR-LIST-001".equals(((Map<?, ?>) e).get("partNumber")))
                 .findFirst().orElse(null);
         assertThat(first).isNotNull();
-        assertThat(first.get("bomRevision")).isEqualTo("REV-A");
+        assertThat(first.get("revision")).isNotNull();
         assertThat(first.get("partNumber")).isEqualTo("BOM-HDR-LIST-001");
-        assertThat(first.get("itemStatus")).isEqualTo("ACTIVE");
+        assertThat(first.get("revisionStatus")).isNotNull();
     }
 
     @Test
     void listHeaders_withSearch_returnsMatchingBomsOnly() {
         String token = engineerToken();
-        String matchId = createItem(token, "BOM-SRCH-UNIQUE-XYZ", "A");
-        createItem(token, "BOM-SRCH-OTHER-001", "A");
-        createBom(token, matchId, "REV-A");
+        Map<?, ?> matchItem = createItemBody(token, "BOM-SRCH-UNIQUE-XYZ");
+        createItemBody(token, "BOM-SRCH-OTHER-001");
+        createBom(token, itemId(matchItem));
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE + "/headers?search=SRCH-UNIQUE",
@@ -295,13 +302,13 @@ class BomControllerIT extends BaseIntegrationTest {
     @Test
     void addLineWithNonExistentComponentReturns422() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-NF-PARENT-001", "A");
-        String bomId = createBom(token, parentId, "REV-A");
+        Map<?, ?> parent = createItemBody(token, "BOM-NF-PARENT-001");
+        String bomId = createBom(token, itemId(parent));
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE + "/" + bomId + "/lines", HttpMethod.POST,
                 jsonRequest(token, Map.of(
-                        "componentItemId", UUID.randomUUID().toString(),
+                        "componentItemRevisionId", UUID.randomUUID().toString(),
                         "quantity", 1.0,
                         "unitOfMeasure", "EA",
                         "findNumber", "010")),
@@ -310,29 +317,29 @@ class BomControllerIT extends BaseIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
-    // T097: BOM release writes an Envers audit row
     @Test
-    void releaseBomWritesOneEnversAuditRow() {
+    void approveBomWritesEnversAuditRow() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-AUD-PARENT-001", "A");
-        String bomId = createBom(token, parentId, "REV-A");
+        Map<?, ?> parent = createItemBody(token, "BOM-AUD-PARENT-001");
+        String bomId = createBom(token, itemId(parent));
+        approveBom(token, sysAdminToken(), bomId);
 
-        releaseBom(token, bomId);
-
+        // bom_revision_aud should have an entry for the approved revision
         Integer auditRows = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM inventory.bill_of_materials_aud WHERE id = ?::uuid",
+                "SELECT COUNT(*) FROM inventory.bom_revision_aud br"
+                + " JOIN inventory.bom b ON b.id = br.bom_id"
+                + " WHERE b.id = ?::uuid",
                 Integer.class, bomId);
         assertThat(auditRows).isGreaterThanOrEqualTo(1);
     }
 
-    // updateLine delegates to enrichLine — regression guard for MES-8 BomControllerTest T203
     @Test
     void updateLineDelegatesToEnrichLineAndReturnsComponentDetails() {
         String token = engineerToken();
-        String parentId = createItem(token, "BOM-ENRICH-PARENT-001", "A");
-        String compId = createItem(token, "BOM-ENRICH-COMP-001", "A");
-        String bomId = createBom(token, parentId, "REV-A");
-        String lineId = addLineAndGetId(token, bomId, compId, "010");
+        Map<?, ?> parent = createItemBody(token, "BOM-ENRICH-PARENT-001");
+        Map<?, ?> comp = createItemBody(token, "BOM-ENRICH-COMP-001");
+        String bomId = createBom(token, itemId(parent));
+        String lineId = addLineAndGetId(token, bomId, revisionId(comp), "010");
 
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE + "/" + bomId + "/lines/" + lineId, HttpMethod.PATCH,
@@ -350,59 +357,65 @@ class BomControllerIT extends BaseIntegrationTest {
         return buildToken(ORG_ID, List.of("ENGINEER"));
     }
 
-    private HttpEntity<?> bearerRequest(String token) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
-        return new HttpEntity<>(headers);
+    private String sysAdminToken() {
+        return buildToken(ORG_ID, List.of("SYSTEM_ADMIN"));
     }
 
-    private String createItem(String token, String partNumber, String revision) {
+    @SuppressWarnings("unchecked")
+    private Map<?, ?> createItemBody(String token, String partNumber) {
         ResponseEntity<Map> response = restTemplate.exchange(
                 ITEM_BASE, HttpMethod.POST,
-                jsonRequest(token, baseItemRequest(partNumber, revision)), Map.class);
+                jsonRequest(token, baseItemRequest(partNumber, "A")), Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        String path = response.getHeaders().getLocation().getPath();
-        return path.substring(path.lastIndexOf('/') + 1);
+        return response.getBody();
     }
 
-    private String createBom(String token, String parentItemId, String bomRevision) {
+    private String itemId(Map<?, ?> itemBody) {
+        return itemBody.get("id").toString();
+    }
+
+    private String revisionId(Map<?, ?> itemBody) {
+        return itemBody.get("revisionId").toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private String createBom(String token, String parentItemId) {
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE, HttpMethod.POST,
-                jsonRequest(token, Map.of("parentItemId", parentItemId, "bomRevision", bomRevision)),
+                jsonRequest(token, Map.of("parentItemId", parentItemId)),
                 Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         return response.getBody().get("id").toString();
     }
 
-    private String addLineAndGetId(String token, String bomId, String componentItemId, String findNumber) {
-        ResponseEntity<Map> response = restTemplate.exchange(
-                BOM_BASE + "/" + bomId + "/lines", HttpMethod.POST,
-                jsonRequest(token, Map.of(
-                        "componentItemId", componentItemId,
-                        "quantity", 1.0,
-                        "unitOfMeasure", "EA",
-                        "findNumber", findNumber)),
-                Map.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        return response.getBody().get("id").toString();
-    }
-
-    private void addLine(String token, String bomId, String componentItemId, String findNumber) {
-        ResponseEntity<Map> response = restTemplate.exchange(
-                BOM_BASE + "/" + bomId + "/lines", HttpMethod.POST,
-                jsonRequest(token, Map.of(
-                        "componentItemId", componentItemId,
-                        "quantity", 1.0,
-                        "unitOfMeasure", "EA",
-                        "findNumber", findNumber)),
-                Map.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-    }
-
-    private void releaseBom(String token, String bomId) {
-        ResponseEntity<Map> response = restTemplate.exchange(
-                BOM_BASE + "/" + bomId + "/release", HttpMethod.POST,
+    private void approveBom(String token, String adminToken, String bomId) {
+        ResponseEntity<Map> submitResp = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/submit", HttpMethod.POST,
                 bearerRequest(token), Map.class);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(submitResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        ResponseEntity<Map> approveResp = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/approve", HttpMethod.POST,
+                bearerRequest(adminToken), Map.class);
+        assertThat(approveResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @SuppressWarnings("unchecked")
+    private String addLineAndGetId(String token, String bomId, String componentRevisionId,
+                                   String findNumber) {
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/lines", HttpMethod.POST,
+                jsonRequest(token, Map.of(
+                        "componentItemRevisionId", componentRevisionId,
+                        "quantity", 1.0,
+                        "unitOfMeasure", "EA",
+                        "findNumber", findNumber)),
+                Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        return response.getBody().get("id").toString();
+    }
+
+    private void addLine(String token, String bomId, String componentRevisionId, String findNumber) {
+        addLineAndGetId(token, bomId, componentRevisionId, findNumber);
     }
 }

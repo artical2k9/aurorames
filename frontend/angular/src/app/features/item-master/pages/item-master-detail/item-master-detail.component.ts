@@ -7,8 +7,8 @@ import { TagModule } from 'primeng/tag';
 import { SkeletonModule } from 'primeng/skeleton';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
 import { UdfApiService, UdfFieldDefinition } from '../../../../shared/udf/udf-api.service';
-import { ItemMasterDto, Classification } from '../../models/item-master.model';
-import { StatusBadgeComponent, BreadcrumbService } from '../../../../shared/ui';
+import { ItemMasterDto, Classification, RevisionStatus } from '../../models/item-master.model';
+import { BreadcrumbService } from '../../../../shared/ui';
 
 @Component({
   selector: 'app-item-master-detail',
@@ -16,7 +16,6 @@ import { StatusBadgeComponent, BreadcrumbService } from '../../../../shared/ui';
   imports: [
     CommonModule,
     CardModule, ButtonModule, TagModule, SkeletonModule,
-    StatusBadgeComponent,
   ],
   template: `
 
@@ -30,6 +29,10 @@ import { StatusBadgeComponent, BreadcrumbService } from '../../../../shared/ui';
           <div class="imd__topbar-actions">
             <p-button label="BOMs" icon="pi pi-sitemap" severity="secondary"
                       size="small" (onClick)="openBoms()" />
+            @if (item.revisionStatus === 'PENDING_APPROVAL') {
+              <p-button label="Approve" icon="pi pi-check" severity="success"
+                        size="small" [loading]="approving" (onClick)="approve()" />
+            }
             <p-button label="Edit" icon="pi pi-pencil" severity="primary"
                       size="small" (onClick)="openEdit()" />
           </div>
@@ -49,11 +52,12 @@ import { StatusBadgeComponent, BreadcrumbService } from '../../../../shared/ui';
         <p-card styleClass="imd__header-card">
           <div class="imd__header-content">
             <div>
-              <div class="imd__pn">{{ item.partNumber }} / {{ item.revision }}</div>
+              <div class="imd__pn">{{ item.partNumber }} — Rev {{ item.revision }}</div>
               <div class="imd__desc">{{ item.description }}</div>
             </div>
             <div class="imd__header-badges">
-              <app-status-badge [status]="item.status" />
+              <p-tag [value]="revisionStatusLabel(item.revisionStatus)"
+                     [severity]="revisionStatusSeverity(item.revisionStatus)" />
               <p-tag [value]="item.classification"
                      [severity]="classificationSeverity(item.classification)"
                      [class]="classificationClass(item.classification)" />
@@ -111,10 +115,6 @@ import { StatusBadgeComponent, BreadcrumbService } from '../../../../shared/ui';
           <!-- Quality & Compliance -->
           <p-card header="Quality & Compliance" styleClass="imd__card">
             <div class="imd__fields">
-              <div class="imd__row">
-                <span class="imd__label">Status</span>
-                <span class="imd__value"><app-status-badge [status]="item.status" /></span>
-              </div>
               <div class="imd__row">
                 <span class="imd__label">Shelf Life Controlled</span>
                 <span class="imd__value">{{ item.shelfLifeControlled ? 'Yes' : 'No' }}</span>
@@ -253,6 +253,7 @@ export class ItemMasterDetailComponent implements OnInit {
   item: ItemMasterDto | null = null;
   udfFields: UdfFieldDefinition[] = [];
   loading = true;
+  approving = false;
   itemId!: string;
 
   ngOnInit(): void {
@@ -287,6 +288,30 @@ export class ItemMasterDetailComponent implements OnInit {
       },
       error: () => { this.item = null; this.loading = false; this.cdr.detectChanges(); },
     });
+  }
+
+  approve(): void {
+    this.approving = true;
+    this.api.approve(this.itemId).subscribe({
+      next: item => {
+        this.item = item;
+        this.approving = false;
+        this.cdr.detectChanges();
+      },
+      error: () => { this.approving = false; this.cdr.detectChanges(); },
+    });
+  }
+
+  revisionStatusLabel(s: RevisionStatus): string {
+    if (s === 'PENDING_APPROVAL') return 'Pending';
+    if (s === 'APPROVED') return 'Approved';
+    return 'Draft';
+  }
+
+  revisionStatusSeverity(s: RevisionStatus): 'info' | 'warn' | 'success' | 'secondary' {
+    if (s === 'APPROVED') return 'success';
+    if (s === 'PENDING_APPROVAL') return 'warn';
+    return 'secondary';
   }
 
   goBack(): void {

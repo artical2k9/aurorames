@@ -13,10 +13,10 @@ import { DatePickerModule } from 'primeng/datepicker';
 import { MessageModule } from 'primeng/message';
 import { TreeTableModule } from 'primeng/treetable';
 import { TreeNode } from 'primeng/api';
-import { BreadcrumbService, StatusBadgeComponent } from '../../../../shared/ui';
+import { BreadcrumbService } from '../../../../shared/ui';
 import { BomApiService } from '../../services/bom-api.service';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
-import { BomDto, BomExplosionNode } from '../../models/bom.model';
+import { BomDto, BomExplosionNode, RevisionStatus } from '../../models/bom.model';
 import { ItemMasterDto } from '../../../item-master/models/item-master.model';
 
 @Component({
@@ -26,7 +26,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     CommonModule, DatePipe, FormsModule, RouterLink,
     ButtonModule, TagModule, SelectButtonModule, SelectModule, DatePickerModule,
     MessageModule, TreeTableModule,
-    StatusBadgeComponent, LucideFileDown,
+    LucideFileDown,
   ],
   template: `
     <div class="be">
@@ -45,13 +45,14 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
                       optionLabel="label" optionValue="value"
                       styleClass="be__rev-select"
                       (onChange)="onRevisionChange($event.value)" />
-            <app-status-badge [status]="bom.status" />
+            <p-tag [value]="revisionStatusLabel(bom.revisionStatus)"
+                   [severity]="revisionStatusSeverity(bom.revisionStatus)" />
           </div>
           <div class="be__header-right">
-            @if (bom.status === 'RELEASED' && bom.releasedBy) {
+            @if (bom.revisionStatus === 'APPROVED' && bom.approvedBy) {
               <span class="be__meta">
-                Released by {{ bom.releasedBy }}
-                @if (bom.releasedAt) { · {{ bom.releasedAt | date:'dd MMM yyyy HH:mm' }} }
+                Approved by {{ bom.approvedBy }}
+                @if (bom.approvedAt) { · {{ bom.approvedAt | date:'dd MMM yyyy HH:mm' }} }
               </span>
             }
             @if (nodes.length > 0) {
@@ -134,7 +135,11 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
               }
             </td>
             <td>
-              <app-status-badge [status]="rowData['status'] ?? 'ACTIVE'" />
+              @if (rowData['componentObsoleted']) {
+                <p-tag value="Obsolete" severity="danger" />
+              } @else {
+                <p-tag value="Active" severity="success" />
+              }
             </td>
           </tr>
         </ng-template>
@@ -258,12 +263,12 @@ export class BomExplosionComponent implements OnInit {
         this.bom = bom;
         this.selectedRevisionId = bom.id;
         this.parentItem = item;
-        this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.bomRevision, value: r.id }));
+        this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.revision, value: r.bomId }));
         this.breadcrumbSvc.set([
           { label: 'Engineering' },
           { label: 'Item Master', route: ['/item-master'] },
           { label: item.partNumber, route: ['/item-master', bom.parentItemId, 'boms'] },
-          { label: 'Rev ' + bom.bomRevision, route: ['/boms', this.bomId] },
+          { label: 'Rev ' + bom.revision, route: ['/boms', this.bomId] },
           { label: 'Explosion' },
         ]);
         this.cdr.detectChanges();
@@ -300,6 +305,18 @@ export class BomExplosionComponent implements OnInit {
     if (bomId && bomId !== this.bomId) {
       this.router.navigate(['/boms', bomId, 'explosion']);
     }
+  }
+
+  revisionStatusLabel(s: RevisionStatus): string {
+    if (s === 'PENDING_APPROVAL') return 'Pending';
+    if (s === 'APPROVED') return 'Approved';
+    return 'Draft';
+  }
+
+  revisionStatusSeverity(s: RevisionStatus): 'info' | 'warn' | 'success' | 'secondary' {
+    if (s === 'APPROVED') return 'success';
+    if (s === 'PENDING_APPROVAL') return 'warn';
+    return 'secondary';
   }
 
   expandAll(): void {

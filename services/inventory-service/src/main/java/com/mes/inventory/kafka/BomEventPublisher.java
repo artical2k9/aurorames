@@ -1,6 +1,7 @@
 package com.mes.inventory.kafka;
 
-import com.mes.inventory.bom.domain.BillOfMaterials;
+import com.mes.inventory.bom.domain.Bom;
+import com.mes.inventory.bom.domain.BomRevision;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -21,15 +22,15 @@ public class BomEventPublisher {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void publishReleased(BillOfMaterials bom) {
+    public void publishApproved(Bom bom, BomRevision bomRevision) {
         Map<String, Object> event = new HashMap<>();
         event.put("eventType", "bom.released");
         event.put("bomId", bom.getId().toString());
         event.put("orgId", bom.getOrgId().toString());
         event.put("parentItemId", bom.getParentItemId().toString());
-        event.put("bomRevision", bom.getBomRevision());
+        event.put("revision", bomRevision.getRevision());
         // ecoId is nullable — plain UUID, no FK to engineering schema (§XI, Q1 UUID-only)
-        event.put("ecoId", bom.getEcoId() != null ? bom.getEcoId().toString() : null);
+        event.put("ecoId", bomRevision.getEcoId() != null ? bomRevision.getEcoId().toString() : null);
         event.put("actorId", actorId());
         event.put("occurredAt", Instant.now().toString());
         kafkaTemplate.send(TOPIC, bom.getId().toString(), event);
