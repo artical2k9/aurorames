@@ -1,10 +1,12 @@
 package com.mes.inventory.integration.itemmaster;
 
+import com.mes.inventory.integration.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -12,8 +14,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * MES-114: End-to-end revision workflow tests for item master.
  * Covers DRAFT → PENDING_APPROVAL → APPROVED / REJECTED paths and hasDraft semantics.
+ * Extends BaseIntegrationTest directly to avoid inheriting ItemMasterControllerIT @Test methods.
  */
-class ItemRevisionWorkflowIT extends ItemMasterControllerIT {
+class ItemRevisionWorkflowIT extends BaseIntegrationTest {
+
+    private static final String ORG_ID   = "00000000-0000-0000-0000-000000000001";
+    private static final String BASE_URL = "/api/v1/item-master";
 
     @Test
     void fullApprovalWorkflow_createSubmitApprove() {
@@ -155,5 +161,38 @@ class ItemRevisionWorkflowIT extends ItemMasterControllerIT {
                 BASE_URL + "/" + itemId + "/draft",
                 HttpMethod.DELETE, bearerRequest(eng), Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+
+    private String engineerToken() {
+        return buildToken(ORG_ID, List.of("ENGINEER"));
+    }
+
+    private String adminToken() {
+        return buildToken(ORG_ID, List.of("SYSTEM_ADMIN"));
+    }
+
+    private String createItemAndGetId(String token, String partNumber) {
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BASE_URL, HttpMethod.POST,
+                jsonRequest(token, baseItemRequest(partNumber, "IGNORED")), Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        String path = response.getHeaders().getLocation().getPath();
+        return path.substring(path.lastIndexOf('/') + 1);
+    }
+
+    private void submitDraft(String token, String itemId) {
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BASE_URL + "/" + itemId + "/submit",
+                HttpMethod.POST, bearerRequest(token), Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    private void approveDraft(String token, String itemId) {
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BASE_URL + "/" + itemId + "/approve",
+                HttpMethod.POST, bearerRequest(token), Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 }
