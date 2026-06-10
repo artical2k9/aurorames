@@ -6,6 +6,7 @@ export interface BomSummaryDto {
   revision:           number;
   revisionStatus:     RevisionStatus;
   hasDraft:           boolean;
+  hasPendingApproval: boolean;
   description:        string | null;
   parentItemId:       string;
   partNumber:         string;
@@ -26,6 +27,7 @@ export interface BomDto {
   revision:         number;
   revisionStatus:   RevisionStatus;
   hasDraft:         boolean;
+  hasPendingApproval: boolean;
   description?:     string;
   ecoId?:           string;
   reasonForRevision?: string;

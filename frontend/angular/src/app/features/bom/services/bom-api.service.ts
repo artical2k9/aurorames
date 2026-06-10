@@ -10,6 +10,7 @@ import {
   CreateBomLineRequest,
   PatchBomHeaderRequest,
   Page,
+  RevisionStatus,
 } from '../models/bom.model';
 
 @Injectable({ providedIn: 'root' })
@@ -28,8 +29,9 @@ export class BomApiService {
     return this.http.get<Page<BomSummaryDto>>(`${this.base}/headers`, { params });
   }
 
-  getById(id: string): Observable<BomDto> {
-    return this.http.get<BomDto>(`${this.base}/${id}`);
+  getById(id: string, revisionStatus?: RevisionStatus): Observable<BomDto> {
+    const params = revisionStatus ? new HttpParams().set('revisionStatus', revisionStatus) : undefined;
+    return this.http.get<BomDto>(`${this.base}/${id}`, { params });
   }
 
   create(req: CreateBomRequest): Observable<BomDto> {
@@ -58,6 +60,10 @@ export class BomApiService {
 
   approveBom(bomId: string): Observable<BomDto> {
     return this.http.post<BomDto>(`${this.base}/${bomId}/approve`, {});
+  }
+
+  rejectBom(bomId: string, rejectionReason: string): Observable<BomDto> {
+    return this.http.post<BomDto>(`${this.base}/${bomId}/reject`, { rejectionReason });
   }
 
   cancelBomDraft(bomId: string): Observable<void> {

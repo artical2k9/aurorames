@@ -54,6 +54,9 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             <td>
               <p-tag [value]="revisionStatusLabel(bom.revisionStatus)"
                      [severity]="revisionStatusSeverity(bom.revisionStatus)" />
+              @if (bom.hasPendingApproval && bom.revisionStatus !== 'PENDING_APPROVAL') {
+                <p-tag value="Pending approval" severity="warn" />
+              }
             </td>
             <td>{{ bom.description ?? '—' }}</td>
             <td>{{ bom.createdBy }}</td>

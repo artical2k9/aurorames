@@ -11,7 +11,7 @@ public final class BomMapper {
     private BomMapper() {
     }
 
-    public static BomDto toDto(Bom bom, BomRevision br, boolean hasDraft) {
+    public static BomDto toDto(Bom bom, BomRevision br, boolean hasDraft, boolean hasPendingApproval) {
         BomDto dto = new BomDto();
         dto.setId(bom.getId());
         dto.setOrgId(bom.getOrgId());
@@ -20,6 +20,7 @@ public final class BomMapper {
         dto.setRevision(br.getRevision());
         dto.setRevisionStatus(br.getRevisionStatus().name());
         dto.setHasDraft(hasDraft);
+        dto.setHasPendingApproval(hasPendingApproval);
         dto.setDescription(br.getDescription());
         dto.setEcoId(br.getEcoId());
         dto.setReasonForRevision(br.getReasonForRevision());

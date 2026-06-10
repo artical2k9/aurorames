@@ -15,6 +15,7 @@ import com.mes.inventory.bom.service.BomExplosionService;
 import com.mes.inventory.bom.service.BomExportService;
 import com.mes.inventory.bom.service.BomService;
 import com.mes.inventory.itemmaster.api.dto.RejectRevisionRequest;
+import com.mes.inventory.itemmaster.domain.RevisionStatus;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -71,9 +72,10 @@ public class BomController {
     @RequiresPrivilege("item-master:bom:manage")
     public BomDto getBom(
             @AuthenticationPrincipal Jwt jwt,
-            @PathVariable UUID bomId) {
+            @PathVariable UUID bomId,
+            @RequestParam(required = false) RevisionStatus revisionStatus) {
 
-        return bomService.getBom(JwtClaimsExtractor.orgId(jwt), bomId);
+        return bomService.getBom(JwtClaimsExtractor.orgId(jwt), bomId, revisionStatus);
     }
 
     @PostMapping("/{bomId}/submit")
@@ -222,7 +224,7 @@ public class BomController {
 
         var orgId = JwtClaimsExtractor.orgId(jwt);
         var nodes = explosionService.explode(orgId, bomId, format, asOfDate, asOfUnit, maxDepth);
-        var dto = bomService.getBom(orgId, bomId);
+        var dto = bomService.getBom(orgId, bomId, null);
 
         if ("pdf".equalsIgnoreCase(download)) {
             byte[] pdf = exportService.toPdfFromDto(dto, nodes);
