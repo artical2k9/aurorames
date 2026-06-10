@@ -1,5 +1,6 @@
 package com.mes.inventory.integration.itemmaster;
 
+import com.mes.inventory.integration.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -13,20 +14,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * MES-114 Phase 7: revision history endpoint tests.
  * Covers GET /api/v1/item-master/{id}/revisions.
+ * Extends BaseIntegrationTest directly to avoid inheriting ItemMasterControllerIT @Test methods.
  */
-class ItemRevisionIT extends ItemMasterControllerIT {
+class ItemRevisionIT extends BaseIntegrationTest {
+
+    private static final String ORG_ID   = "00000000-0000-0000-0000-000000000001";
+    private static final String BASE_URL = "/api/v1/item-master";
 
     @Test
     void listRevisions_returnsAllRevisionsOrderedAsc() {
-        String eng = engineerToken();
+        String eng   = engineerToken();
         String admin = adminToken();
         String itemId = createItemAndGetId(eng, "REV-HIST-001");
 
-        // Approve rev=0
         submitDraft(eng, itemId);
         approveDraft(admin, itemId);
 
-        // Patch to create rev=1 DRAFT
         restTemplate.exchange(BASE_URL + "/" + itemId, HttpMethod.PATCH,
                 jsonRequest(eng, Map.of("description", "Rev 1 update")), Map.class);
 
@@ -54,7 +57,7 @@ class ItemRevisionIT extends ItemMasterControllerIT {
 
     @Test
     void listRevisions_singleDraftRevision_returnsOneEntry() {
-        String eng = engineerToken();
+        String eng    = engineerToken();
         String itemId = createItemAndGetId(eng, "REV-HIST-SINGLE-001");
 
         ResponseEntity<List> response = restTemplate.exchange(
@@ -82,5 +85,38 @@ class ItemRevisionIT extends ItemMasterControllerIT {
                 BASE_URL + "/00000000-0000-0000-0000-000000000099/revisions",
                 HttpMethod.GET, bearerRequest(eng), Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+
+    private String engineerToken() {
+        return buildToken(ORG_ID, List.of("ENGINEER"));
+    }
+
+    private String adminToken() {
+        return buildToken(ORG_ID, List.of("SYSTEM_ADMIN"));
+    }
+
+    private String createItemAndGetId(String token, String partNumber) {
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BASE_URL, HttpMethod.POST,
+                jsonRequest(token, baseItemRequest(partNumber, "IGNORED")), Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        String path = response.getHeaders().getLocation().getPath();
+        return path.substring(path.lastIndexOf('/') + 1);
+    }
+
+    private void submitDraft(String token, String itemId) {
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BASE_URL + "/" + itemId + "/submit",
+                HttpMethod.POST, bearerRequest(token), Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    private void approveDraft(String token, String itemId) {
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BASE_URL + "/" + itemId + "/approve",
+                HttpMethod.POST, bearerRequest(token), Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 }

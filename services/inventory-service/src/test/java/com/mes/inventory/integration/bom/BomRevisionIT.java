@@ -1,5 +1,6 @@
 package com.mes.inventory.integration.bom;
 
+import com.mes.inventory.integration.BaseIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -12,21 +13,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * MES-114 Phase 7: BOM revision history endpoint tests.
- * Covers GET /api/v1/boms/{id}/revisions.
+ * Covers GET /api/v1/boms/{bomId}/revisions.
+ * Extends BaseIntegrationTest directly to avoid inheriting BomControllerIT @Test methods.
  */
-class BomRevisionIT extends BomControllerIT {
+class BomRevisionIT extends BaseIntegrationTest {
+
+    private static final String ORG_ID   = "00000000-0000-0000-0000-000000000001";
+    private static final String BOM_BASE  = "/api/v1/boms";
+    private static final String ITEM_BASE = "/api/v1/item-master";
 
     @Test
     void listBomRevisions_returnsAllRevisionsOrderedAsc() {
-        String eng = engineerToken();
+        String eng   = engineerToken();
         String admin = sysAdminToken();
         Map<?, ?> parent = createItemBody(eng, "BOM-REV-HIST-001");
         String bomId = createBom(eng, itemId(parent));
 
-        // Approve rev=0
         approveBom(eng, admin, bomId);
 
-        // Patch header to create rev=1 DRAFT
         restTemplate.exchange(BOM_BASE + "/" + bomId, HttpMethod.PATCH,
                 jsonRequest(eng, Map.of("description", "Rev 1 description")), Map.class);
 
@@ -54,7 +58,7 @@ class BomRevisionIT extends BomControllerIT {
 
     @Test
     void listBomRevisions_singleDraftRevision_returnsOneEntry() {
-        String eng = engineerToken();
+        String eng   = engineerToken();
         Map<?, ?> parent = createItemBody(eng, "BOM-REV-SINGLE-001");
         String bomId = createBom(eng, itemId(parent));
 
@@ -83,5 +87,50 @@ class BomRevisionIT extends BomControllerIT {
                 BOM_BASE + "/00000000-0000-0000-0000-000000000099/revisions",
                 HttpMethod.GET, bearerRequest(eng), Map.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────────
+
+    private String engineerToken() {
+        return buildToken(ORG_ID, List.of("ENGINEER"));
+    }
+
+    private String sysAdminToken() {
+        return buildToken(ORG_ID, List.of("SYSTEM_ADMIN"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<?, ?> createItemBody(String token, String partNumber) {
+        ResponseEntity<Map> response = restTemplate.exchange(
+                ITEM_BASE, HttpMethod.POST,
+                jsonRequest(token, baseItemRequest(partNumber, "A")), Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        return response.getBody();
+    }
+
+    private String itemId(Map<?, ?> itemBody) {
+        return itemBody.get("id").toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private String createBom(String token, String parentItemId) {
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BOM_BASE, HttpMethod.POST,
+                jsonRequest(token, Map.of("parentItemId", parentItemId)),
+                Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        return response.getBody().get("id").toString();
+    }
+
+    private void approveBom(String token, String adminToken, String bomId) {
+        ResponseEntity<Map> submitResp = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/submit", HttpMethod.POST,
+                bearerRequest(token), Map.class);
+        assertThat(submitResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        ResponseEntity<Map> approveResp = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/approve", HttpMethod.POST,
+                bearerRequest(adminToken), Map.class);
+        assertThat(approveResp.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 }
