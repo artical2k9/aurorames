@@ -1,4 +1,4 @@
-import { Component, EventEmitter, inject, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, inject, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -107,6 +107,7 @@ export class BomHeaderEditDialogComponent implements OnChanges {
 
   private readonly bomApi = inject(BomApiService);
   private readonly fb = inject(FormBuilder);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   saving = false;
   serverError = '';
@@ -174,10 +175,12 @@ export class BomHeaderEditDialogComponent implements OnChanges {
       next: bom => {
         this.saving = false;
         this.saved.emit(bom);
+        this.cdr.detectChanges();
       },
       error: (err: { status: number; error?: { message?: string } }) => {
         this.saving = false;
         this.serverError = err.error?.message ?? 'Failed to save';
+        this.cdr.detectChanges();
       },
     });
   }
