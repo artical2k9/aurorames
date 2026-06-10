@@ -416,6 +416,24 @@ Before raising any PR that adds private methods to a controller:
 
 ---
 
+## Integration Test Inheritance — Mandatory
+
+**ERR-MES-080:** JUnit 5 inherits `@Test` methods from superclasses. An IT class that extends another concrete IT class (e.g. `extends ItemMasterControllerIT`) re-runs all the parent's `@Test` methods in its own context. The Testcontainers DB is shared with no rollback between classes, so part numbers inserted by the parent run are still present — every inherited POST that creates the same part number gets 409 CONFLICT. This cascades to the subclass's own tests because their `createItemAndGetId()` setup calls also fail.
+
+### Rule — IT classes must extend BaseIntegrationTest directly
+
+Every integration test class **must** extend `BaseIntegrationTest` and never extend another concrete IT class that contains `@Test` methods. Inline all helpers (`engineerToken`, `createItemAndGetId`, etc.) within the class.
+
+### Pre-PR check for any PR adding new IT classes
+
+Before raising any PR that adds or modifies integration test classes:
+```bash
+grep -rn "extends.*IT\b" services/ --include="*IT.java"
+```
+Every match where the parent is a concrete IT class (not `BaseIntegrationTest`) is a violation — fix before raising the PR.
+
+---
+
 ## New Module Privilege Registration — Mandatory
 
 **ERR-MES-075:** `PrivilegeRegistryClient.register()` calls `PrivilegeService.registerManifest()` which only upserts rows in `iam.privilege`. Before this fix, it never granted privileges to any role — including `SYSTEM_ADMIN`. The result: every new `@RequiresPrivilege` key was catalogued but unreachable by any user until manually granted.
