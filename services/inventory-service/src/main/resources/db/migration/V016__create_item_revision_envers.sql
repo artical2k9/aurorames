@@ -4,13 +4,15 @@
 ALTER TABLE inventory.item_master_aud RENAME TO item_master_aud_legacy;
 
 CREATE TABLE inventory.item_aud (
-    id          UUID         NOT NULL,
-    rev         INTEGER      NOT NULL,
-    revtype     SMALLINT,
-    org_id      UUID,
-    part_number VARCHAR(100),
-    created_by  VARCHAR(255),
-    created_at  TIMESTAMPTZ,
+    id           UUID         NOT NULL,
+    rev          INTEGER      NOT NULL,
+    revtype      SMALLINT,
+    org_id       UUID,
+    part_number  VARCHAR(100),
+    created_by   VARCHAR(255),
+    created_at   TIMESTAMPTZ,
+    revend       INTEGER,
+    revend_tstmp TIMESTAMPTZ,
     CONSTRAINT pk_item_aud     PRIMARY KEY (id, rev),
     CONSTRAINT fk_item_aud_rev FOREIGN KEY (rev) REFERENCES inventory.revinfo (rev)
 );
@@ -46,6 +48,8 @@ CREATE TABLE inventory.item_revision_aud (
     created_at             TIMESTAMPTZ,
     modified_by            VARCHAR(255),
     modified_at            TIMESTAMPTZ,
+    revend               INTEGER,
+    revend_tstmp         TIMESTAMPTZ,
     CONSTRAINT pk_item_revision_aud     PRIMARY KEY (id, rev),
     CONSTRAINT fk_item_revision_aud_rev FOREIGN KEY (rev) REFERENCES inventory.revinfo (rev)
 );
