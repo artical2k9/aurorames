@@ -4,6 +4,7 @@ import com.mes.common.security.annotation.RequiresPrivilege;
 import com.mes.udf.api.JwtClaimsExtractor;
 import com.mes.inventory.itemmaster.api.dto.CreateItemMasterRequest;
 import com.mes.inventory.itemmaster.api.dto.ItemMasterDto;
+import com.mes.inventory.itemmaster.api.dto.ItemRevisionSummaryDto;
 import com.mes.inventory.itemmaster.api.dto.PatchAs5553Request;
 import com.mes.inventory.itemmaster.api.dto.PatchItemMasterRequest;
 import com.mes.inventory.itemmaster.api.dto.RejectRevisionRequest;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 
 import static org.springframework.http.HttpStatus.NO_CONTENT;
@@ -155,6 +157,16 @@ public class ItemRevisionController {
             @PathVariable UUID itemId) {
 
         service.cancelDraft(JwtClaimsExtractor.orgId(jwt), itemId);
+    }
+
+    /** T084 — Revision history for an item, ordered by revision ASC. */
+    @GetMapping("/{itemId}/revisions")
+    @RequiresPrivilege("item-master:records:view")
+    public List<ItemRevisionSummaryDto> listRevisions(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID itemId) {
+
+        return service.listRevisions(JwtClaimsExtractor.orgId(jwt), itemId);
     }
 
     /** T036a — Clone from APPROVED source (422 if no APPROVED exists). */

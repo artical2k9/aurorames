@@ -18,6 +18,8 @@ public interface BomRevisionRepository extends JpaRepository<BomRevision, UUID> 
 
     List<BomRevision> findAllByBomId(UUID bomId);
 
+    List<BomRevision> findByBomIdOrderByRevisionAsc(UUID bomId);
+
     boolean existsByBomIdAndRevisionStatus(UUID bomId, RevisionStatus status);
 
     @Query("SELECT MAX(br.revision) FROM BomRevision br WHERE br.bom.id = :bomId")

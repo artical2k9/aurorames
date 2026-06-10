@@ -5,6 +5,7 @@ import com.mes.udf.api.JwtClaimsExtractor;
 import com.mes.inventory.bom.api.dto.BomDto;
 import com.mes.inventory.bom.api.dto.BomExplosionNode;
 import com.mes.inventory.bom.api.dto.BomLineDto;
+import com.mes.inventory.bom.api.dto.BomRevisionSummaryDto;
 import com.mes.inventory.bom.api.dto.BomSummaryDto;
 import com.mes.inventory.bom.api.dto.CreateBomLineRequest;
 import com.mes.inventory.bom.api.dto.CreateBomRequest;
@@ -197,6 +198,16 @@ public class BomController {
 
         return explosionService.explode(JwtClaimsExtractor.orgId(jwt), bomId, format,
                 asOfDate, asOfUnit, maxDepth);
+    }
+
+    /** T086 — Revision history for a BOM, ordered by revision ASC. */
+    @GetMapping("/{bomId}/revisions")
+    @RequiresPrivilege("item-master:bom:manage")
+    public List<BomRevisionSummaryDto> listRevisions(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID bomId) {
+
+        return bomService.listRevisions(JwtClaimsExtractor.orgId(jwt), bomId);
     }
 
     @GetMapping("/{bomId}/explosion/download")

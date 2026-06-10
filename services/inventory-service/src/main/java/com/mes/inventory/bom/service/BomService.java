@@ -3,6 +3,7 @@ package com.mes.inventory.bom.service;
 import com.mes.inventory.bom.api.dto.BomDto;
 import com.mes.inventory.bom.api.dto.BomLineDto;
 import com.mes.inventory.bom.api.dto.BomMapper;
+import com.mes.inventory.bom.api.dto.BomRevisionSummaryDto;
 import com.mes.inventory.bom.api.dto.BomSummaryDto;
 import com.mes.inventory.bom.api.dto.CreateBomLineRequest;
 import com.mes.inventory.bom.api.dto.CreateBomRequest;
@@ -32,6 +33,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -295,7 +297,33 @@ public class BomService {
         return buildDto(bom);
     }
 
+    /** T086 — Return all BOM revisions for a BOM identity, ordered by revision ASC. */
+    @Transactional(readOnly = true)
+    public List<BomRevisionSummaryDto> listRevisions(UUID orgId, UUID bomId) {
+        bomRepository.findByOrgIdAndId(orgId, bomId)
+                .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
+        return bomRevisionRepository.findByBomIdOrderByRevisionAsc(bomId)
+                .stream()
+                .map(BomService::toBomRevisionSummaryDto)
+                .collect(Collectors.toList());
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    private static BomRevisionSummaryDto toBomRevisionSummaryDto(BomRevision br) {
+        BomRevisionSummaryDto dto = new BomRevisionSummaryDto();
+        dto.setBomRevisionId(br.getId());
+        dto.setRevision(br.getRevision());
+        dto.setRevisionStatus(br.getRevisionStatus());
+        dto.setDescription(br.getDescription());
+        dto.setSubmittedBy(br.getSubmittedBy());
+        dto.setSubmittedAt(br.getSubmittedAt());
+        dto.setApprovedBy(br.getApprovedBy());
+        dto.setApprovedAt(br.getApprovedAt());
+        dto.setCreatedBy(br.getCreatedBy());
+        dto.setCreatedAt(br.getCreatedAt());
+        return dto;
+    }
 
     private BomDto buildDto(Bom bom) {
         List<BomRevision> all = bomRevisionRepository.findAllByBomId(bom.getId());

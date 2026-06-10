@@ -353,16 +353,16 @@ class BomControllerIT extends BaseIntegrationTest {
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    private String engineerToken() {
+    String engineerToken() {
         return buildToken(ORG_ID, List.of("ENGINEER"));
     }
 
-    private String sysAdminToken() {
+    String sysAdminToken() {
         return buildToken(ORG_ID, List.of("SYSTEM_ADMIN"));
     }
 
     @SuppressWarnings("unchecked")
-    private Map<?, ?> createItemBody(String token, String partNumber) {
+    Map<?, ?> createItemBody(String token, String partNumber) {
         ResponseEntity<Map> response = restTemplate.exchange(
                 ITEM_BASE, HttpMethod.POST,
                 jsonRequest(token, baseItemRequest(partNumber, "A")), Map.class);
@@ -370,15 +370,15 @@ class BomControllerIT extends BaseIntegrationTest {
         return response.getBody();
     }
 
-    private String itemId(Map<?, ?> itemBody) {
+    String itemId(Map<?, ?> itemBody) {
         return itemBody.get("id").toString();
     }
 
-    private String revisionId(Map<?, ?> itemBody) {
+    String revisionId(Map<?, ?> itemBody) {
         return itemBody.get("revisionId").toString();
     }
 
-    private String createBom(String token, String parentItemId) {
+    String createBom(String token, String parentItemId) {
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE, HttpMethod.POST,
                 jsonRequest(token, Map.of("parentItemId", parentItemId)),
@@ -387,7 +387,7 @@ class BomControllerIT extends BaseIntegrationTest {
         return response.getBody().get("id").toString();
     }
 
-    private void approveBom(String token, String adminToken, String bomId) {
+    void approveBom(String token, String adminToken, String bomId) {
         ResponseEntity<Map> submitResp = restTemplate.exchange(
                 BOM_BASE + "/" + bomId + "/submit", HttpMethod.POST,
                 bearerRequest(token), Map.class);
@@ -399,7 +399,7 @@ class BomControllerIT extends BaseIntegrationTest {
         assertThat(approveResp.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
-    private String addLineAndGetId(String token, String bomId, String componentRevisionId,
+    String addLineAndGetId(String token, String bomId, String componentRevisionId,
                                    String findNumber) {
         ResponseEntity<Map> response = restTemplate.exchange(
                 BOM_BASE + "/" + bomId + "/lines", HttpMethod.POST,
@@ -413,7 +413,7 @@ class BomControllerIT extends BaseIntegrationTest {
         return response.getBody().get("id").toString();
     }
 
-    private void addLine(String token, String bomId, String componentRevisionId, String findNumber) {
+    void addLine(String token, String bomId, String componentRevisionId, String findNumber) {
         addLineAndGetId(token, bomId, componentRevisionId, findNumber);
     }
 }

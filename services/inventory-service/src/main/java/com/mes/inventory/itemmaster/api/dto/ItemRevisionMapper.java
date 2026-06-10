@@ -51,6 +51,21 @@ public final class ItemRevisionMapper {
         return dto;
     }
 
+    public static ItemRevisionSummaryDto toSummaryDto(ItemRevision ir) {
+        ItemRevisionSummaryDto dto = new ItemRevisionSummaryDto();
+        dto.setRevisionId(ir.getId());
+        dto.setRevision(ir.getRevision());
+        dto.setRevisionStatus(ir.getRevisionStatus());
+        dto.setDescription(ir.getDescription());
+        dto.setSubmittedBy(ir.getSubmittedBy());
+        dto.setSubmittedAt(ir.getSubmittedAt());
+        dto.setApprovedBy(ir.getApprovedBy());
+        dto.setApprovedAt(ir.getApprovedAt());
+        dto.setCreatedBy(ir.getCreatedBy());
+        dto.setCreatedAt(ir.getCreatedAt());
+        return dto;
+    }
+
     public static ItemRevision fromCreateRequest(CreateItemMasterRequest req) {
         ItemRevision ir = new ItemRevision();
         ir.setRevision(0);

@@ -18,6 +18,8 @@ public interface ItemRevisionRepository extends JpaRepository<ItemRevision, UUID
 
     List<ItemRevision> findAllByItemId(UUID itemId);
 
+    List<ItemRevision> findByItemIdOrderByRevisionAsc(UUID itemId);
+
     @Query("SELECT MAX(ir.revision) FROM ItemRevision ir WHERE ir.item.id = :itemId")
     Optional<Integer> findMaxRevisionByItemId(@Param("itemId") UUID itemId);
 

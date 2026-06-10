@@ -6,6 +6,7 @@ import com.mes.udf.service.UdfViolation;
 import com.mes.inventory.itemmaster.api.dto.CreateItemMasterRequest;
 import com.mes.inventory.itemmaster.api.dto.ItemMasterDto;
 import com.mes.inventory.itemmaster.api.dto.ItemRevisionMapper;
+import com.mes.inventory.itemmaster.api.dto.ItemRevisionSummaryDto;
 import com.mes.inventory.itemmaster.api.dto.PatchItemMasterRequest;
 import com.mes.inventory.itemmaster.domain.Item;
 import com.mes.inventory.itemmaster.domain.ItemRevision;
@@ -299,6 +300,17 @@ public class ItemRevisionService {
         copy.setVerificationRequired(source.isVerificationRequired());
         copy.setCustomFields(source.getCustomFields());
         return copy;
+    }
+
+    /** T084 — Return all revisions for an item, ordered by revision ASC. */
+    @Transactional(readOnly = true)
+    public List<ItemRevisionSummaryDto> listRevisions(UUID orgId, UUID itemId) {
+        itemRepository.findByOrgIdAndId(orgId, itemId)
+                .orElseThrow(() -> new ItemMasterNotFoundException(itemId.toString()));
+        return revisionRepository.findByItemIdOrderByRevisionAsc(itemId)
+                .stream()
+                .map(ItemRevisionMapper::toSummaryDto)
+                .collect(Collectors.toList());
     }
 
     private void validateShelfLife(boolean controlled, Integer days) {
