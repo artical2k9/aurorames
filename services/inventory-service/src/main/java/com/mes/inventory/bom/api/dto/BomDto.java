@@ -13,6 +13,7 @@ public class BomDto {
     private Integer revision;
     private String revisionStatus;
     private boolean hasDraft;
+    private boolean hasPendingApproval;
     private String description;
     private UUID ecoId;
     private String reasonForRevision;
@@ -86,6 +87,14 @@ public class BomDto {
 
     public void setHasDraft(boolean hasDraft) {
         this.hasDraft = hasDraft;
+    }
+
+    public boolean isHasPendingApproval() {
+        return hasPendingApproval;
+    }
+
+    public void setHasPendingApproval(boolean hasPendingApproval) {
+        this.hasPendingApproval = hasPendingApproval;
     }
 
     public String getDescription() {

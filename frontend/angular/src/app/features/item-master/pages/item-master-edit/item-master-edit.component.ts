@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -24,7 +24,7 @@ import { PlatformApiService } from '../../../../shared/platform';
   selector: 'app-item-master-edit',
   standalone: true,
   imports: [
-    CommonModule, ReactiveFormsModule,
+    CommonModule, ReactiveFormsModule, FormsModule,
     ButtonModule, InputTextModule, SelectModule,
     ToggleSwitchModule, InputNumberModule, TextareaModule, MessageModule, SkeletonModule,
     TagModule, UdfFieldsComponent,
@@ -49,11 +49,33 @@ import { PlatformApiService } from '../../../../shared/platform';
             <p-button label="Cancel Draft" [link]="true" severity="danger" size="small"
                       (onClick)="cancelDraft()" />
           }
+          @if (item && item.revisionStatus === 'PENDING_APPROVAL') {
+            <p-button label="Approve" severity="success" size="small"
+                      [loading]="approving" (onClick)="approveDraft()" />
+            <p-button label="Reject" severity="danger" size="small"
+                      [loading]="rejecting" (onClick)="showRejectPanel = true" />
+          }
           <p-button label="Back" severity="secondary" size="small" (onClick)="cancel()" />
-          <p-button label="Save Changes" severity="primary" size="small"
-                    [loading]="saving" [disabled]="!canSave()" (onClick)="save()" />
+          @if (item && item.revisionStatus === 'DRAFT') {
+            <p-button label="Save Draft" severity="primary" size="small"
+                      [loading]="saving" [disabled]="!canSave()" (onClick)="save()" />
+          }
         </div>
       </div>
+
+      @if (showRejectPanel) {
+        <div class="imed__reject-panel">
+          <textarea pTextarea [(ngModel)]="rejectReason" rows="3" style="width:100%"
+                    placeholder="Rejection reason (required)"></textarea>
+          <div class="imed__reject-actions">
+            <p-button label="Confirm Rejection" severity="danger" size="small"
+                      [loading]="rejecting" [disabled]="!rejectReason.trim()"
+                      (onClick)="rejectDraft()" />
+            <p-button label="Cancel" severity="secondary" size="small"
+                      (onClick)="showRejectPanel = false; rejectReason = ''" />
+          </div>
+        </div>
+      }
 
       @if (loading) {
         <div class="imed__skeleton-grid">
@@ -264,6 +286,13 @@ import { PlatformApiService } from '../../../../shared/platform';
     .imed__not-found { padding: 2rem; text-align: center; color: var(--p-text-muted-color); }
     .imed__pending-banner { margin-bottom: 0.75rem; }
     .imed__form--readonly { pointer-events: none; opacity: 0.65; }
+
+    .imed__reject-panel {
+      display: flex; flex-direction: column; gap: 0.5rem;
+      background: var(--p-surface-50); border: 1px solid var(--p-red-200);
+      border-radius: 6px; padding: 0.875rem; margin-bottom: 1rem;
+    }
+    .imed__reject-actions { display: flex; gap: 0.5rem; }
   `],
 })
 export class ItemMasterEditComponent implements OnInit {
@@ -281,6 +310,10 @@ export class ItemMasterEditComponent implements OnInit {
   loading = true;
   saving = false;
   submitting = false;
+  approving = false;
+  rejecting = false;
+  showRejectPanel = false;
+  rejectReason = '';
 
   makeActive = false;
   buyActive = false;
@@ -444,7 +477,7 @@ export class ItemMasterEditComponent implements OnInit {
     this.breadcrumbSvc.set([
       { label: 'Master Data' },
       { label: 'Item Master', route: ['/item-master'] },
-      { label: 'Edit' },
+      { label: 'Create Revision' },
     ]);
 
     this.form.get('shelfLifeControlled')!.valueChanges.subscribe(() => {
@@ -461,10 +494,14 @@ export class ItemMasterEditComponent implements OnInit {
     this.loadItem();
   }
 
-  private loadItem(): void {
+  private loadItem(targetStatus?: 'PENDING_APPROVAL'): void {
     this.loading = true;
-    this.api.getById(this.itemId).subscribe({
+    this.api.getById(this.itemId, targetStatus).subscribe({
       next: item => {
+        if (!targetStatus && item.hasPendingApproval && item.revisionStatus !== 'PENDING_APPROVAL') {
+          this.loadItem('PENDING_APPROVAL');
+          return;
+        }
         this.item = item;
         this.loading = false;
         this.populateForm(item);
@@ -478,7 +515,7 @@ export class ItemMasterEditComponent implements OnInit {
     this.breadcrumbSvc.set([
       { label: 'Master Data' },
       { label: 'Item Master', route: ['/item-master'] },
-      { label: `${item.partNumber} Rev ${item.revision}` },
+      { label: `${item.partNumber} — Create Revision` },
     ]);
     this.form.patchValue({
       description:          item.description,
@@ -523,6 +560,35 @@ export class ItemMasterEditComponent implements OnInit {
     });
   }
 
+  approveDraft(): void {
+    this.approving = true;
+    this.api.approve(this.itemId).subscribe({
+      next: item => {
+        this.item = item;
+        this.approving = false;
+        this.populateForm(item);
+        this.cdr.detectChanges();
+      },
+      error: () => { this.approving = false; this.cdr.detectChanges(); },
+    });
+  }
+
+  rejectDraft(): void {
+    if (!this.rejectReason.trim()) return;
+    this.rejecting = true;
+    this.api.reject(this.itemId, this.rejectReason).subscribe({
+      next: item => {
+        this.item = item;
+        this.rejecting = false;
+        this.showRejectPanel = false;
+        this.rejectReason = '';
+        this.populateForm(item);
+        this.cdr.detectChanges();
+      },
+      error: () => { this.rejecting = false; this.cdr.detectChanges(); },
+    });
+  }
+
   revisionStatusLabel(s: RevisionStatus): string {
     if (s === 'PENDING_APPROVAL') return 'Pending';
     if (s === 'APPROVED') return 'Approved';
@@ -557,14 +623,18 @@ export class ItemMasterEditComponent implements OnInit {
       stepPartRef:          v.stepPartRef || undefined,
       customFields:         this.buildCustomFields(),
     }).subscribe({
-      next: () => {
+      next: (updatedItem: ItemMasterDto) => {
         this.saving = false;
-        this.router.navigate(['/item-master', this.itemId]);
+        this.item = updatedItem;
+        this.populateForm(updatedItem);
+        this.cdr.detectChanges();
       },
       error: (err: { status: number; error?: { violations?: { field: string; message: string }[] } }) => {
         this.saving = false;
         if (err.status === 422 && err.error?.violations) {
           this.serverErrors = err.error.violations.map(v => `${v.field}: ${v.message}`);
+        } else {
+          this.serverErrors = ['Failed to save draft. Please try again.'];
         }
         this.cdr.detectChanges();
       },

@@ -23,6 +23,7 @@ public class ItemMasterDto {
     private Integer revision;
     private RevisionStatus revisionStatus;
     private boolean hasDraft;
+    private boolean hasPendingApproval;
 
     // data fields
     private String description;
@@ -110,6 +111,14 @@ public class ItemMasterDto {
 
     public void setHasDraft(boolean hasDraft) {
         this.hasDraft = hasDraft;
+    }
+
+    public boolean isHasPendingApproval() {
+        return hasPendingApproval;
+    }
+
+    public void setHasPendingApproval(boolean hasPendingApproval) {
+        this.hasPendingApproval = hasPendingApproval;
     }
 
     public String getDescription() {
