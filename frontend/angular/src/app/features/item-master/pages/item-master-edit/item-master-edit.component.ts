@@ -52,7 +52,7 @@ import { PlatformApiService } from '../../../../shared/platform';
         <div class="imed__header-actions">
           @if (item && item.revisionStatus === 'DRAFT') {
             <p-button label="Submit for Approval" severity="secondary" size="small"
-                      [loading]="submitting" (onClick)="submitDraft()" />
+                      [loading]="submitting" [disabled]="!canSubmit()" (onClick)="submitDraft()" />
             <p-button label="Cancel Draft" [link]="true" severity="danger" size="small"
                       (onClick)="cancelDraft()" />
           }
@@ -326,9 +326,15 @@ export class ItemMasterEditComponent implements OnInit {
   makeActive = false;
   buyActive = false;
   makeBuyTouched = false;
+  makeBuyDirty = false;
 
   selectedTraceability = new Set<TraceabilityMethod>();
   traceabilityTouched = false;
+  traceabilityDirty = false;
+
+  get isDirty(): boolean {
+    return this.form.dirty || this.makeBuyDirty || this.traceabilityDirty;
+  }
 
   readonly traceOptions: { label: string; value: TraceabilityMethod; hint?: string }[] = [
     { label: 'None',      value: 'NONE' },
@@ -393,6 +399,7 @@ export class ItemMasterEditComponent implements OnInit {
 
   toggleTrace(m: TraceabilityMethod): void {
     this.traceabilityTouched = true;
+    this.traceabilityDirty = true;
     if (m === 'NONE') {
       this.selectedTraceability.clear();
       this.selectedTraceability.add('NONE');
@@ -462,21 +469,32 @@ export class ItemMasterEditComponent implements OnInit {
   // ── Make/Buy ─────────────────────────────────────────────────────────────────
 
   canSave(): boolean {
-    return this.form.valid
+    return this.isDirty
+      && this.form.valid
       && this.derivedMakeBuyCode !== null
       && this.selectedTraceability.size > 0
       && this.item?.revisionStatus !== 'PENDING_APPROVAL';
   }
 
+  canSubmit(): boolean {
+    return !this.isDirty
+      && this.form.valid
+      && this.derivedMakeBuyCode !== null
+      && this.selectedTraceability.size > 0
+      && this.item?.revisionStatus === 'DRAFT';
+  }
+
   toggleMake(): void {
     this.makeActive = !this.makeActive;
     this.makeBuyTouched = true;
+    this.makeBuyDirty = true;
     this.updateShelfLifeDaysValidity();
   }
 
   toggleBuy(): void {
     this.buyActive = !this.buyActive;
     this.makeBuyTouched = true;
+    this.makeBuyDirty = true;
     this.updateShelfLifeDaysValidity();
   }
 
@@ -541,6 +559,9 @@ export class ItemMasterEditComponent implements OnInit {
     this.buyActive  = item.makeBuyCode === 'BUY'  || item.makeBuyCode === 'EITHER';
     this.initTraceability(item.traceabilityMethod);
     this.updateShelfLifeDaysValidity();
+    this.form.markAsPristine();
+    this.makeBuyDirty = false;
+    this.traceabilityDirty = false;
   }
 
   cancel(): void {

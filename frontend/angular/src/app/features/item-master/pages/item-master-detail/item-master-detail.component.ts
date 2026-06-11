@@ -332,10 +332,9 @@ export class ItemMasterDetailComponent implements OnInit {
   approve(): void {
     this.approving = true;
     this.api.approve(this.itemId).subscribe({
-      next: item => {
-        this.item = item;
+      next: () => {
         this.approving = false;
-        this.cdr.detectChanges();
+        this.loadItem();
       },
       error: () => { this.approving = false; this.cdr.detectChanges(); },
     });
@@ -345,12 +344,11 @@ export class ItemMasterDetailComponent implements OnInit {
     if (!this.rejectReason.trim()) return;
     this.rejecting = true;
     this.api.reject(this.itemId, this.rejectReason).subscribe({
-      next: item => {
-        this.item = item;
+      next: () => {
         this.rejecting = false;
         this.showRejectPanel = false;
         this.rejectReason = '';
-        this.cdr.detectChanges();
+        this.loadItem();
       },
       error: () => { this.rejecting = false; this.cdr.detectChanges(); },
     });
