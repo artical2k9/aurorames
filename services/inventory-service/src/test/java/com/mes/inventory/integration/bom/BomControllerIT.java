@@ -318,6 +318,73 @@ class BomControllerIT extends BaseIntegrationTest {
     }
 
     @Test
+    void rejectBomReturns200AndRevisionBackToDraft() {
+        String token = engineerToken();
+        String adminToken = sysAdminToken();
+        Map<?, ?> parent = createItemBody(token, "BOM-REJECT-PARENT-001");
+        String bomId = createBom(token, itemId(parent));
+
+        // submit → PENDING_APPROVAL; hasPendingApproval should be true
+        ResponseEntity<Map> submitResp = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/submit", HttpMethod.POST,
+                bearerRequest(token), Map.class);
+        assertThat(submitResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(submitResp.getBody()).extractingByKey("revisionStatus").isEqualTo("PENDING_APPROVAL");
+        assertThat(submitResp.getBody()).extractingByKey("hasPendingApproval").isEqualTo(true);
+
+        // GET with revisionStatus=PENDING_APPROVAL returns the pending revision
+        ResponseEntity<Map> pendingGet = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "?revisionStatus=PENDING_APPROVAL",
+                HttpMethod.GET, bearerRequest(token), Map.class);
+        assertThat(pendingGet.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(pendingGet.getBody()).extractingByKey("revisionStatus").isEqualTo("PENDING_APPROVAL");
+
+        // reject → DRAFT
+        ResponseEntity<Map> rejectResp = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "/reject", HttpMethod.POST,
+                jsonRequest(adminToken, Map.of("rejectionReason", "Needs rework")),
+                Map.class);
+        assertThat(rejectResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(rejectResp.getBody()).extractingByKey("revisionStatus").isEqualTo("DRAFT");
+        assertThat(rejectResp.getBody()).extractingByKey("rejectionReason").isEqualTo("Needs rework");
+        assertThat(rejectResp.getBody()).extractingByKey("hasPendingApproval").isEqualTo(false);
+    }
+
+    @Test
+    void hasPendingApproval_trueAfterSubmitWithExistingApproved() {
+        String token = engineerToken();
+        String adminToken = sysAdminToken();
+        Map<?, ?> parent = createItemBody(token, "BOM-HASPEND-PARENT-001");
+        String bomId = createBom(token, itemId(parent));
+        approveBom(token, adminToken, bomId);
+
+        // Patch approved BOM to create new DRAFT, then submit
+        restTemplate.exchange(BOM_BASE + "/" + bomId, HttpMethod.PATCH,
+                jsonRequest(token, Map.of("description", "Rev 1")), Map.class);
+        restTemplate.exchange(BOM_BASE + "/" + bomId + "/submit", HttpMethod.POST,
+                bearerRequest(token), Map.class);
+
+        // Default GET returns APPROVED; hasPendingApproval=true
+        ResponseEntity<Map> display = restTemplate.exchange(
+                BOM_BASE + "/" + bomId, HttpMethod.GET, bearerRequest(token), Map.class);
+        assertThat(display.getBody()).extractingByKey("revisionStatus").isEqualTo("APPROVED");
+        assertThat(display.getBody()).extractingByKey("hasPendingApproval").isEqualTo(true);
+    }
+
+    @Test
+    void getBomWithRevisionStatus_notFound_returns404() {
+        String token = engineerToken();
+        Map<?, ?> parent = createItemBody(token, "BOM-404-PARENT-001");
+        String bomId = createBom(token, itemId(parent));
+
+        // Only DRAFT exists; requesting APPROVED should 404
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BOM_BASE + "/" + bomId + "?revisionStatus=APPROVED",
+                HttpMethod.GET, bearerRequest(token), Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     void approveBomWritesEnversAuditRow() {
         String token = engineerToken();
         Map<?, ?> parent = createItemBody(token, "BOM-AUD-PARENT-001");

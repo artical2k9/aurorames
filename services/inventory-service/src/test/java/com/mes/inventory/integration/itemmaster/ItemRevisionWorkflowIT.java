@@ -163,6 +163,53 @@ class ItemRevisionWorkflowIT extends BaseIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 
+    @Test
+    void hasPendingApproval_trueWhenPendingCoexistsWithApproved() {
+        String eng = engineerToken();
+        String admin = adminToken();
+        String itemId = createItemAndGetId(eng, "WF-PENDING-FLAG-001");
+        submitDraft(eng, itemId);
+        approveDraft(admin, itemId);
+
+        // Create a new draft on top of the approved revision, then submit it
+        restTemplate.exchange(BASE_URL + "/" + itemId, HttpMethod.PATCH,
+                jsonRequest(eng, Map.of("description", "Rev 1 pending")), Map.class);
+        submitDraft(eng, itemId);
+
+        // Default GET returns APPROVED display; hasPendingApproval must be true
+        ResponseEntity<Map> display = restTemplate.exchange(
+                BASE_URL + "/" + itemId, HttpMethod.GET, bearerRequest(eng), Map.class);
+        assertThat(display.getBody()).extractingByKey("revisionStatus").isEqualTo("APPROVED");
+        assertThat(display.getBody()).extractingByKey("hasPendingApproval").isEqualTo(true);
+
+        // GET with revisionStatus=PENDING_APPROVAL returns the pending revision
+        ResponseEntity<Map> pending = restTemplate.exchange(
+                BASE_URL + "/" + itemId + "?revisionStatus=PENDING_APPROVAL",
+                HttpMethod.GET, bearerRequest(eng), Map.class);
+        assertThat(pending.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(pending.getBody()).extractingByKey("revisionStatus").isEqualTo("PENDING_APPROVAL");
+        assertThat(pending.getBody()).extractingByKey("revision").isEqualTo(1);
+
+        // After approval hasPendingApproval resets to false
+        approveDraft(admin, itemId);
+        ResponseEntity<Map> afterApprove = restTemplate.exchange(
+                BASE_URL + "/" + itemId, HttpMethod.GET, bearerRequest(eng), Map.class);
+        assertThat(afterApprove.getBody()).extractingByKey("revisionStatus").isEqualTo("APPROVED");
+        assertThat(afterApprove.getBody()).extractingByKey("hasPendingApproval").isEqualTo(false);
+    }
+
+    @Test
+    void getWithRevisionStatus_notFound_returns404() {
+        String eng = engineerToken();
+        String itemId = createItemAndGetId(eng, "WF-REVSTATUS-404-001");
+
+        // Item only has DRAFT; requesting APPROVED should 404
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BASE_URL + "/" + itemId + "?revisionStatus=APPROVED",
+                HttpMethod.GET, bearerRequest(eng), Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private String engineerToken() {

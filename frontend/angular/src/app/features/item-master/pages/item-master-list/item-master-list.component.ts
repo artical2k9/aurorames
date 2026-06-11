@@ -94,7 +94,7 @@ import {
           <p-button label="View Detail" severity="secondary" size="small"
                     [disabled]="selectedItems.length !== 1"
                     (onClick)="navigateToDetail(selectedItems[0].id)" />
-          <p-button label="Edit" severity="secondary" size="small"
+          <p-button label="Create Revision" severity="secondary" size="small"
                     [disabled]="selectedItems.length !== 1"
                     (onClick)="navigateToEdit(selectedItems[0].id)" />
           <p-button label="Clone Item" severity="secondary" size="small"
@@ -161,6 +161,9 @@ import {
                     @if (item.hasDraft && item.revisionStatus !== 'DRAFT') {
                       <p-tag value="Draft pending" severity="warn" styleClass="iml__draft-chip" />
                     }
+                    @if (item.hasPendingApproval && item.revisionStatus !== 'PENDING_APPROVAL') {
+                      <p-tag value="Pending approval" severity="warn" styleClass="iml__draft-chip" />
+                    }
                   }
                   @default {
                     {{ getCellValue(item, col) ?? '—' }}
@@ -172,7 +175,7 @@ import {
               <div class="iml__actions">
                 <p-button label="View" [text]="true" size="small"
                           (onClick)="navigateToDetail(item.id)" />
-                <p-button label="Edit" [text]="true" size="small"
+                <p-button label="Create Revision" [text]="true" size="small"
                           (onClick)="navigateToEdit(item.id)" />
                 <p-button icon="pi pi-ellipsis-v" [text]="true" size="small"
                           (onClick)="showRowMenu($event, item)" />
@@ -428,7 +431,7 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
         command: () => this.navigateToDetail(item.id),
       },
       {
-        label: 'Edit',
+        label: 'Create Revision',
         icon: 'pi pi-pencil',
         command: () => this.navigateToEdit(item.id),
       },

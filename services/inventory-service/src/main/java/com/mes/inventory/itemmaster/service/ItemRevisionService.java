@@ -58,7 +58,7 @@ public class ItemRevisionService {
         ItemRevision revision = ItemRevisionMapper.fromCreateRequest(req);
         revision.setItem(savedItem);
         ItemRevision saved = revisionRepository.save(revision);
-        return ItemRevisionMapper.toDto(saved, true);
+        return ItemRevisionMapper.toDto(saved, true, false);
     }
 
     /** T018 — Get the display revision for an item identity. */
@@ -79,7 +79,9 @@ public class ItemRevisionService {
         }
         boolean hasDraft = all.stream()
                 .anyMatch(r -> r.getRevisionStatus() == RevisionStatus.DRAFT);
-        return ItemRevisionMapper.toDto(display, hasDraft);
+        boolean hasPendingApproval = all.stream()
+                .anyMatch(r -> r.getRevisionStatus() == RevisionStatus.PENDING_APPROVAL);
+        return ItemRevisionMapper.toDto(display, hasDraft, hasPendingApproval);
     }
 
     /** T019 — Transition DRAFT → PENDING_APPROVAL. */
@@ -89,7 +91,7 @@ public class ItemRevisionService {
         draft.setSubmittedBy(actor);
         draft.setSubmittedAt(Instant.now());
         ItemRevision saved = revisionRepository.save(draft);
-        return ItemRevisionMapper.toDto(saved, true);
+        return ItemRevisionMapper.toDto(saved, false, true);
     }
 
     /** T019a — Transition PENDING_APPROVAL → DRAFT with rejection reason. */
@@ -105,7 +107,7 @@ public class ItemRevisionService {
         pending.setSubmittedBy(null);
         pending.setSubmittedAt(null);
         ItemRevision saved = revisionRepository.save(pending);
-        return ItemRevisionMapper.toDto(saved, true);
+        return ItemRevisionMapper.toDto(saved, true, false);
     }
 
     /** T020 — Transition PENDING_APPROVAL → APPROVED. */
@@ -115,7 +117,7 @@ public class ItemRevisionService {
         pending.setApprovedBy(actor);
         pending.setApprovedAt(Instant.now());
         ItemRevision saved = revisionRepository.save(pending);
-        return ItemRevisionMapper.toDto(saved, false);
+        return ItemRevisionMapper.toDto(saved, false, false);
     }
 
     /**
@@ -164,8 +166,7 @@ public class ItemRevisionService {
         ItemRevisionMapper.applyPatch(req, draft);
         ItemRevision saved = revisionRepository.save(draft);
 
-        boolean hasDraft = true;
-        return ItemRevisionMapper.toDto(saved, hasDraft);
+        return ItemRevisionMapper.toDto(saved, true, false);
     }
 
     /** T022 — Hard-delete the current DRAFT revision. */
@@ -218,7 +219,9 @@ public class ItemRevisionService {
                     }
                     boolean hasDraft = all.stream()
                             .anyMatch(r -> r.getRevisionStatus() == RevisionStatus.DRAFT);
-                    return ItemRevisionMapper.toDto(display, hasDraft);
+                    boolean hasPending = all.stream()
+                            .anyMatch(r -> r.getRevisionStatus() == RevisionStatus.PENDING_APPROVAL);
+                    return ItemRevisionMapper.toDto(display, hasDraft, hasPending);
                 })
                 .filter(dto -> dto != null)
                 .toList();
@@ -241,7 +244,7 @@ public class ItemRevisionService {
 
         boolean hasDraft = all.stream()
                 .anyMatch(r -> r.getRevisionStatus() == RevisionStatus.DRAFT);
-        ItemMasterDto dto = ItemRevisionMapper.toDto(approved, hasDraft);
+        ItemMasterDto dto = ItemRevisionMapper.toDto(approved, hasDraft, false);
         dto.setId(null);
         dto.setRevisionId(null);
         dto.setPartNumber(null);

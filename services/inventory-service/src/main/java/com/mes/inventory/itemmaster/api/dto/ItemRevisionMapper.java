@@ -14,7 +14,7 @@ public final class ItemRevisionMapper {
      * @param ir      the revision to map
      * @param hasDraft pre-computed flag — true when any DRAFT currently exists for this item
      */
-    public static ItemMasterDto toDto(ItemRevision ir, boolean hasDraft) {
+    public static ItemMasterDto toDto(ItemRevision ir, boolean hasDraft, boolean hasPendingApproval) {
         Item item = ir.getItem();
         ItemMasterDto dto = new ItemMasterDto();
         dto.setId(item.getId());
@@ -24,6 +24,7 @@ public final class ItemRevisionMapper {
         dto.setRevision(ir.getRevision());
         dto.setRevisionStatus(ir.getRevisionStatus());
         dto.setHasDraft(hasDraft);
+        dto.setHasPendingApproval(hasPendingApproval);
         dto.setDescription(ir.getDescription());
         dto.setUnitOfMeasure(ir.getUnitOfMeasure());
         dto.setCageCode(ir.getCageCode());

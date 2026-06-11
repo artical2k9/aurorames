@@ -14,6 +14,7 @@ import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { SelectModule } from 'primeng/select';
 import { InputNumberModule } from 'primeng/inputnumber';
+import { TextareaModule } from 'primeng/textarea';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { LucideColumnsSettings } from '@lucide/angular';
 import { BreadcrumbService } from '../../../../shared/ui';
@@ -35,7 +36,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
   imports: [
     CommonModule, AsyncPipe, FormsModule, RouterLink,
     TableModule, ButtonModule, TagModule, DialogModule, MessageModule,
-    ToastModule, ConfirmDialogModule, PopoverModule, SelectModule, InputNumberModule,
+    ToastModule, ConfirmDialogModule, PopoverModule, SelectModule, InputNumberModule, TextareaModule,
     LucideColumnsSettings,
     AddBomLineFormComponent, BomHeaderEditDialogComponent, ColumnPickerComponent,
   ],
@@ -87,8 +88,28 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             } @else {
               <span class="ba__eco ba__eco--none">No active ECO</span>
             }
+            @if (bom.revisionStatus === 'PENDING_APPROVAL') {
+              <p-button label="Approve" severity="success" size="small"
+                        [loading]="approving" (onClick)="approveDraft()" />
+              <p-button label="Reject" severity="danger" size="small"
+                        [loading]="rejecting" (onClick)="showRejectPanel = true" />
+            }
           </div>
         </div>
+
+        @if (showRejectPanel) {
+          <div class="ba__reject-panel">
+            <textarea pTextarea [(ngModel)]="rejectReason" rows="3" style="width:100%"
+                      placeholder="Rejection reason (required)"></textarea>
+            <div class="ba__reject-actions">
+              <p-button label="Confirm Rejection" severity="danger" size="small"
+                        [loading]="rejecting" [disabled]="!rejectReason.trim()"
+                        (onClick)="rejectDraft()" />
+              <p-button label="Cancel" severity="secondary" size="small"
+                        (onClick)="showRejectPanel = false; rejectReason = ''" />
+            </div>
+          </div>
+        }
 
         <!-- Toolbar -->
         @if (bom.revisionStatus === 'DRAFT') {
@@ -266,6 +287,13 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
     .ba__lines-count { font-size: 0.8125rem; font-weight: 600; }
     .ba__row--editing td { background: var(--p-surface-50); }
     :host ::ng-deep .ba__inline-input input { width: 80px; }
+
+    .ba__reject-panel {
+      display: flex; flex-direction: column; gap: 0.5rem;
+      background: var(--p-surface-50); border: 1px solid var(--p-red-200);
+      border-radius: 6px; padding: 0.875rem; margin-bottom: 0.75rem;
+    }
+    .ba__reject-actions { display: flex; gap: 0.5rem; }
   `],
 })
 export class BomAuthoringComponent implements OnInit {
@@ -291,6 +319,10 @@ export class BomAuthoringComponent implements OnInit {
   savingLine = false;
   addingLine = false;
   showHeaderEdit = false;
+  approving = false;
+  rejecting = false;
+  showRejectPanel = false;
+  rejectReason = '';
 
   revisionOptions: { label: string; value: string }[] = [];
   selectedRevisionId = '';
@@ -326,10 +358,10 @@ export class BomAuthoringComponent implements OnInit {
     this.loadBom();
   }
 
-  loadBom(): void {
+  loadBom(targetStatus?: 'PENDING_APPROVAL'): void {
     this.loading = true;
     this.loadError = false;
-    this.bomApi.getById(this.bomId).pipe(
+    this.bomApi.getById(this.bomId, targetStatus).pipe(
       switchMap(bom => forkJoin({
         bom: of(bom),
         item: this.itemApi.getById(bom.parentItemId),
@@ -338,6 +370,10 @@ export class BomAuthoringComponent implements OnInit {
       })),
     ).subscribe({
       next: ({ bom, item, revisions, lines }) => {
+        if (!targetStatus && bom.hasPendingApproval && bom.revisionStatus !== 'PENDING_APPROVAL') {
+          this.loadBom('PENDING_APPROVAL');
+          return;
+        }
         this.bom = bom;
         this.selectedRevisionId = bom.id;
         this.parentItem = item;
@@ -408,6 +444,33 @@ export class BomAuthoringComponent implements OnInit {
         this.messageService.add({ severity: 'error', summary: 'Submit failed' });
         this.cdr.detectChanges();
       },
+    });
+  }
+
+  approveDraft(): void {
+    this.approving = true;
+    this.bomApi.approveBom(this.bomId).subscribe({
+      next: bom => {
+        this.bom = bom;
+        this.approving = false;
+        this.cdr.detectChanges();
+      },
+      error: () => { this.approving = false; this.cdr.detectChanges(); },
+    });
+  }
+
+  rejectDraft(): void {
+    if (!this.rejectReason.trim()) return;
+    this.rejecting = true;
+    this.bomApi.rejectBom(this.bomId, this.rejectReason).subscribe({
+      next: bom => {
+        this.bom = bom;
+        this.rejecting = false;
+        this.showRejectPanel = false;
+        this.rejectReason = '';
+        this.cdr.detectChanges();
+      },
+      error: () => { this.rejecting = false; this.cdr.detectChanges(); },
     });
   }
 

@@ -89,14 +89,14 @@ public class BomService {
         revision.setEcoId(req.getEcoId());
         BomRevision savedRevision = bomRevisionRepository.save(revision);
 
-        return BomMapper.toDto(savedBom, savedRevision, true);
+        return BomMapper.toDto(savedBom, savedRevision, true, false);
     }
 
     @Transactional(readOnly = true)
-    public BomDto getBom(UUID orgId, UUID bomId) {
+    public BomDto getBom(UUID orgId, UUID bomId, RevisionStatus requestedStatus) {
         Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        return buildDto(bom);
+        return buildDto(bom, requestedStatus);
     }
 
     public BomDto submitDraft(UUID orgId, UUID bomId, String actor) {
@@ -106,8 +106,7 @@ public class BomService {
         draft.setSubmittedAt(Instant.now());
         BomRevision saved = bomRevisionRepository.save(draft);
         Bom bom = saved.getBom();
-        return BomMapper.toDto(bom, saved, bomRevisionRepository
-                .existsByBomIdAndRevisionStatus(bom.getId(), RevisionStatus.DRAFT));
+        return BomMapper.toDto(bom, saved, false, true);
     }
 
     public BomDto approveDraft(UUID orgId, UUID bomId, String actor) {
@@ -120,7 +119,7 @@ public class BomService {
         boolean hasDraft = bomRevisionRepository
                 .existsByBomIdAndRevisionStatus(bom.getId(), RevisionStatus.DRAFT);
         bomEventPublisher.publishApproved(bom, saved);
-        return BomMapper.toDto(bom, saved, hasDraft);
+        return BomMapper.toDto(bom, saved, hasDraft, false);
     }
 
     public BomDto rejectDraft(UUID orgId, UUID bomId, String actor, String reason) {
@@ -136,7 +135,7 @@ public class BomService {
         pending.setSubmittedAt(null);
         BomRevision saved = bomRevisionRepository.save(pending);
         Bom bom = saved.getBom();
-        return BomMapper.toDto(bom, saved, true);
+        return BomMapper.toDto(bom, saved, true, false);
     }
 
     public void cancelDraft(UUID orgId, UUID bomId) {
@@ -300,7 +299,7 @@ public class BomService {
             draft.setCustomFields(req.getCustomFields());
         }
         BomRevision saved = bomRevisionRepository.save(draft);
-        return BomMapper.toDto(bom, saved, true);
+        return BomMapper.toDto(bom, saved, true, false);
     }
 
     @Transactional(readOnly = true)
@@ -315,7 +314,7 @@ public class BomService {
     public BomDto getBomDisplayRevision(UUID orgId, UUID bomId) {
         Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        return buildDto(bom);
+        return buildDto(bom, null);
     }
 
     /** T086 — Return all BOM revisions for a BOM identity, ordered by revision ASC. */
@@ -360,15 +359,26 @@ public class BomService {
         return dto;
     }
 
-    private BomDto buildDto(Bom bom) {
+    private BomDto buildDto(Bom bom, RevisionStatus requestedStatus) {
         List<BomRevision> all = bomRevisionRepository.findAllByBomId(bom.getId());
-        BomRevision display = resolveDisplayRevision(all);
+        BomRevision display;
+        if (requestedStatus != null) {
+            display = all.stream()
+                    .filter(r -> r.getRevisionStatus() == requestedStatus)
+                    .findFirst()
+                    .orElseThrow(() -> new BomNotFoundException(
+                            "No revision with status " + requestedStatus + " for BOM: " + bom.getId()));
+        } else {
+            display = resolveDisplayRevision(all);
+        }
         if (display == null) {
             throw new BomNotFoundException(BOM_NOT_FOUND + bom.getId());
         }
         boolean hasDraft = all.stream()
                 .anyMatch(r -> r.getRevisionStatus() == RevisionStatus.DRAFT);
-        return BomMapper.toDto(bom, display, hasDraft);
+        boolean hasPendingApproval = all.stream()
+                .anyMatch(r -> r.getRevisionStatus() == RevisionStatus.PENDING_APPROVAL);
+        return BomMapper.toDto(bom, display, hasDraft, hasPendingApproval);
     }
 
     private BomRevision resolveDisplayRevision(Bom bom) {

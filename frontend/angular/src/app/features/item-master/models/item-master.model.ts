@@ -19,6 +19,7 @@ export interface ItemMasterDto {
   revision: number;
   revisionStatus: RevisionStatus;
   hasDraft: boolean;
+  hasPendingApproval: boolean;
   description: string;
   unitOfMeasure: string;
   cageCode?: string;

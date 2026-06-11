@@ -50,13 +50,13 @@ public class ItemRevisionController {
     @RequiresPrivilege("item-master:records:view")
     public Page<ItemMasterDto> list(
             @AuthenticationPrincipal Jwt jwt,
-            @RequestParam(required = false) RevisionStatus status,
+            @RequestParam(required = false) RevisionStatus revisionStatus,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String makeBuyCode,
             @RequestParam(required = false) String counterfeitRiskLevel,
             @PageableDefault(size = 50) Pageable pageable) {
 
-        return service.listItems(JwtClaimsExtractor.orgId(jwt), status, search,
+        return service.listItems(JwtClaimsExtractor.orgId(jwt), revisionStatus, search,
                 makeBuyCode, counterfeitRiskLevel, pageable);
     }
 
@@ -74,7 +74,7 @@ public class ItemRevisionController {
         return ResponseEntity.created(location).body(dto);
     }
 
-    /** T025 — Get item by identity UUID (display revision). */
+    /** T025 — Get item by identity UUID. Optional revisionStatus selects which revision to show. */
     @GetMapping("/{itemId}")
     @RequiresPrivilege("item-master:records:view")
     public ItemMasterDto get(

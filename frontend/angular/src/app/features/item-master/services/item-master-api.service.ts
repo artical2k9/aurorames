@@ -7,6 +7,7 @@ import {
   Page,
   CreateItemMasterRequest,
   PatchItemMasterRequest,
+  RevisionStatus,
 } from '../models/item-master.model';
 
 @Injectable({ providedIn: 'root' })
@@ -26,8 +27,9 @@ export class ItemMasterApiService {
     return this.http.get<Page<ItemMasterDto>>(this.base, { params: httpParams });
   }
 
-  getById(id: string): Observable<ItemMasterDto> {
-    return this.http.get<ItemMasterDto>(`${this.base}/${id}`);
+  getById(id: string, revisionStatus?: RevisionStatus): Observable<ItemMasterDto> {
+    const params = revisionStatus ? new HttpParams().set('revisionStatus', revisionStatus) : undefined;
+    return this.http.get<ItemMasterDto>(`${this.base}/${id}`, { params });
   }
 
   create(req: CreateItemMasterRequest): Observable<ItemMasterDto> {
@@ -44,6 +46,10 @@ export class ItemMasterApiService {
 
   approve(id: string): Observable<ItemMasterDto> {
     return this.http.post<ItemMasterDto>(`${this.base}/${id}/approve`, {});
+  }
+
+  reject(id: string, rejectionReason: string): Observable<ItemMasterDto> {
+    return this.http.post<ItemMasterDto>(`${this.base}/${id}/reject`, { rejectionReason });
   }
 
   cancelDraft(id: string): Observable<void> {

@@ -20,6 +20,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => error);
       }
 
+      // Pre-auth endpoints (e.g. change-temporary-password) can return 401 if
+      // the backend is misconfigured — there is no refresh token to use, so
+      // propagate the error to the caller instead of triggering endSession().
+      if (!oauth.getRefreshToken()) {
+        return throwError(() => error);
+      }
+
       // Attempt one silent refresh then replay the original request.
       // refreshOnce() is shared — concurrent 401s from multiple in-flight
       // requests all subscribe to the same observable and hit the token
