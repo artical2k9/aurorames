@@ -119,7 +119,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             <p-button label="Cancel Draft" severity="danger" [text]="true" size="small"
                       [loading]="cancelling" (onClick)="confirmCancelDraft()" />
             <p-button label="Submit for Approval" severity="success" size="small"
-                      [loading]="submitting" (onClick)="confirmSubmit()" />
+                      [loading]="submitting" [disabled]="isDirty" (onClick)="confirmSubmit()" />
             <p-button [rounded]="true" [text]="true"
                       aria-label="Customise columns"
                       (onClick)="colPickerPanel.toggle($event)">

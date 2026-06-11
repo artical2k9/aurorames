@@ -57,9 +57,9 @@ public interface BomRevisionRepository extends JpaRepository<BomRevision, UUID> 
                 WHERE bom_id = b.id
                 ORDER BY bom_id,
                          CASE revision_status
-                             WHEN 'APPROVED'         THEN 1
+                             WHEN 'DRAFT'            THEN 1
                              WHEN 'PENDING_APPROVAL' THEN 2
-                             WHEN 'DRAFT'            THEN 3
+                             WHEN 'APPROVED'         THEN 3
                          END
             )
             LEFT JOIN inventory.item_revision disp_ir ON disp_ir.id = (
@@ -89,9 +89,9 @@ public interface BomRevisionRepository extends JpaRepository<BomRevision, UUID> 
                 WHERE bom_id = b.id
                 ORDER BY bom_id,
                          CASE revision_status
-                             WHEN 'APPROVED'         THEN 1
+                             WHEN 'DRAFT'            THEN 1
                              WHEN 'PENDING_APPROVAL' THEN 2
-                             WHEN 'DRAFT'            THEN 3
+                             WHEN 'APPROVED'         THEN 3
                          END
             )
             WHERE b.org_id = :orgId
