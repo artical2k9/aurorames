@@ -183,6 +183,17 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
                         severity="secondary"
                         size="small"
                         (click)="$event.stopPropagation(); openBoms(item)" />
+              @if (item.hasDraft) {
+                <p-button label="Edit Draft"
+                          severity="warn"
+                          size="small"
+                          (click)="$event.stopPropagation(); openDraft(item)" />
+              } @else if (item.revisionStatus === 'APPROVED') {
+                <p-button label="Create Revision"
+                          severity="secondary"
+                          size="small"
+                          (click)="$event.stopPropagation(); openForRevision(item)" />
+              }
             </td>
           </tr>
         </ng-template>
@@ -210,7 +221,7 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
     .bb__table { width: 100%; }
     .bb__row { cursor: pointer; }
     .bb__pn { font-weight: 600; font-family: monospace; }
-    .bb__action { text-align: right; }
+    .bb__action { text-align: right; display: flex; gap: 0.25rem; justify-content: flex-end; }
     .bb__empty { text-align: center; padding: 2rem; color: var(--aurora-text-secondary); }
 
     .bb__field { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.75rem; }
@@ -326,6 +337,14 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
 
   openBoms(item: BomSummaryDto): void {
     this.router.navigate(['/bom', item.parentItemId]);
+  }
+
+  openDraft(item: BomSummaryDto): void {
+    this.router.navigate(['/boms', item.bomId], { queryParams: { revisionStatus: 'DRAFT' } });
+  }
+
+  openForRevision(item: BomSummaryDto): void {
+    this.router.navigate(['/boms', item.bomId]);
   }
 
   openCreateDialog(): void {

@@ -5,6 +5,7 @@ import {
   BomDto,
   BomLineDto,
   BomSummaryDto,
+  BomRevisionSummaryDto,
   BomExplosionNode,
   CreateBomRequest,
   CreateBomLineRequest,
@@ -36,6 +37,10 @@ export class BomApiService {
 
   create(req: CreateBomRequest): Observable<BomDto> {
     return this.http.post<BomDto>(this.base, req);
+  }
+
+  listRevisions(bomId: string): Observable<BomRevisionSummaryDto[]> {
+    return this.http.get<BomRevisionSummaryDto[]>(`${this.base}/${bomId}/revisions`);
   }
 
   getLines(bomId: string): Observable<BomLineDto[]> {
