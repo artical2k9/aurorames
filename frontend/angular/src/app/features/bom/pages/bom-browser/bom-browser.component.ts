@@ -11,7 +11,7 @@ import { MessageModule } from 'primeng/message';
 import { PopoverModule } from 'primeng/popover';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
-import { AutoCompleteModule, AutoCompleteCompleteEvent, AutoCompleteSelectEvent } from 'primeng/autocomplete';
+import { AutoCompleteModule, AutoCompleteCompleteEvent } from 'primeng/autocomplete';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { LucideColumnsSettings } from '@lucide/angular';
@@ -100,14 +100,14 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
         <div class="bb__field">
           <label>Parent Item <span class="bb__req">*</span></label>
           <p-autocomplete
-            [(ngModel)]="selectedItem"
+            [ngModel]="selectedPartNumber"
+            (ngModelChange)="handleItemModelChange($event)"
             [suggestions]="itemSuggestions"
             field="partNumber"
             placeholder="Search part number…"
             [minLength]="1"
             [dropdown]="false"
             (completeMethod)="onItemSearch($event)"
-            (onSelect)="onItemSelect($event)"
             styleClass="bb__autocomplete"
           >
             <ng-template #item let-item>
@@ -252,7 +252,7 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
 
   // Create dialog state
   showCreateDialog = false;
-  selectedItem: ItemMasterDto | null = null;
+  selectedPartNumber = '';
   selectedItemId = '';
   itemSuggestions: ItemMasterDto[] = [];
   newBomDescription = '';
@@ -338,7 +338,7 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
   }
 
   resetCreateForm(): void {
-    this.selectedItem = null;
+    this.selectedPartNumber = '';
     this.selectedItemId = '';
     this.itemSuggestions = [];
     this.newBomDescription = '';
@@ -350,9 +350,15 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
     this.itemSearchSubject.next(event.query);
   }
 
-  onItemSelect(event: AutoCompleteSelectEvent): void {
-    const item = event.value as ItemMasterDto;
-    this.selectedItemId = item.id;
+  handleItemModelChange(value: ItemMasterDto | string | null): void {
+    if (value && typeof value === 'object') {
+      this.selectedPartNumber = value.partNumber;
+      this.selectedItemId = value.id;
+    } else {
+      this.selectedPartNumber = (value as string) ?? '';
+      if (!value) this.selectedItemId = '';
+    }
+    this.cdr.detectChanges();
   }
 
   submitCreate(): void {
