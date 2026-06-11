@@ -192,6 +192,7 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
                 </p-button>
               } @else if (item.revisionStatus === 'APPROVED') {
                 <p-button [rounded]="true" [text]="true" size="small"
+                          [loading]="creatingForBomId === item.bomId"
                           title="Create Revision" aria-label="Create Revision"
                           (click)="$event.stopPropagation(); openForRevision(item)">
                   <svg lucideFilePlus [size]="16" [strokeWidth]="1.75"></svg>
@@ -263,6 +264,7 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
   searchTerm = '';
   pageSize = 20;
   totalRecords = 0;
+  creatingForBomId = '';
 
   // Create dialog state
   showCreateDialog = false;
@@ -339,7 +341,7 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
   }
 
   openBoms(item: BomSummaryDto): void {
-    this.router.navigate(['/bom', item.parentItemId]);
+    this.router.navigate(['/boms', item.bomId]);
   }
 
   openDraft(item: BomSummaryDto): void {
@@ -347,7 +349,21 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
   }
 
   openForRevision(item: BomSummaryDto): void {
-    this.router.navigate(['/boms', item.bomId]);
+    if (this.creatingForBomId) { return; }
+    this.creatingForBomId = item.bomId;
+    this.bomApi.patchHeader(item.bomId, {}).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: () => {
+        this.creatingForBomId = '';
+        this.router.navigate(['/boms', item.bomId], { queryParams: { revisionStatus: 'DRAFT' } });
+      },
+      error: () => {
+        this.creatingForBomId = '';
+        this.cdr.detectChanges();
+        this.router.navigate(['/boms', item.bomId], { queryParams: { revisionStatus: 'DRAFT' } });
+      },
+    });
   }
 
   openCreateDialog(): void {

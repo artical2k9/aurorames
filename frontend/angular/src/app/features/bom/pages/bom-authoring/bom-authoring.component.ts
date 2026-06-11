@@ -88,12 +88,6 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             } @else {
               <span class="ba__eco ba__eco--none">No active ECO</span>
             }
-            @if (bom.revisionStatus === 'PENDING_APPROVAL') {
-              <p-button label="Approve" severity="success" size="small"
-                        [loading]="approving" (onClick)="approveDraft()" />
-              <p-button label="Reject" severity="danger" size="small"
-                        [loading]="rejecting" (onClick)="showRejectPanel = true" />
-            }
           </div>
         </div>
 
@@ -137,11 +131,22 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             <p-button label="← Explosion View" [text]="true" size="small"
                       (onClick)="goToExplosion()" />
             <span class="ba__lines-count">BOM Lines — {{ lines.length }} component{{ lines.length !== 1 ? 's' : '' }}</span>
+            <span class="ba__spacer"></span>
+            @if (bom.revisionStatus === 'PENDING_APPROVAL') {
+              <p-button label="Approve" severity="success" size="small"
+                        [loading]="approving" (onClick)="approveDraft()" />
+              <p-button label="Reject" severity="danger" size="small"
+                        [loading]="rejecting" (onClick)="showRejectPanel = true" />
+            }
             @if (bom.revisionStatus === 'APPROVED' && !bom.hasDraft && !bom.hasPendingApproval) {
-              <span class="ba__spacer"></span>
               <p-button label="Create Draft" severity="warn" size="small"
                         [loading]="creatingDraft" (onClick)="createDraft()" />
             }
+            <p-button [rounded]="true" [text]="true"
+                      aria-label="Customise columns"
+                      (onClick)="colPickerPanel.toggle($event)">
+              <svg lucideColumnsSettings [size]="16" [strokeWidth]="1.75"></svg>
+            </p-button>
           </div>
         }
 
