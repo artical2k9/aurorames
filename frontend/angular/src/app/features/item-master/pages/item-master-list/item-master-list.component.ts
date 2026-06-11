@@ -16,7 +16,7 @@ import { MenuModule } from 'primeng/menu';
 import { ToastModule } from 'primeng/toast';
 import { Menu } from 'primeng/menu';
 import { MenuItem, MessageService } from 'primeng/api';
-import { LucideColumnsSettings } from '@lucide/angular';
+import { LucideColumnsSettings, LucideView, LucideFilePenLine, LucideFilePlus } from '@lucide/angular';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { BreadcrumbService } from '../../../../shared/ui';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
@@ -35,7 +35,7 @@ import {
     TableModule, InputTextModule, SelectModule,
     ButtonModule, PopoverModule, TagModule, MenuModule, ToastModule,
     ColumnPickerComponent,
-    ClassificationLabelPipe, LucideColumnsSettings,
+    ClassificationLabelPipe, LucideColumnsSettings, LucideView, LucideFilePenLine, LucideFilePlus,
   ],
   providers: [
     MessageService,
@@ -173,10 +173,24 @@ import {
             }
             <td>
               <div class="iml__actions">
-                <p-button label="View" [text]="true" size="small"
-                          (onClick)="navigateToDetail(item.id)" />
-                <p-button label="Create Revision" [text]="true" size="small"
-                          (onClick)="navigateToEdit(item.id)" />
+                <p-button [rounded]="true" [text]="true" size="small"
+                          title="View" aria-label="View"
+                          (onClick)="navigateToDetail(item.id)">
+                  <svg lucideView [size]="16" [strokeWidth]="1.75"></svg>
+                </p-button>
+                @if (item.hasDraft) {
+                  <p-button [rounded]="true" [text]="true" size="small" severity="warn"
+                            title="Edit Draft" aria-label="Edit Draft"
+                            (onClick)="navigateToEdit(item.id)">
+                    <svg lucideFilePenLine [size]="16" [strokeWidth]="1.75"></svg>
+                  </p-button>
+                } @else if (item.revisionStatus === 'APPROVED') {
+                  <p-button [rounded]="true" [text]="true" size="small"
+                            title="Create Revision" aria-label="Create Revision"
+                            (onClick)="navigateToEdit(item.id)">
+                    <svg lucideFilePlus [size]="16" [strokeWidth]="1.75"></svg>
+                  </p-button>
+                }
                 <p-button icon="pi pi-ellipsis-v" [text]="true" size="small"
                           (onClick)="showRowMenu($event, item)" />
               </div>

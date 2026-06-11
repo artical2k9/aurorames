@@ -14,7 +14,7 @@ import { DialogModule } from 'primeng/dialog';
 import { AutoCompleteModule, AutoCompleteCompleteEvent } from 'primeng/autocomplete';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideColumnsSettings } from '@lucide/angular';
+import { LucideColumnsSettings, LucideView, LucideFilePenLine, LucideFilePlus } from '@lucide/angular';
 import { BreadcrumbService } from '../../../../shared/ui';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
@@ -42,7 +42,7 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
     TableModule, ButtonModule, InputTextModule, MessageModule, PopoverModule, TagModule,
     DialogModule, AutoCompleteModule, ToastModule,
     ColumnPickerComponent,
-    LucideColumnsSettings,
+    LucideColumnsSettings, LucideView, LucideFilePenLine, LucideFilePlus,
   ],
   providers: [
     MessageService,
@@ -61,7 +61,7 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
           <h2 class="bb__title">Bills of Materials</h2>
           <span class="bb__count">({{ totalRecords }} BOMs)</span>
         </div>
-        <p-button label="New BOM" icon="pi pi-plus" severity="primary"
+        <p-button label="Create BOM" icon="pi pi-plus" severity="primary"
                   size="small" (onClick)="openCreateDialog()" />
       </div>
 
@@ -179,20 +179,23 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
               </td>
             }
             <td class="bb__action">
-              <p-button label="View BOMs"
-                        severity="secondary"
-                        size="small"
-                        (click)="$event.stopPropagation(); openBoms(item)" />
+              <p-button [rounded]="true" [text]="true" size="small"
+                        title="View BOMs" aria-label="View BOMs"
+                        (click)="$event.stopPropagation(); openBoms(item)">
+                <svg lucideView [size]="16" [strokeWidth]="1.75"></svg>
+              </p-button>
               @if (item.hasDraft) {
-                <p-button label="Edit Draft"
-                          severity="warn"
-                          size="small"
-                          (click)="$event.stopPropagation(); openDraft(item)" />
+                <p-button [rounded]="true" [text]="true" size="small" severity="warn"
+                          title="Edit Draft" aria-label="Edit Draft"
+                          (click)="$event.stopPropagation(); openDraft(item)">
+                  <svg lucideFilePenLine [size]="16" [strokeWidth]="1.75"></svg>
+                </p-button>
               } @else if (item.revisionStatus === 'APPROVED') {
-                <p-button label="Create Revision"
-                          severity="secondary"
-                          size="small"
-                          (click)="$event.stopPropagation(); openForRevision(item)" />
+                <p-button [rounded]="true" [text]="true" size="small"
+                          title="Create Revision" aria-label="Create Revision"
+                          (click)="$event.stopPropagation(); openForRevision(item)">
+                  <svg lucideFilePlus [size]="16" [strokeWidth]="1.75"></svg>
+                </p-button>
               }
             </td>
           </tr>
