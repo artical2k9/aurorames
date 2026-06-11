@@ -130,11 +130,18 @@ export class BomListComponent implements OnInit {
     this.itemId = this.route.snapshot.paramMap.get('itemId') ?? '';
     this.breadcrumbSvc.set([
       { label: 'Engineering' },
-      { label: 'Item Master', route: ['/item-master'] },
-      { label: 'BOMs' },
+      { label: 'BOMs', route: ['/bom'] },
     ]);
     this.itemApi.getById(this.itemId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: item => { this.parentItem = item; this.cdr.detectChanges(); },
+      next: item => {
+        this.parentItem = item;
+        this.breadcrumbSvc.set([
+          { label: 'Engineering' },
+          { label: 'BOMs', route: ['/bom'] },
+          { label: item.partNumber },
+        ]);
+        this.cdr.detectChanges();
+      },
       error: () => { /* parent item not found — BOM list still shows without heading */ },
     });
     this.loadBoms();

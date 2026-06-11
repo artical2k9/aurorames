@@ -347,9 +347,8 @@ export class BomAuthoringComponent implements OnInit {
     const queryStatus = this.route.snapshot.queryParamMap.get('revisionStatus') as RevisionStatus | null;
     this.breadcrumbSvc.set([
       { label: 'Engineering' },
-      { label: 'Item Master', route: ['/item-master'] },
-      { label: 'BOMs' },
-      { label: 'Authoring' },
+      { label: 'BOMs', route: ['/bom'] },
+      { label: queryStatus === 'DRAFT' ? 'Edit Draft' : 'View BOM' },
     ]);
     this.udfApi.listFields('BOM_LINE').pipe(
       take(1),
@@ -399,9 +398,8 @@ export class BomAuthoringComponent implements OnInit {
         this.loading = false;
         this.breadcrumbSvc.set([
           { label: 'Engineering' },
-          { label: 'Item Master', route: ['/item-master'] },
-          { label: item.partNumber, route: ['/item-master', bom.parentItemId, 'boms'] },
-          { label: 'Rev ' + bom.revision },
+          { label: 'BOMs', route: ['/bom'] },
+          { label: this.bomBreadcrumbLabel(bom, item.partNumber) },
         ]);
         this.cdr.detectChanges();
       },
@@ -454,6 +452,7 @@ export class BomAuthoringComponent implements OnInit {
         this.submitting = false;
         this.isDirty = false;
         this.messageService.add({ severity: 'success', summary: 'BOM submitted for approval' });
+        this.refreshRevisions();
         this.cdr.detectChanges();
       },
       error: () => {
@@ -470,6 +469,8 @@ export class BomAuthoringComponent implements OnInit {
       next: bom => {
         this.bom = bom;
         this.approving = false;
+        this.messageService.add({ severity: 'success', summary: 'BOM approved' });
+        this.refreshRevisions();
         this.cdr.detectChanges();
       },
       error: () => { this.approving = false; this.cdr.detectChanges(); },
@@ -485,6 +486,8 @@ export class BomAuthoringComponent implements OnInit {
         this.rejecting = false;
         this.showRejectPanel = false;
         this.rejectReason = '';
+        this.messageService.add({ severity: 'warn', summary: 'BOM rejected — returned to Draft' });
+        this.refreshRevisions();
         this.cdr.detectChanges();
       },
       error: () => { this.rejecting = false; this.cdr.detectChanges(); },
@@ -520,12 +523,34 @@ export class BomAuthoringComponent implements OnInit {
       next: () => {
         this.cancelling = false;
         this.messageService.add({ severity: 'info', summary: 'Draft cancelled' });
-        this.router.navigate(['/bom', this.bom?.parentItemId]);
+        this.router.navigate(['/bom']);
         this.cdr.detectChanges();
       },
       error: () => {
         this.cancelling = false;
         this.messageService.add({ severity: 'error', summary: 'Cancel draft failed' });
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private bomBreadcrumbLabel(bom: BomDto, partNumber: string): string {
+    const base = `${partNumber} Rev ${bom.revision}`;
+    if (bom.revisionStatus === 'DRAFT') return `${base} — Edit Draft`;
+    if (bom.revisionStatus === 'PENDING_APPROVAL') return `${base} — Pending Approval`;
+    return base;
+  }
+
+  private refreshRevisions(): void {
+    this.bomApi.listRevisions(this.bomId).subscribe({
+      next: revisions => {
+        this.revisionOptions = revisions.map(r => ({
+          label: 'Rev ' + r.revision + ' (' + this.revisionStatusLabel(r.revisionStatus) + ')',
+          value: r.revisionStatus,
+        }));
+        if (this.bom) {
+          this.selectedRevisionId = this.bom.revisionStatus;
+        }
         this.cdr.detectChanges();
       },
     });
