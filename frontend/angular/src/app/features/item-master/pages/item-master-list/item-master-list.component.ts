@@ -181,7 +181,7 @@ import {
                 @if (item.hasDraft) {
                   <p-button [rounded]="true" [text]="true" size="small" severity="warn"
                             title="Edit Draft" aria-label="Edit Draft"
-                            (onClick)="navigateToEdit(item.id)">
+                            (onClick)="navigateToDraft(item.id)">
                     <svg lucideFilePenLine [size]="16" [strokeWidth]="1.75"></svg>
                   </p-button>
                 } @else if (item.revisionStatus === 'APPROVED') {
@@ -429,6 +429,10 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
 
   navigateToEdit(id: string): void {
     this.router.navigate(['/item-master', id, 'edit']);
+  }
+
+  navigateToDraft(id: string): void {
+    this.router.navigate(['/item-master', id, 'edit'], { queryParams: { revisionStatus: 'DRAFT' } });
   }
 
   cloneSelected(): void {
