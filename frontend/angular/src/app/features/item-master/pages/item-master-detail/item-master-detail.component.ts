@@ -5,6 +5,9 @@ import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { SkeletonModule } from 'primeng/skeleton';
+import { TextareaModule } from 'primeng/textarea';
+import { FormsModule } from '@angular/forms';
+import { LucideFilePenLine, LucideFilePlus } from '@lucide/angular';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
 import { UdfApiService, UdfFieldDefinition } from '../../../../shared/udf/udf-api.service';
 import { ItemMasterDto, Classification, RevisionStatus } from '../../models/item-master.model';
@@ -14,8 +17,9 @@ import { BreadcrumbService } from '../../../../shared/ui';
   selector: 'app-item-master-detail',
   standalone: true,
   imports: [
-    CommonModule,
-    CardModule, ButtonModule, TagModule, SkeletonModule,
+    CommonModule, FormsModule,
+    CardModule, ButtonModule, TagModule, SkeletonModule, TextareaModule,
+    LucideFilePenLine, LucideFilePlus,
   ],
   template: `
 
@@ -27,17 +31,41 @@ import { BreadcrumbService } from '../../../../shared/ui';
                   severity="secondary" size="small" (onClick)="goBack()" />
         @if (item) {
           <div class="imd__topbar-actions">
-            <p-button label="BOMs" icon="pi pi-sitemap" severity="secondary"
-                      size="small" (onClick)="openBoms()" />
-            @if (item.revisionStatus === 'PENDING_APPROVAL') {
-              <p-button label="Approve" icon="pi pi-check" severity="success"
-                        size="small" [loading]="approving" (onClick)="approve()" />
+            @if (item.revisionStatus === 'DRAFT') {
+              <p-button label="Edit Draft" severity="warn" size="small"
+                        (onClick)="openEditDraft()">
+                <svg lucideFilePenLine [size]="14" [strokeWidth]="1.75" style="margin-right:0.375rem"></svg>
+              </p-button>
             }
-            <p-button label="Edit" icon="pi pi-pencil" severity="primary"
-                      size="small" (onClick)="openEdit()" />
+            @if (item.revisionStatus === 'APPROVED' && !item.hasDraft && !item.hasPendingApproval) {
+              <p-button label="Create Revision" severity="primary" size="small"
+                        [loading]="creatingRevision" (onClick)="createRevision()">
+                <svg lucideFilePlus [size]="14" [strokeWidth]="1.75" style="margin-right:0.375rem"></svg>
+              </p-button>
+            }
+            @if (item.revisionStatus === 'PENDING_APPROVAL') {
+              <p-button label="Approve" severity="success" size="small"
+                        [loading]="approving" (onClick)="approve()" />
+              <p-button label="Reject" severity="danger" size="small"
+                        (onClick)="showRejectPanel = true" />
+            }
           </div>
         }
       </div>
+
+      @if (showRejectPanel) {
+        <div class="imd__reject-panel">
+          <textarea pTextarea [(ngModel)]="rejectReason" rows="3" style="width:100%"
+                    placeholder="Rejection reason (required)"></textarea>
+          <div class="imd__reject-actions">
+            <p-button label="Confirm Rejection" severity="danger" size="small"
+                      [loading]="rejecting" [disabled]="!rejectReason.trim()"
+                      (onClick)="reject()" />
+            <p-button label="Cancel" severity="secondary" size="small"
+                      (onClick)="showRejectPanel = false; rejectReason = ''" />
+          </div>
+        </div>
+      }
 
       @if (loading) {
         <!-- Skeleton while loading -->
@@ -239,6 +267,13 @@ import { BreadcrumbService } from '../../../../shared/ui';
       padding: 2rem; text-align: center; color: var(--p-text-muted-color);
     }
 
+    .imd__reject-panel {
+      display: flex; flex-direction: column; gap: 0.5rem;
+      background: var(--p-surface-50); border: 1px solid var(--p-red-200);
+      border-radius: 6px; padding: 0.875rem; margin-bottom: 0.75rem;
+    }
+    .imd__reject-actions { display: flex; gap: 0.5rem; }
+
     :host ::ng-deep .tag-raw-material { background: #0D9488 !important; color: #fff !important; }
     :host ::ng-deep .tag-service { background: #7C3AED !important; color: #fff !important; }
   `],
@@ -254,6 +289,10 @@ export class ItemMasterDetailComponent implements OnInit {
   udfFields: UdfFieldDefinition[] = [];
   loading = true;
   approving = false;
+  rejecting = false;
+  creatingRevision = false;
+  showRejectPanel = false;
+  rejectReason = '';
   itemId!: string;
 
   ngOnInit(): void {
@@ -302,6 +341,46 @@ export class ItemMasterDetailComponent implements OnInit {
     });
   }
 
+  reject(): void {
+    if (!this.rejectReason.trim()) return;
+    this.rejecting = true;
+    this.api.reject(this.itemId, this.rejectReason).subscribe({
+      next: item => {
+        this.item = item;
+        this.rejecting = false;
+        this.showRejectPanel = false;
+        this.rejectReason = '';
+        this.cdr.detectChanges();
+      },
+      error: () => { this.rejecting = false; this.cdr.detectChanges(); },
+    });
+  }
+
+  createRevision(): void {
+    this.creatingRevision = true;
+    this.api.patch(this.itemId, {}).subscribe({
+      next: () => {
+        this.creatingRevision = false;
+        this.router.navigate(['/item-master', this.itemId, 'edit'], {
+          queryParams: { revisionStatus: 'DRAFT' },
+        });
+      },
+      error: () => {
+        this.creatingRevision = false;
+        this.cdr.detectChanges();
+        this.router.navigate(['/item-master', this.itemId, 'edit'], {
+          queryParams: { revisionStatus: 'DRAFT' },
+        });
+      },
+    });
+  }
+
+  openEditDraft(): void {
+    this.router.navigate(['/item-master', this.itemId, 'edit'], {
+      queryParams: { revisionStatus: 'DRAFT' },
+    });
+  }
+
   revisionStatusLabel(s: RevisionStatus): string {
     if (s === 'PENDING_APPROVAL') return 'Pending';
     if (s === 'APPROVED') return 'Approved';
@@ -316,14 +395,6 @@ export class ItemMasterDetailComponent implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/item-master']);
-  }
-
-  openEdit(): void {
-    this.router.navigate(['/item-master', this.itemId, 'edit']);
-  }
-
-  openBoms(): void {
-    this.router.navigate(['/item-master', this.itemId, 'boms']);
   }
 
   udfDisplayValue(field: UdfFieldDefinition): string {
