@@ -10,10 +10,10 @@
 
 | PR | Phases | Task Range | CI Anchor | Notes |
 |---|---|---|---|---|
-| PR 1 | Setup (scaffold) + US1 (plan header + revision lifecycle) | T001–T032 | `./gradlew :services:quality-service:check` | Scaffold bundled with US1 ITs as coverage anchor; includes settings.gradle/compose/gateway/sonar updates |
-| PR 2 | US2 (characteristics incl. expression validator) | T033–T044 | `./gradlew :services:quality-service:check` | Parser unit tests (cycle/reference/limit cases) + characteristic ITs |
-| PR 3 | US3 (consumer API + approval gate + Kafka event) | T045–T053 | `./gradlew :services:quality-service:check` | Contract consumed by MES-9; submit-blocks tested here |
-| PR 4 | US4 (frontend Quality > Inspection Plans) | T054–T070 | `npm run lint && npm run test` + gateway smoke | ModuleKey + sidebar additions; ERR-MES-059/078 checks |
+| PR 1 | Setup (scaffold) + US1 (plan header + revision lifecycle) | T001–T025 | `./gradlew :services:quality-service:check` | Scaffold bundled with US1 ITs as coverage anchor; includes settings.gradle/compose/gateway/sonar updates |
+| PR 2 | US2 (characteristics incl. expression validator) | T026–T033 | `./gradlew :services:quality-service:check` | Parser unit tests (cycle/reference/limit cases) + characteristic ITs |
+| PR 3 | US3 (consumer API + approval gate + Kafka event) | T034–T040 | `./gradlew :services:quality-service:check` | Contract consumed by MES-9; submit-blocks tested here |
+| PR 4 | US4 (frontend Quality > Inspection Plans) + compliance | T041–T054 | `npm run lint && npm run test` + gateway smoke | ModuleKey + sidebar additions; ERR-MES-059/078 checks |
 
 **Sequencing note**: PR 2 depends on PR 1; PR 3 depends on PR 2. MES-9 consumes the PR 3 contract.
 
@@ -46,7 +46,7 @@
 
 ### Tests (write first, confirm failing)
 
-- [ ] T013 [P] [US1] IT: create plan returns 201 rev 0 DRAFT; duplicate item returns 409; unknown item returns 422 in services/quality-service/src/test/java/com/mes/quality/integration/inspectionplan/InspectionPlanControllerIT.java
+- [ ] T013 [P] [US1] IT: create plan returns 201 rev 0 DRAFT; duplicate item returns 409; unknown item returns 422 — InventoryServiceClient stubbed via WireMock (no inventory container in IT stack) in services/quality-service/src/test/java/com/mes/quality/integration/inspectionplan/InspectionPlanControllerIT.java
 - [ ] T014 [P] [US1] IT: submit → PENDING_APPROVAL; approve → APPROVED with actor metadata; reject(reason) → DRAFT; reject without reason 422 (same IT class)
 - [ ] T015 [P] [US1] IT: PATCH header on APPROVED auto-creates draft N+1; one-draft invariant 409; revision history endpoint ordered; display revision resolution (APPROVED > PENDING > DRAFT, rev DESC) (same IT class)
 - [ ] T016 [P] [US1] IT: unauthenticated 401; missing privilege 403; org isolation (other-org token sees 404) (same IT class)
@@ -56,7 +56,7 @@
 
 - [ ] T018 [P] [US1] Create domain entities InspectionPlan, InspectionPlanRevision, RevisionStatus (reuse enum semantics), enums (CharacteristicType, CharacteristicSource, RecordingBasis, SampleSizeRule) per data-model.md in services/quality-service/src/main/java/com/mes/quality/inspectionplan/domain/
 - [ ] T019 [P] [US1] Create repositories (InspectionPlanRepository, InspectionPlanRevisionRepository) in .../inspectionplan/repository/
-- [ ] T020 [US1] Create InventoryServiceClient (RestClient, item existence + part number denorm, forwarded JWT) in .../inspectionplan/client/
+- [ ] T020 [US1] Create InventoryServiceClient (RestClient, item existence + part number denorm, forwarded JWT; base URL configurable so ITs point at WireMock) in .../inspectionplan/client/
 - [ ] T021 [US1] Implement InspectionPlanService: createPlan, getPlan (revisionNumber/status params + display resolution), patchHeader (auto-draft + full copy), submit/approve/reject/cancelDraft, delete guard, listPlans paged/search in .../inspectionplan/service/
 - [ ] T022 [US1] Create DTOs + InspectionPlanMapper in .../inspectionplan/api/dto/
 - [ ] T023 [US1] Create InspectionPlanController (endpoints per contracts/inspection-plans-api.md plans & revisions table) in .../inspectionplan/api/
@@ -79,7 +79,7 @@
 
 - [ ] T026 [P] [US2] Unit tests: ExpressionValidator — grammar (operators, parens, numbers, C-refs, #{tag}), unknown ref, self-ref, 2-node and 3-node cycles, ref to COMMON rejected, valid chains in services/quality-service/src/test/java/com/mes/quality/inspectionplan/service/ExpressionValidatorTest.java
 - [ ] T027 [P] [US2] Unit tests: characteristic field-matrix validation (SPECIFIC limits ordering lower ≤ nominal ≤ upper; COMMON requires expectedBoolean; CALCULATED requires expression; cross-type field rejection; FIXED_COUNT requires count ≥ 1) in CharacteristicValidatorTest.java
-- [ ] T028 [P] [US2] IT: add/edit/reorder/delete characteristics on DRAFT; 409 on PENDING/APPROVED; characteristic-number uniqueness 409; delete-with-dependents 409 naming dependents in InspectionCharacteristicIT.java
+- [ ] T028 [P] [US2] IT: add/edit/delete characteristics on DRAFT (renumbering via PATCH of characteristicNumber — no separate reorder endpoint); 409 on PENDING/APPROVED; characteristic-number uniqueness 409; delete-with-dependents 409 naming dependents in InspectionCharacteristicIT.java
 
 ### Implementation
 
