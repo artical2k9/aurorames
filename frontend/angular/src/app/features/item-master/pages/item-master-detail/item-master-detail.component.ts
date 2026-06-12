@@ -256,8 +256,8 @@ import { BreadcrumbService } from '../../../../shared/ui';
                     <td>{{ rev.createdBy }}</td>
                     <td>
                       @if (rev.revision !== item.revision) {
-                        <p-button label="View" [text]="true" size="small"
-                                  (onClick)="viewRevision(rev.revision)" />
+                        <button type="button" class="imd__view-link"
+                                (click)="viewRevision(rev.revision)">View</button>
                       } @else {
                         <span class="imd__current-badge">Current</span>
                       }
@@ -306,6 +306,11 @@ import { BreadcrumbService } from '../../../../shared/ui';
     .imd__revtable td { padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--p-surface-border); }
     .imd__revrow--current td { background: var(--p-surface-50); font-weight: 500; }
     .imd__current-badge { font-size: 0.75rem; color: var(--p-text-muted-color); font-style: italic; }
+    .imd__view-link {
+      background: none; border: none; padding: 0.25rem 0.5rem; cursor: pointer;
+      color: var(--p-primary-color); font-size: 0.8125rem; text-decoration: underline;
+    }
+    .imd__view-link:hover { color: var(--p-primary-600-color); }
 
     .imd__grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
@@ -402,6 +407,7 @@ export class ItemMasterDetailComponent implements OnInit {
 
   private loadItem(revisionNumber?: number): void {
     this.loading = true;
+    this.cdr.detectChanges();
     this.api.getById(this.itemId, undefined, revisionNumber).subscribe({
       next: item => {
         this.item = item;
@@ -434,7 +440,8 @@ export class ItemMasterDetailComponent implements OnInit {
   }
 
   viewRevision(revision: number): void {
-    this.onRevisionChange(revision);
+    this.selectedRevision = revision;
+    this.loadItem(revision);
   }
 
   approve(): void {
