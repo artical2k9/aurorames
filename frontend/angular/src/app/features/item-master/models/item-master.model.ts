@@ -77,6 +77,19 @@ export interface CreateItemMasterRequest {
   customFields?: Record<string, unknown>;
 }
 
+export interface ItemRevisionSummaryDto {
+  revisionId: string;
+  revision: number;
+  revisionStatus: RevisionStatus;
+  description?: string;
+  submittedBy?: string;
+  submittedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
 export interface PatchItemMasterRequest {
   description?: string;
   unitOfMeasure?: string;

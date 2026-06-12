@@ -73,9 +73,10 @@ public class BomController {
     public BomDto getBom(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID bomId,
-            @RequestParam(required = false) RevisionStatus revisionStatus) {
+            @RequestParam(required = false) RevisionStatus revisionStatus,
+            @RequestParam(required = false) Integer revisionNumber) {
 
-        return bomService.getBom(JwtClaimsExtractor.orgId(jwt), bomId, revisionStatus);
+        return bomService.getBom(JwtClaimsExtractor.orgId(jwt), bomId, revisionStatus, revisionNumber);
     }
 
     @PostMapping("/{bomId}/submit")
@@ -224,7 +225,7 @@ public class BomController {
 
         var orgId = JwtClaimsExtractor.orgId(jwt);
         var nodes = explosionService.explode(orgId, bomId, format, asOfDate, asOfUnit, maxDepth);
-        var dto = bomService.getBom(orgId, bomId, null);
+        var dto = bomService.getBom(orgId, bomId, null, null);
 
         if ("pdf".equalsIgnoreCase(download)) {
             byte[] pdf = exportService.toPdfFromDto(dto, nodes);

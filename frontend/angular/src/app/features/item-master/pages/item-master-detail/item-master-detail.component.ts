@@ -1,16 +1,17 @@
 import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { SkeletonModule } from 'primeng/skeleton';
 import { TextareaModule } from 'primeng/textarea';
-import { FormsModule } from '@angular/forms';
+import { SelectModule } from 'primeng/select';
 import { LucideFilePenLine, LucideFilePlus } from '@lucide/angular';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
 import { UdfApiService, UdfFieldDefinition } from '../../../../shared/udf/udf-api.service';
-import { ItemMasterDto, Classification, RevisionStatus } from '../../models/item-master.model';
+import { ItemMasterDto, ItemRevisionSummaryDto, Classification, RevisionStatus } from '../../models/item-master.model';
 import { BreadcrumbService } from '../../../../shared/ui';
 
 @Component({
@@ -18,7 +19,7 @@ import { BreadcrumbService } from '../../../../shared/ui';
   standalone: true,
   imports: [
     CommonModule, FormsModule,
-    CardModule, ButtonModule, TagModule, SkeletonModule, TextareaModule,
+    CardModule, ButtonModule, TagModule, SkeletonModule, TextareaModule, SelectModule,
     LucideFilePenLine, LucideFilePlus,
   ],
   template: `
@@ -29,7 +30,7 @@ import { BreadcrumbService } from '../../../../shared/ui';
       <div class="imd__topbar">
         <p-button icon="pi pi-arrow-left" label="Back to List" [text]="true"
                   severity="secondary" size="small" (onClick)="goBack()" />
-        @if (item) {
+        @if (item && isLatestRevision) {
           <div class="imd__topbar-actions">
             @if (item.revisionStatus === 'DRAFT') {
               <p-button label="Edit Draft" severity="warn" size="small"
@@ -80,15 +81,28 @@ import { BreadcrumbService } from '../../../../shared/ui';
         <p-card styleClass="imd__header-card">
           <div class="imd__header-content">
             <div>
-              <div class="imd__pn">{{ item.partNumber }} — Rev {{ item.revision }}</div>
+              <div class="imd__pn">{{ item.partNumber }}</div>
               <div class="imd__desc">{{ item.description }}</div>
             </div>
-            <div class="imd__header-badges">
-              <p-tag [value]="revisionStatusLabel(item.revisionStatus)"
-                     [severity]="revisionStatusSeverity(item.revisionStatus)" />
-              <p-tag [value]="item.classification"
-                     [severity]="classificationSeverity(item.classification)"
-                     [class]="classificationClass(item.classification)" />
+            <div class="imd__header-right">
+              @if (revisionOptions.length > 1) {
+                <div class="imd__rev-selector">
+                  <span class="imd__rev-label">Revision:</span>
+                  <p-select [options]="revisionOptions" [(ngModel)]="selectedRevision"
+                            optionLabel="label" optionValue="value"
+                            styleClass="imd__rev-select"
+                            (onChange)="onRevisionChange($event.value)" />
+                </div>
+              } @else {
+                <span class="imd__rev-static">Rev {{ item.revision }}</span>
+              }
+              <div class="imd__header-badges">
+                <p-tag [value]="revisionStatusLabel(item.revisionStatus)"
+                       [severity]="revisionStatusSeverity(item.revisionStatus)" />
+                <p-tag [value]="item.classification"
+                       [severity]="classificationSeverity(item.classification)"
+                       [class]="classificationClass(item.classification)" />
+              </div>
             </div>
           </div>
         </p-card>
@@ -215,6 +229,46 @@ import { BreadcrumbService } from '../../../../shared/ui';
 
         </div>
 
+        <!-- Revision History -->
+        @if (revisions.length > 1) {
+          <p-card header="Revision History" styleClass="imd__card imd__revhistory">
+            <table class="imd__revtable">
+              <thead>
+                <tr>
+                  <th>Rev</th>
+                  <th>Status</th>
+                  <th>Description</th>
+                  <th>Approved By</th>
+                  <th>Approved At</th>
+                  <th>Created By</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (rev of revisionsDesc; track rev.revisionId) {
+                  <tr [class.imd__revrow--current]="rev.revision === item.revision">
+                    <td>{{ rev.revision }}</td>
+                    <td><p-tag [value]="revisionStatusLabel(rev.revisionStatus)"
+                               [severity]="revisionStatusSeverity(rev.revisionStatus)" /></td>
+                    <td>{{ rev.description ?? '—' }}</td>
+                    <td>{{ rev.approvedBy ?? '—' }}</td>
+                    <td>{{ rev.approvedAt ? (rev.approvedAt | date:'mediumDate') : '—' }}</td>
+                    <td>{{ rev.createdBy }}</td>
+                    <td>
+                      @if (rev.revision !== item.revision) {
+                        <p-button label="View" [text]="true" size="small"
+                                  (onClick)="viewRevision(rev.revision)" />
+                      } @else {
+                        <span class="imd__current-badge">Current</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </p-card>
+        }
+
       } @else {
         <div class="imd__not-found">Item not found.</div>
       }
@@ -240,7 +294,18 @@ import { BreadcrumbService } from '../../../../shared/ui';
     }
     .imd__pn { font-size: 1.375rem; font-weight: 700; }
     .imd__desc { font-size: 0.9375rem; color: var(--p-text-muted-color); margin-top: 0.25rem; }
-    .imd__header-badges { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+    .imd__header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; flex-shrink: 0; }
+    .imd__header-badges { display: flex; align-items: center; gap: 0.5rem; }
+    .imd__rev-selector { display: flex; align-items: center; gap: 0.5rem; }
+    .imd__rev-label { font-size: 0.8125rem; color: var(--p-text-muted-color); }
+    .imd__rev-static { font-size: 0.9375rem; font-weight: 600; }
+    :host ::ng-deep .imd__rev-select { min-width: 120px; font-size: 0.8125rem; }
+    .imd__revhistory { margin-top: 1rem; grid-column: 1 / -1; }
+    .imd__revtable { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .imd__revtable th { text-align: left; padding: 0.4rem 0.75rem; border-bottom: 2px solid var(--p-surface-border); font-weight: 600; color: var(--p-text-muted-color); }
+    .imd__revtable td { padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--p-surface-border); }
+    .imd__revrow--current td { background: var(--p-surface-50); font-weight: 500; }
+    .imd__current-badge { font-size: 0.75rem; color: var(--p-text-muted-color); font-style: italic; }
 
     .imd__grid {
       display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
@@ -287,6 +352,11 @@ export class ItemMasterDetailComponent implements OnInit {
   private readonly cdr          = inject(ChangeDetectorRef);
   item: ItemMasterDto | null = null;
   udfFields: UdfFieldDefinition[] = [];
+  revisions: ItemRevisionSummaryDto[] = [];
+  revisionsDesc: ItemRevisionSummaryDto[] = [];
+  revisionOptions: { label: string; value: number }[] = [];
+  selectedRevision = 0;
+  isLatestRevision = true;
   loading = true;
   approving = false;
   rejecting = false;
@@ -297,12 +367,14 @@ export class ItemMasterDetailComponent implements OnInit {
 
   ngOnInit(): void {
     this.itemId = this.route.snapshot.paramMap.get('id')!;
+    const revParam = this.route.snapshot.queryParamMap.get('revision');
+    const targetRevision = revParam != null ? parseInt(revParam, 10) : undefined;
     this.breadcrumbSvc.set([
       { label: 'Master Data' },
       { label: 'Item Master', route: ['/item-master'] },
       { label: 'Detail' },
     ]);
-    this.loadItem();
+    this.loadRevisions(() => this.loadItem(targetRevision));
     this.udfApi.listFields('ITEM_MASTER').subscribe({
       next: fields => {
         this.udfFields = fields ?? [];
@@ -312,11 +384,32 @@ export class ItemMasterDetailComponent implements OnInit {
     });
   }
 
-  private loadItem(): void {
+  private loadRevisions(then: () => void): void {
+    this.api.listRevisions(this.itemId).subscribe({
+      next: revs => {
+        this.revisions = revs;
+        this.revisionsDesc = [...revs].sort((a, b) => b.revision - a.revision);
+        this.revisionOptions = revs.map(r => ({
+          label: 'Rev ' + r.revision + ' (' + this.revisionStatusLabel(r.revisionStatus) + ')',
+          value: r.revision,
+        }));
+        this.cdr.detectChanges();
+        then();
+      },
+      error: () => { then(); },
+    });
+  }
+
+  private loadItem(revisionNumber?: number): void {
     this.loading = true;
-    this.api.getById(this.itemId).subscribe({
+    this.api.getById(this.itemId, undefined, revisionNumber).subscribe({
       next: item => {
         this.item = item;
+        this.selectedRevision = item.revision;
+        const maxRev = this.revisions.length > 0
+          ? Math.max(...this.revisions.map(r => r.revision))
+          : item.revision;
+        this.isLatestRevision = item.revision === maxRev;
         this.breadcrumbSvc.set([
           { label: 'Master Data' },
           { label: 'Item Master', route: ['/item-master'] },
@@ -329,12 +422,27 @@ export class ItemMasterDetailComponent implements OnInit {
     });
   }
 
+  onRevisionChange(revision: number): void {
+    if (revision !== this.item?.revision) {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { revision },
+        queryParamsHandling: 'merge',
+      });
+      this.loadItem(revision);
+    }
+  }
+
+  viewRevision(revision: number): void {
+    this.onRevisionChange(revision);
+  }
+
   approve(): void {
     this.approving = true;
     this.api.approve(this.itemId).subscribe({
       next: () => {
         this.approving = false;
-        this.loadItem();
+        this.loadRevisions(() => this.loadItem());
       },
       error: () => { this.approving = false; this.cdr.detectChanges(); },
     });
@@ -348,7 +456,7 @@ export class ItemMasterDetailComponent implements OnInit {
         this.rejecting = false;
         this.showRejectPanel = false;
         this.rejectReason = '';
-        this.loadItem();
+        this.loadRevisions(() => this.loadItem());
       },
       error: () => { this.rejecting = false; this.cdr.detectChanges(); },
     });

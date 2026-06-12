@@ -93,10 +93,10 @@ public class BomService {
     }
 
     @Transactional(readOnly = true)
-    public BomDto getBom(UUID orgId, UUID bomId, RevisionStatus requestedStatus) {
+    public BomDto getBom(UUID orgId, UUID bomId, RevisionStatus requestedStatus, Integer revisionNumber) {
         Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        return buildDto(bom, requestedStatus);
+        return buildDto(bom, requestedStatus, revisionNumber);
     }
 
     public BomDto submitDraft(UUID orgId, UUID bomId, String actor) {
@@ -314,7 +314,7 @@ public class BomService {
     public BomDto getBomDisplayRevision(UUID orgId, UUID bomId) {
         Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        return buildDto(bom, null);
+        return buildDto(bom, null, null);
     }
 
     /** T086 — Return all BOM revisions for a BOM identity, ordered by revision ASC. */
@@ -359,13 +359,19 @@ public class BomService {
         return dto;
     }
 
-    private BomDto buildDto(Bom bom, RevisionStatus requestedStatus) {
+    private BomDto buildDto(Bom bom, RevisionStatus requestedStatus, Integer revisionNumber) {
         List<BomRevision> all = bomRevisionRepository.findAllByBomId(bom.getId());
         BomRevision display;
-        if (requestedStatus != null) {
+        if (revisionNumber != null) {
+            display = all.stream()
+                    .filter(r -> r.getRevision().equals(revisionNumber))
+                    .findFirst()
+                    .orElseThrow(() -> new BomNotFoundException(
+                            "No revision " + revisionNumber + " for BOM: " + bom.getId()));
+        } else if (requestedStatus != null) {
             display = all.stream()
                     .filter(r -> r.getRevisionStatus() == requestedStatus)
-                    .findFirst()
+                    .max(Comparator.comparingInt(BomRevision::getRevision))
                     .orElseThrow(() -> new BomNotFoundException(
                             "No revision with status " + requestedStatus + " for BOM: " + bom.getId()));
         } else {
@@ -389,10 +395,11 @@ public class BomService {
     private BomRevision resolveDisplayRevision(List<BomRevision> revisions) {
         for (RevisionStatus status : new RevisionStatus[]{
                 RevisionStatus.APPROVED, RevisionStatus.PENDING_APPROVAL, RevisionStatus.DRAFT}) {
-            for (BomRevision r : revisions) {
-                if (r.getRevisionStatus() == status) {
-                    return r;
-                }
+            var match = revisions.stream()
+                    .filter(r -> r.getRevisionStatus() == status)
+                    .max(Comparator.comparingInt(BomRevision::getRevision));
+            if (match.isPresent()) {
+                return match.get();
             }
         }
         return null;

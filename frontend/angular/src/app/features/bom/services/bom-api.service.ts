@@ -31,9 +31,11 @@ export class BomApiService {
     return this.http.get<Page<BomSummaryDto>>(`${this.base}/headers`, { params });
   }
 
-  getById(id: string, revisionStatus?: RevisionStatus): Observable<BomDto> {
-    const params = revisionStatus ? new HttpParams().set('revisionStatus', revisionStatus) : undefined;
-    return this.http.get<BomDto>(`${this.base}/${id}`, { params });
+  getById(id: string, revisionStatus?: RevisionStatus, revisionNumber?: number): Observable<BomDto> {
+    let params = new HttpParams();
+    if (revisionStatus) params = params.set('revisionStatus', revisionStatus);
+    if (revisionNumber !== undefined) params = params.set('revisionNumber', revisionNumber);
+    return this.http.get<BomDto>(`${this.base}/${id}`, { params: params.keys().length ? params : undefined });
   }
 
   create(req: CreateBomRequest): Observable<BomDto> {
