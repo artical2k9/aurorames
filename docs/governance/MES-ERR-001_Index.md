@@ -63,3 +63,5 @@
 | ERR-MES-078 | 2026-06-09 | Frontend — Angular / UDF / Column Picker | `gridPreference.load()` without UDF fetch leaves new custom fields invisible in column picker; `item[col.key]` misses `customFields[key]` — always use `getCellValue()` + dynamic UDF load pattern |
 | ERR-MES-079 | 2026-06-10 | Frontend — Angular Templates | `value as Type` inside template expressions is a parse error (NG5002); add a typed helper method to the component class and call that from the template instead |
 | ERR-MES-080 | 2026-06-10 | Testing — JUnit 5 / Integration | IT class extending another concrete IT class inherits `@Test` methods; shared Testcontainers DB causes 409 pollution on duplicate part numbers — always extend `BaseIntegrationTest` directly |
+| ERR-MES-081 | 2026-06-10 | Deployment — Docker / Security Config | Stale container after security config change causes 401; always rebuild image after any permitAll/filter/CORS change |
+| ERR-MES-082 | 2026-06-12 | Backend — PostgreSQL / SQL | `DISTINCT ON` without `revision DESC` tiebreaker returns indeterminate (oldest) row when all statuses equal; always add `revision DESC` as final sort key |
