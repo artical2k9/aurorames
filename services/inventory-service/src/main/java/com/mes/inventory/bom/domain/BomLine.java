@@ -1,6 +1,7 @@
 package com.mes.inventory.bom.domain;
 
 import com.mes.inventory.itemmaster.domain.ItemRevision;
+import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -13,6 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.Type;
 import org.hibernate.envers.Audited;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
@@ -72,6 +74,7 @@ public class BomLine {
     @Column(name = "effective_to_unit", length = 50)
     private String effectiveToUnit;
 
+    @Type(JsonBinaryType.class)
     @Column(name = "custom_fields", columnDefinition = "jsonb")
     private Map<String, Object> customFields;
 
