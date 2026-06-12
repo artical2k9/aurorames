@@ -1,7 +1,10 @@
 package com.mes.labour.certification.api.dto;
 
+import com.mes.labour.training.api.dto.TrainingDtos.TrainingHistoryEntryDto;
+
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -23,6 +26,7 @@ public class CertificationDto {
     private Instant revokedAt;
     private String revocationReason;
     private Map<String, Object> customFields;
+    private List<TrainingHistoryEntryDto> supportingTraining;
     private String createdBy;
     private Instant createdAt;
 
@@ -152,6 +156,14 @@ public class CertificationDto {
 
     public void setCustomFields(Map<String, Object> customFields) {
         this.customFields = customFields;
+    }
+
+    public List<TrainingHistoryEntryDto> getSupportingTraining() {
+        return supportingTraining;
+    }
+
+    public void setSupportingTraining(List<TrainingHistoryEntryDto> supportingTraining) {
+        this.supportingTraining = supportingTraining;
     }
 
     public String getCreatedBy() {

@@ -4,6 +4,7 @@ import com.mes.common.security.annotation.RequiresPrivilege;
 import com.mes.labour.certification.api.dto.AwardCertificationRequest;
 import com.mes.labour.certification.api.dto.CertificationDto;
 import com.mes.labour.certification.service.CertificationService;
+import com.mes.labour.training.service.TrainingService;
 import com.mes.udf.api.JwtClaimsExtractor;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -28,9 +29,12 @@ import java.util.UUID;
 public class CertificationController {
 
     private final CertificationService certificationService;
+    private final TrainingService trainingService;
 
-    public CertificationController(CertificationService certificationService) {
+    public CertificationController(CertificationService certificationService,
+                                   TrainingService trainingService) {
         this.certificationService = certificationService;
+        this.trainingService = trainingService;
     }
 
     @PostMapping
@@ -64,7 +68,11 @@ public class CertificationController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID certificationId) {
 
-        return certificationService.get(JwtClaimsExtractor.orgId(jwt), certificationId);
+        UUID orgId = JwtClaimsExtractor.orgId(jwt);
+        CertificationDto dto = certificationService.get(orgId, certificationId);
+        dto.setSupportingTraining(trainingService.supportingTraining(
+                orgId, dto.getEmployeeId(), dto.getSkillId()));
+        return dto;
     }
 
     @PostMapping("/{certificationId}/revoke")

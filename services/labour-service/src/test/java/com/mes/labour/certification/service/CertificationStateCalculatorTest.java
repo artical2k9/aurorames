@@ -50,7 +50,8 @@ class CertificationStateCalculatorTest {
 
     @Test
     void activeJustOutsideWindow() {
-        assertThat(CertificationStateCalculator.stateOf(cert(TODAY.plusDays(WARNING_DAYS + 1), false), TODAY, WARNING_DAYS))
+        Certification c = cert(TODAY.plusDays(WARNING_DAYS + 1), false);
+        assertThat(CertificationStateCalculator.stateOf(c, TODAY, WARNING_DAYS))
                 .isEqualTo(CertificationState.ACTIVE);
     }
 
