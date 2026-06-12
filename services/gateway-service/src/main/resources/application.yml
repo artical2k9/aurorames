@@ -76,6 +76,12 @@ spring:
             - Path=/api/v1/work-orders/**
           filters:
             - StripPrefix=0
+        - id: labour-service
+          uri: ${LABOUR_SERVICE_URL:http://labour-service:8098}
+          predicates:
+            - Path=/api/v1/labour/**
+          filters:
+            - StripPrefix=0
 
 management:
   endpoints:
