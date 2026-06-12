@@ -8,6 +8,13 @@
 
 **Input**: Jira Epic MES-11 — "P2 · Labour Resources & Skills": Define workforce resources: employees, competency profiles, skill certifications, skill expiry tracking, and training record management. Labour resources are assigned to route operations and work orders; shop floor execution gates on active skill certificates. Microservice: labour-service.
 
+## Clarifications
+
+### Session 2026-06-12 (project owner via /speckit-clarify)
+
+- Build order across prerequisite epics confirmed: **MES-11 first**, then MES-12, then MES-10 — the bulk qualification API (FR-007) is the cross-epic contract and must be live before MES-10's skill-gating integration verification.
+- Skill catalogue placement confirmed in labour-service (Epic mandate, ISA-95 Personnel); the constitution service-table wording listing "Skills" under engineering-service is a documentation cleanup item, not a design constraint.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Manage Employees (Labour Resources) (Priority: P1)
