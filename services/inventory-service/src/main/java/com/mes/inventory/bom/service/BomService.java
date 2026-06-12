@@ -419,11 +419,6 @@ public class BomService {
         return BomMapper.toDto(bom, display, hasDraft, hasPendingApproval);
     }
 
-    private BomRevision resolveDisplayRevision(Bom bom) {
-        List<BomRevision> all = bomRevisionRepository.findAllByBomId(bom.getId());
-        return resolveDisplayRevision(all);
-    }
-
     private BomRevision resolveDisplayRevision(List<BomRevision> revisions) {
         for (RevisionStatus status : new RevisionStatus[]{
                 RevisionStatus.APPROVED, RevisionStatus.PENDING_APPROVAL, RevisionStatus.DRAFT}) {
