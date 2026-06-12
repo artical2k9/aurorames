@@ -18,13 +18,13 @@
 
 **Alternatives considered**: Envers-only versioning (no explicit revision rows) — rejected: Envers is an audit trail, not a user-facing revision model; cannot represent concurrent APPROVED+DRAFT.
 
-## R3 — Media binary storage
+## R3 — Media binary storage  *(revised 2026-06-12 per owner clarification)*
 
-**Decision**: Store binaries on a dedicated Docker volume (`wi-media`) mounted at `/data/wi-media`, organised as `{orgId}/{instructionId}/{attachmentId}.{ext}`. A `MediaStorageService` interface isolates the storage mechanism; the DB row stores metadata + relative path. Downloads stream via `StreamingResponseBody` with privilege check. Max sizes via `application.yml` (`mes.wi.media.max-image-bytes`, `max-video-bytes`); Spring multipart limits raised accordingly.
+**Decision**: Store binaries in **MinIO** (S3-compatible object store) added to the compose stack now. Bucket `wi-media`, object keys `{orgId}/{instructionId}/{attachmentId}.{ext}`. A `MediaStorageService` interface fronts the MinIO Java SDK (`io.minio:minio`); the DB row stores metadata + object key. Downloads stream the object through the service with privilege check (no presigned public URLs in v1 — keeps auth in one place and URLs gateway-routed). Max sizes via `application.yml` (`mes.wi.media.max-image-bytes`, `max-video-bytes`); Spring multipart limits raised accordingly. Compose adds a `minio` service with healthcheck; credentials via `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` in `.env` + `.env.example` (ERR-MES-016); bucket auto-created on service startup if missing. ITs use a Testcontainers MinIO container (`minio/minio` image).
 
-**Rationale**: No object store exists in the stack; a volume keeps v1 simple while the interface keeps DEF-001 (S3/MinIO) a drop-in replacement. Path includes orgId for isolation audits.
+**Rationale**: Owner clarification 2026-06-12 chose object storage from day one (volume v1 superseded; spec DEF-001 closed). S3 API avoids a later binary migration and enables future CDN/presigned delivery.
 
-**Alternatives considered**: (a) PostgreSQL bytea/LO — bloats backups, poor for 100 MB videos; rejected. (b) MinIO container now — new infra + credentials + healthchecks not justified by v1 scale; deferred (DEF-001).
+**Alternatives considered**: (a) PostgreSQL bytea/LO — bloats backups, poor for 100 MB videos; rejected. (b) Docker volume — simpler now but forces a binary migration later; superseded by owner decision.
 
 ## R4 — Rich text step content
 

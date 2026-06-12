@@ -55,10 +55,10 @@ Invariant: at most one revision with status DRAFT per work_instruction (enforced
 | size_bytes | bigint | NOT NULL |
 | caption | varchar(500) | |
 | display_order | integer | NOT NULL default 0 |
-| storage_path | varchar(500) | NOT NULL — relative path on wi-media volume |
+| storage_path | varchar(500) | NOT NULL — MinIO object key in bucket wi-media ({orgId}/{instructionId}/{attachmentId}.{ext}) |
 | created_by/at, modified_by/at | audit | NOT NULL |
 
-Copy-on-revision: new draft copies attachment ROWS (metadata) pointing at the SAME storage_path — binaries are content-addressed by attachment id of first upload and never deleted while referenced; a reference count check guards physical deletion (only when no revision references the path).
+Copy-on-revision: new draft copies attachment ROWS (metadata) pointing at the SAME object key — binaries are content-addressed by attachment id of first upload and never deleted from MinIO while referenced; a reference count check guards object deletion (only when no revision references the key).
 
 ## wi_skill_requirement
 

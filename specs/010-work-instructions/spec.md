@@ -8,6 +8,14 @@
 
 **Input**: Jira Epic MES-10 — "P2 · Work Instructions": Author, version-control, and publish step-by-step work instructions linked to route operations. Includes revision approval workflow with 21 CFR Part 11 electronic signatures, media attachments (images, drawings, videos), and skill/qualification gating (operator must hold required skill before being presented an instruction). Separate microservice from Manufacturing Routing. Microservice: engineering-service.
 
+## Clarifications
+
+### Session 2026-06-12 (project owner via /speckit-clarify)
+
+- Q: E-signature mechanism? → A: **Keycloak password re-authentication** via a dedicated confidential client (mes-signature-verify, Direct Access Grants); signer identity bound to the authenticated session; immutable signature record (research.md R1 confirmed).
+- Q: Media binary storage? → A: **MinIO now** — add a MinIO container to the compose stack and store media via the S3 API from day one (supersedes the Docker-volume v1 in the original research R3; DEF-001 is closed, not deferred).
+- Build order: MES-11 → MES-12 → MES-10 — this epic implements last, so the labour qualification API is live for integration verification (no dangling WireMock-only merges).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Author a Work Instruction (Priority: P1)
@@ -161,7 +169,7 @@ Engineers and supervisors browse a list of work instructions with search and fil
 ## Assumptions
 
 - The existing `engineering-service` (currently hosting ECO) is the home for this module, per the Epic ("Microservice: engineering-service"); no new service is scaffolded.
-- Media binaries are stored on the service's file system volume (Docker volume) in v1; object storage (S3/MinIO) is a deferred concern.
+- Media binaries are stored in MinIO (S3-compatible object store, new compose container) from v1, per owner clarification 2026-06-12.
 - Rich text is stored as sanitised HTML produced by the frontend editor; no server-side rendering is required.
 - Linkage to route operations (the "linked to route operations" phrase in the Epic) is delivered by MES-9 Manufacturing Routing, which will reference work instruction revisions — this epic only needs stable, versioned identifiers for MES-9 to point at.
 - Skill gating enforcement on the shop floor is delivered by Shop Floor Execution; this epic delivers definitions plus the evaluation endpoint.
@@ -175,7 +183,7 @@ Engineers and supervisors browse a list of work instructions with search and fil
 
 | ID | Deferred Capability | Reason for Deferral | Impact if Never Addressed | Suggested Phase | Jira |
 |---|---|---|---|---|---|
-| DEF-001 | Object storage (S3/MinIO) for media binaries | Infrastructure complexity; volume storage adequate for v1 scale | Large video libraries constrained by container disk; no CDN delivery | P3 | |
+| ~~DEF-001~~ | ~~Object storage (S3/MinIO) for media binaries~~ | **Closed 2026-06-12 — owner chose MinIO in v1 scope (see Clarifications)** | — | — | |
 | DEF-002 | Multi-stage / role-routed approval chains | MES-112 Workflow Approval Engine owns this | Single approver only; significant-process instructions cannot demand SME co-signature | P3 (MES-112) | |
 | DEF-003 | Operator-facing execution view (step-by-step runner with clock-on) | Belongs to Shop Floor Execution epic | Instructions viewable but not interactively executed | P3 | |
 | DEF-004 | Where-used report (which routes reference this instruction) | Requires MES-9 routing data | Authors cannot see impact of revising an instruction | P2 (MES-9 follow-up) | |

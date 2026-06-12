@@ -4,6 +4,7 @@
 - Docker stack running: `docker compose -f docker/compose-infra.yml up -d`
 - Keycloak realm includes new `mes-signature-verify` client (re-import realm or add manually; set secret in `.env`)
 - engineering-service rebuilt with V007+ migrations applied (check startup log: `Successfully applied N migration(s)`)
+- MinIO container healthy (`docker compose -f docker/compose-infra.yml ps minio`); MINIO_ROOT_USER/MINIO_ROOT_PASSWORD set in `.env`; bucket `wi-media` auto-created on engineering-service startup
 
 ## Smoke test (via gateway, port 8082 — ERR-MES-067)
 

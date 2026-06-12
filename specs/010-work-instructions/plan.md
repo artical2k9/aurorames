@@ -14,7 +14,7 @@ Add a Work Instructions module to the existing `engineering-service`: revision-c
 
 **Primary Dependencies**: Spring Data JPA + Hibernate 6 + Envers, Flyway, Spring Security OAuth2 resource server (Keycloak), mes-udf-lib (UDFs), lib-common-security (JwtClaimsExtractor), hypersistence-utils (JSONB), Kafka (event publishing), PrimeNG + Lucide (frontend)
 
-**Storage**: PostgreSQL 16, schema `engineering` (existing, owned by engineering-service); media binaries on a Docker volume mounted into the engineering-service container (v1 decision — see research.md R3)
+**Storage**: PostgreSQL 16, schema `engineering` (existing, owned by engineering-service); media binaries in MinIO (new S3-compatible compose service, bucket `wi-media` — owner clarification 2026-06-12, see research.md R3)
 
 **Testing**: JUnit 5 + Testcontainers (PostgreSQL + KC) integration tests extending BaseIntegrationTest; unit tests for services/validators; Vitest for Angular
 
@@ -92,7 +92,7 @@ services/gateway-service/src/main/resources/application.yml   # add /api/v1/work
 libs/mes-udf-lib/.../ModuleKey.java                           # add WORK_INSTRUCTION, WORK_INSTRUCTION_STEP
 ```
 
-**Structure Decision**: Extend `engineering-service` with a `workinstruction` package mirroring the proven `bom`/`itemmaster` package shapes from inventory-service (api/dto/domain/repository/service). No new microservice. Media stored via a `MediaStorageService` abstraction so the volume-based v1 can later swap to object storage (DEF-001).
+**Structure Decision**: Extend `engineering-service` with a `workinstruction` package mirroring the proven `bom`/`itemmaster` package shapes from inventory-service (api/dto/domain/repository/service). No new microservice. Media stored in MinIO via a `MediaStorageService` abstraction (MinIO Java SDK behind an interface; Testcontainers MinIO in ITs).
 
 ## Complexity Tracking
 

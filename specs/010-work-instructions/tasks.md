@@ -25,7 +25,7 @@
 - [ ] T002 [P] Add `mes-signature-verify` confidential client (directAccessGrantsEnabled, sub mapper per ERR-MES-060) to keycloak/mes-realm.json; add MES_SIGNATURE_VERIFY_SECRET to .env.example and compose env for engineering-service (ERR-MES-016)
 - [ ] T003 [P] Add WORK_INSTRUCTION, WORK_INSTRUCTION_STEP to libs/mes-udf-lib/src/main/java/com/mes/udf/domain/ModuleKey.java
 - [ ] T004 [P] Add gateway route `/api/v1/work-instructions/**` → engineering-service:8097 in services/gateway-service/src/main/resources/application.yml
-- [ ] T005 [P] Add `wi-media` volume mount to engineering-service in docker/compose-infra.yml + media size limit properties in services/engineering-service/src/main/resources/application.yml (multipart limits + mes.wi.media.*)
+- [ ] T005 [P] Add `minio` service to docker/compose-infra.yml (minio/minio image, healthcheck, MINIO_ROOT_USER/MINIO_ROOT_PASSWORD in .env + .env.example per ERR-MES-016) + MinIO endpoint/bucket/credential env on engineering-service + media size limit properties (multipart limits + mes.wi.media.*) in services/engineering-service/src/main/resources/application.yml + io.minio:minio dependency in build.gradle and gradle/libs.versions.toml
 - [ ] T006 Extend engineering-service privilege manifest with engineering:work-instruction:create/read/update/delete/approve keys in services/engineering-service/src/main/java/com/mes/engineering/config/
 - [ ] T007 [P] Add owasp-java-html-sanitizer dependency to services/engineering-service/build.gradle and gradle/libs.versions.toml
 
@@ -104,7 +104,7 @@
 ### Implementation
 
 - [ ] T033 [P] [US3] Create MediaAttachment entity + repository in .../workinstruction/domain/ and .../repository/
-- [ ] T034 [US3] Implement MediaStorageService (volume-backed, interface for DEF-001 swap; streaming write, no full buffering) and extend copy-on-revision to duplicate attachment metadata rows pointing at the same storage_path (refcount semantics) in .../workinstruction/service/
+- [ ] T034 [US3] Implement MediaStorageService (MinIO SDK behind interface; bucket auto-create on startup; streaming put/get, no full buffering; Testcontainers MinIO in ITs) and extend copy-on-revision to duplicate attachment metadata rows pointing at the same object key (refcount semantics) in .../workinstruction/service/
 - [ ] T035 [US3] Implement media endpoints (multipart upload, StreamingResponseBody download, caption/order patch, delete with refcount guard) in .../workinstruction/api/
 - [ ] T036 [US3] Run `./gradlew :services:engineering-service:check`; log/fix defects
 
