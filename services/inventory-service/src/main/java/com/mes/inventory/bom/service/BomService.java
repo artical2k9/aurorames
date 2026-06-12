@@ -288,6 +288,7 @@ public class BomService {
                             "Cannot edit: no approved revision exists to base the draft on"));
             draft = copyBomRevision(lastApproved, maxRevision + 1, bom);
             draft = bomRevisionRepository.save(draft);
+            copyLinesFromRevision(lastApproved, draft);
         }
 
         if (req.getDescription() != null) {
@@ -339,6 +340,25 @@ public class BomService {
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    private void copyLinesFromRevision(BomRevision source, BomRevision dest) {
+        List<BomLine> sourceLines = bomLineRepository.findAllByBomRevisionId(source.getId());
+        for (BomLine src : sourceLines) {
+            BomLine copy = new BomLine();
+            copy.setBomRevision(dest);
+            copy.setComponentItemRevision(src.getComponentItemRevision());
+            copy.setQuantity(src.getQuantity());
+            copy.setUnitOfMeasure(src.getUnitOfMeasure());
+            copy.setFindNumber(src.getFindNumber());
+            copy.setReferenceDesignators(src.getReferenceDesignators());
+            copy.setEffectivityMethod(src.getEffectivityMethod());
+            copy.setEffectiveFromDate(src.getEffectiveFromDate());
+            copy.setEffectiveToDate(src.getEffectiveToDate());
+            copy.setEffectiveFromUnit(src.getEffectiveFromUnit());
+            copy.setEffectiveToUnit(src.getEffectiveToUnit());
+            bomLineRepository.save(copy);
+        }
+    }
 
     private BomRevision copyBomRevision(BomRevision source, int newRevision, Bom bom) {
         BomRevision copy = new BomRevision();
