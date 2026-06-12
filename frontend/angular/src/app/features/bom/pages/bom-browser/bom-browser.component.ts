@@ -11,10 +11,10 @@ import { MessageModule } from 'primeng/message';
 import { PopoverModule } from 'primeng/popover';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
-import { AutoCompleteModule, AutoCompleteCompleteEvent, AutoCompleteSelectEvent } from 'primeng/autocomplete';
+import { AutoCompleteModule, AutoCompleteCompleteEvent } from 'primeng/autocomplete';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideColumnsSettings } from '@lucide/angular';
+import { LucideColumnsSettings, LucideView, LucideFilePenLine, LucideFilePlus } from '@lucide/angular';
 import { BreadcrumbService } from '../../../../shared/ui';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
@@ -42,7 +42,7 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
     TableModule, ButtonModule, InputTextModule, MessageModule, PopoverModule, TagModule,
     DialogModule, AutoCompleteModule, ToastModule,
     ColumnPickerComponent,
-    LucideColumnsSettings,
+    LucideColumnsSettings, LucideView, LucideFilePenLine, LucideFilePlus,
   ],
   providers: [
     MessageService,
@@ -61,7 +61,7 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
           <h2 class="bb__title">Bills of Materials</h2>
           <span class="bb__count">({{ totalRecords }} BOMs)</span>
         </div>
-        <p-button label="New BOM" icon="pi pi-plus" severity="primary"
+        <p-button label="Create BOM" icon="pi pi-plus" severity="primary"
                   size="small" (onClick)="openCreateDialog()" />
       </div>
 
@@ -100,14 +100,14 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
         <div class="bb__field">
           <label>Parent Item <span class="bb__req">*</span></label>
           <p-autocomplete
-            [(ngModel)]="selectedItem"
+            [ngModel]="selectedPartNumber"
+            (ngModelChange)="handleItemModelChange($event)"
             [suggestions]="itemSuggestions"
             field="partNumber"
             placeholder="Search part number…"
             [minLength]="1"
             [dropdown]="false"
             (completeMethod)="onItemSearch($event)"
-            (onSelect)="onItemSelect($event)"
             styleClass="bb__autocomplete"
           >
             <ng-template #item let-item>
@@ -179,10 +179,25 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
               </td>
             }
             <td class="bb__action">
-              <p-button label="View BOMs"
-                        severity="secondary"
-                        size="small"
-                        (click)="$event.stopPropagation(); openBoms(item)" />
+              <p-button [rounded]="true" [text]="true" size="small"
+                        title="View BOMs" aria-label="View BOMs"
+                        (click)="$event.stopPropagation(); openBoms(item)">
+                <svg lucideView [size]="16" [strokeWidth]="1.75"></svg>
+              </p-button>
+              @if (item.hasDraft) {
+                <p-button [rounded]="true" [text]="true" size="small" severity="warn"
+                          title="Edit Draft" aria-label="Edit Draft"
+                          (click)="$event.stopPropagation(); openDraft(item)">
+                  <svg lucideFilePenLine [size]="16" [strokeWidth]="1.75"></svg>
+                </p-button>
+              } @else if (item.revisionStatus === 'APPROVED') {
+                <p-button [rounded]="true" [text]="true" size="small"
+                          [loading]="creatingForBomId === item.bomId"
+                          title="Create Revision" aria-label="Create Revision"
+                          (click)="$event.stopPropagation(); openForRevision(item)">
+                  <svg lucideFilePlus [size]="16" [strokeWidth]="1.75"></svg>
+                </p-button>
+              }
             </td>
           </tr>
         </ng-template>
@@ -210,7 +225,7 @@ const DEFAULT_BOM_BROWSER_COLUMNS: ColumnDef[] = [
     .bb__table { width: 100%; }
     .bb__row { cursor: pointer; }
     .bb__pn { font-weight: 600; font-family: monospace; }
-    .bb__action { text-align: right; }
+    .bb__action { text-align: right; display: flex; gap: 0.25rem; justify-content: flex-end; }
     .bb__empty { text-align: center; padding: 2rem; color: var(--aurora-text-secondary); }
 
     .bb__field { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.75rem; }
@@ -249,10 +264,11 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
   searchTerm = '';
   pageSize = 20;
   totalRecords = 0;
+  creatingForBomId = '';
 
   // Create dialog state
   showCreateDialog = false;
-  selectedItem: ItemMasterDto | null = null;
+  selectedPartNumber = '';
   selectedItemId = '';
   itemSuggestions: ItemMasterDto[] = [];
   newBomDescription = '';
@@ -325,7 +341,29 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
   }
 
   openBoms(item: BomSummaryDto): void {
-    this.router.navigate(['/bom', item.parentItemId]);
+    this.router.navigate(['/boms', item.bomId]);
+  }
+
+  openDraft(item: BomSummaryDto): void {
+    this.router.navigate(['/boms', item.bomId], { queryParams: { revisionStatus: 'DRAFT' } });
+  }
+
+  openForRevision(item: BomSummaryDto): void {
+    if (this.creatingForBomId) { return; }
+    this.creatingForBomId = item.bomId;
+    this.bomApi.patchHeader(item.bomId, {}).pipe(
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: () => {
+        this.creatingForBomId = '';
+        this.router.navigate(['/boms', item.bomId], { queryParams: { revisionStatus: 'DRAFT' } });
+      },
+      error: () => {
+        this.creatingForBomId = '';
+        this.cdr.detectChanges();
+        this.router.navigate(['/boms', item.bomId], { queryParams: { revisionStatus: 'DRAFT' } });
+      },
+    });
   }
 
   openCreateDialog(): void {
@@ -338,7 +376,7 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
   }
 
   resetCreateForm(): void {
-    this.selectedItem = null;
+    this.selectedPartNumber = '';
     this.selectedItemId = '';
     this.itemSuggestions = [];
     this.newBomDescription = '';
@@ -350,9 +388,15 @@ export class BomBrowserComponent implements OnInit, AfterViewInit {
     this.itemSearchSubject.next(event.query);
   }
 
-  onItemSelect(event: AutoCompleteSelectEvent): void {
-    const item = event.value as ItemMasterDto;
-    this.selectedItemId = item.id;
+  handleItemModelChange(value: ItemMasterDto | string | null): void {
+    if (value && typeof value === 'object') {
+      this.selectedPartNumber = value.partNumber;
+      this.selectedItemId = value.id;
+    } else {
+      this.selectedPartNumber = (value as string) ?? '';
+      if (!value) this.selectedItemId = '';
+    }
+    this.cdr.detectChanges();
   }
 
   submitCreate(): void {

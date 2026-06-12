@@ -16,7 +16,7 @@ import { MenuModule } from 'primeng/menu';
 import { ToastModule } from 'primeng/toast';
 import { Menu } from 'primeng/menu';
 import { MenuItem, MessageService } from 'primeng/api';
-import { LucideColumnsSettings } from '@lucide/angular';
+import { LucideColumnsSettings, LucideView, LucideFilePenLine, LucideFilePlus } from '@lucide/angular';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { BreadcrumbService } from '../../../../shared/ui';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
@@ -35,7 +35,7 @@ import {
     TableModule, InputTextModule, SelectModule,
     ButtonModule, PopoverModule, TagModule, MenuModule, ToastModule,
     ColumnPickerComponent,
-    ClassificationLabelPipe, LucideColumnsSettings,
+    ClassificationLabelPipe, LucideColumnsSettings, LucideView, LucideFilePenLine, LucideFilePlus,
   ],
   providers: [
     MessageService,
@@ -96,7 +96,8 @@ import {
                     (onClick)="navigateToDetail(selectedItems[0].id)" />
           <p-button label="Create Revision" severity="secondary" size="small"
                     [disabled]="selectedItems.length !== 1"
-                    (onClick)="navigateToEdit(selectedItems[0].id)" />
+                    [loading]="creatingRevisionForId === selectedItems[0]?.id"
+                    (onClick)="openForRevision(selectedItems[0])" />
           <p-button label="Clone Item" severity="secondary" size="small"
                     [disabled]="selectedItems.length !== 1"
                     (onClick)="cloneSelected()" />
@@ -173,10 +174,25 @@ import {
             }
             <td>
               <div class="iml__actions">
-                <p-button label="View" [text]="true" size="small"
-                          (onClick)="navigateToDetail(item.id)" />
-                <p-button label="Create Revision" [text]="true" size="small"
-                          (onClick)="navigateToEdit(item.id)" />
+                <p-button [rounded]="true" [text]="true" size="small"
+                          title="View" aria-label="View"
+                          (onClick)="navigateToDetail(item.id)">
+                  <svg lucideView [size]="16" [strokeWidth]="1.75"></svg>
+                </p-button>
+                @if (item.hasDraft) {
+                  <p-button [rounded]="true" [text]="true" size="small" severity="warn"
+                            title="Edit Draft" aria-label="Edit Draft"
+                            (onClick)="navigateToDraft(item.id)">
+                    <svg lucideFilePenLine [size]="16" [strokeWidth]="1.75"></svg>
+                  </p-button>
+                } @else if (item.revisionStatus === 'APPROVED') {
+                  <p-button [rounded]="true" [text]="true" size="small"
+                            [loading]="creatingRevisionForId === item.id"
+                            title="Create Revision" aria-label="Create Revision"
+                            (onClick)="openForRevision(item)">
+                    <svg lucideFilePlus [size]="16" [strokeWidth]="1.75"></svg>
+                  </p-button>
+                }
                 <p-button icon="pi pi-ellipsis-v" [text]="true" size="small"
                           (onClick)="showRowMenu($event, item)" />
               </div>
@@ -263,6 +279,7 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
 
   selectedItems: ItemMasterDto[] = [];
   rowMenuItems: MenuItem[] = [];
+  creatingRevisionForId = '';
 
   searchTerm = '';
   selectedClassification: Classification | null = null;
@@ -417,6 +434,26 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
     this.router.navigate(['/item-master', id, 'edit']);
   }
 
+  openForRevision(item: ItemMasterDto): void {
+    if (this.creatingRevisionForId) return;
+    this.creatingRevisionForId = item.id;
+    this.api.patch(item.id, {}).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.creatingRevisionForId = '';
+        this.router.navigate(['/item-master', item.id, 'edit'], { queryParams: { revisionStatus: 'DRAFT' } });
+      },
+      error: () => {
+        this.creatingRevisionForId = '';
+        this.cdr.detectChanges();
+        this.router.navigate(['/item-master', item.id, 'edit'], { queryParams: { revisionStatus: 'DRAFT' } });
+      },
+    });
+  }
+
+  navigateToDraft(id: string): void {
+    this.router.navigate(['/item-master', id, 'edit'], { queryParams: { revisionStatus: 'DRAFT' } });
+  }
+
   cloneSelected(): void {
     if (this.selectedItems.length === 1) {
       this.router.navigate(['/item-master/new'], { queryParams: { cloneFrom: this.selectedItems[0].id } });
@@ -433,7 +470,7 @@ export class ItemMasterListComponent implements OnInit, AfterViewInit {
       {
         label: 'Create Revision',
         icon: 'pi pi-pencil',
-        command: () => this.navigateToEdit(item.id),
+        command: () => this.openForRevision(item),
       },
       {
         label: 'Clone Item',

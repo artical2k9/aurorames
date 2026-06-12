@@ -1,10 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import {
   BomDto,
   BomLineDto,
   BomSummaryDto,
+  BomRevisionSummaryDto,
   BomExplosionNode,
   CreateBomRequest,
   CreateBomLineRequest,
@@ -19,8 +20,9 @@ export class BomApiService {
   private readonly base = '/api/v1/boms';
 
   listForItem(parentItemId: string): Observable<BomSummaryDto[]> {
-    const params = new HttpParams().set('parentItemId', parentItemId);
-    return this.http.get<BomSummaryDto[]>(this.base, { params });
+    return this.listHeaders(undefined, 0, 200).pipe(
+      map(page => page.content.filter(b => b.parentItemId === parentItemId)),
+    );
   }
 
   listHeaders(search?: string, page = 0, size = 20): Observable<Page<BomSummaryDto>> {
@@ -36,6 +38,10 @@ export class BomApiService {
 
   create(req: CreateBomRequest): Observable<BomDto> {
     return this.http.post<BomDto>(this.base, req);
+  }
+
+  listRevisions(bomId: string): Observable<BomRevisionSummaryDto[]> {
+    return this.http.get<BomRevisionSummaryDto[]>(`${this.base}/${bomId}/revisions`);
   }
 
   getLines(bomId: string): Observable<BomLineDto[]> {

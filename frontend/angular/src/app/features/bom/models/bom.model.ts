@@ -88,6 +88,15 @@ export interface BomExplosionNode {
   children?: BomExplosionNode[];
 }
 
+export interface BomRevisionSummaryDto {
+  bomRevisionId: string;
+  revision:      number;
+  revisionStatus: RevisionStatus;
+  description?:  string | null;
+  createdBy:     string;
+  createdAt:     string;
+}
+
 export interface CreateBomRequest {
   parentItemId: string;
   description?: string;

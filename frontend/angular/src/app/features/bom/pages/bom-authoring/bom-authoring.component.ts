@@ -4,7 +4,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, of, switchMap, catchError, map, take } from 'rxjs';
+import { forkJoin, of, switchMap, catchError, map, take, Observable } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
@@ -24,7 +24,7 @@ import { BomHeaderEditDialogComponent } from '../../components/bom-header-edit-d
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
 import { DEFAULT_BOM_LINE_COLUMNS } from '../../constants/default-columns';
-import { BomDto, BomLineDto, RevisionStatus } from '../../models/bom.model';
+import { BomDto, BomLineDto, BomRevisionSummaryDto, RevisionStatus } from '../../models/bom.model';
 import { AsyncPipe } from '@angular/common';
 import { PopoverModule } from 'primeng/popover';
 import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
@@ -88,12 +88,6 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             } @else {
               <span class="ba__eco ba__eco--none">No active ECO</span>
             }
-            @if (bom.revisionStatus === 'PENDING_APPROVAL') {
-              <p-button label="Approve" severity="success" size="small"
-                        [loading]="approving" (onClick)="approveDraft()" />
-              <p-button label="Reject" severity="danger" size="small"
-                        [loading]="rejecting" (onClick)="showRejectPanel = true" />
-            }
           </div>
         </div>
 
@@ -125,7 +119,7 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             <p-button label="Cancel Draft" severity="danger" [text]="true" size="small"
                       [loading]="cancelling" (onClick)="confirmCancelDraft()" />
             <p-button label="Submit for Approval" severity="success" size="small"
-                      [loading]="submitting" (onClick)="confirmSubmit()" />
+                      [loading]="submitting" [disabled]="isDirty" (onClick)="confirmSubmit()" />
             <p-button [rounded]="true" [text]="true"
                       aria-label="Customise columns"
                       (onClick)="colPickerPanel.toggle($event)">
@@ -137,6 +131,22 @@ import { ItemMasterDto } from '../../../item-master/models/item-master.model';
             <p-button label="← Explosion View" [text]="true" size="small"
                       (onClick)="goToExplosion()" />
             <span class="ba__lines-count">BOM Lines — {{ lines.length }} component{{ lines.length !== 1 ? 's' : '' }}</span>
+            <span class="ba__spacer"></span>
+            @if (bom.revisionStatus === 'PENDING_APPROVAL') {
+              <p-button label="Approve" severity="success" size="small"
+                        [loading]="approving" (onClick)="approveDraft()" />
+              <p-button label="Reject" severity="danger" size="small"
+                        [loading]="rejecting" (onClick)="showRejectPanel = true" />
+            }
+            @if (bom.revisionStatus === 'APPROVED' && !bom.hasDraft && !bom.hasPendingApproval) {
+              <p-button label="Create Draft" severity="warn" size="small"
+                        [loading]="creatingDraft" (onClick)="createDraft()" />
+            }
+            <p-button [rounded]="true" [text]="true"
+                      aria-label="Customise columns"
+                      (onClick)="colPickerPanel.toggle($event)">
+              <svg lucideColumnsSettings [size]="16" [strokeWidth]="1.75"></svg>
+            </p-button>
           </div>
         }
 
@@ -323,6 +333,7 @@ export class BomAuthoringComponent implements OnInit {
   rejecting = false;
   showRejectPanel = false;
   rejectReason = '';
+  creatingDraft = false;
 
   revisionOptions: { label: string; value: string }[] = [];
   selectedRevisionId = '';
@@ -333,11 +344,11 @@ export class BomAuthoringComponent implements OnInit {
 
   ngOnInit(): void {
     this.bomId = this.route.snapshot.paramMap.get('bomId') ?? '';
+    const queryStatus = this.route.snapshot.queryParamMap.get('revisionStatus') as RevisionStatus | null;
     this.breadcrumbSvc.set([
       { label: 'Engineering' },
-      { label: 'Item Master', route: ['/item-master'] },
-      { label: 'BOMs' },
-      { label: 'Authoring' },
+      { label: 'BOMs', route: ['/bom'] },
+      { label: queryStatus === 'DRAFT' ? 'Edit Draft' : 'View BOM' },
     ]);
     this.udfApi.listFields('BOM_LINE').pipe(
       take(1),
@@ -355,17 +366,19 @@ export class BomAuthoringComponent implements OnInit {
         this.cdr.detectChanges();
       },
     });
-    this.loadBom();
+    this.loadBom(queryStatus ?? undefined);
   }
 
-  loadBom(targetStatus?: 'PENDING_APPROVAL'): void {
+  loadBom(targetStatus?: RevisionStatus): void {
     this.loading = true;
     this.loadError = false;
+    const revisions$: Observable<BomRevisionSummaryDto[]> =
+      this.bomApi.listRevisions(this.bomId).pipe(catchError(() => of([])));
     this.bomApi.getById(this.bomId, targetStatus).pipe(
       switchMap(bom => forkJoin({
         bom: of(bom),
         item: this.itemApi.getById(bom.parentItemId),
-        revisions: this.bomApi.listForItem(bom.parentItemId),
+        revisions: revisions$,
         lines: this.bomApi.getLines(this.bomId),
       })),
     ).subscribe({
@@ -375,16 +388,18 @@ export class BomAuthoringComponent implements OnInit {
           return;
         }
         this.bom = bom;
-        this.selectedRevisionId = bom.id;
+        this.selectedRevisionId = bom.revisionStatus;
         this.parentItem = item;
         this.lines = lines;
-        this.revisionOptions = revisions.map(r => ({ label: 'Rev ' + r.revision, value: r.bomId }));
+        this.revisionOptions = revisions.map(r => ({
+          label: 'Rev ' + r.revision + ' (' + this.revisionStatusLabel(r.revisionStatus) + ')',
+          value: r.revisionStatus,
+        }));
         this.loading = false;
         this.breadcrumbSvc.set([
           { label: 'Engineering' },
-          { label: 'Item Master', route: ['/item-master'] },
-          { label: item.partNumber, route: ['/item-master', bom.parentItemId, 'boms'] },
-          { label: 'Rev ' + bom.revision },
+          { label: 'BOMs', route: ['/bom'] },
+          { label: this.bomBreadcrumbLabel(bom, item.partNumber) },
         ]);
         this.cdr.detectChanges();
       },
@@ -396,9 +411,9 @@ export class BomAuthoringComponent implements OnInit {
     });
   }
 
-  onRevisionChange(bomId: string): void {
-    if (bomId && bomId !== this.bomId) {
-      this.router.navigate(['/boms', bomId]);
+  onRevisionChange(status: RevisionStatus): void {
+    if (status && status !== this.bom?.revisionStatus) {
+      this.loadBom(status === 'APPROVED' ? undefined : status);
     }
   }
 
@@ -437,6 +452,7 @@ export class BomAuthoringComponent implements OnInit {
         this.submitting = false;
         this.isDirty = false;
         this.messageService.add({ severity: 'success', summary: 'BOM submitted for approval' });
+        this.refreshRevisions();
         this.cdr.detectChanges();
       },
       error: () => {
@@ -453,6 +469,8 @@ export class BomAuthoringComponent implements OnInit {
       next: bom => {
         this.bom = bom;
         this.approving = false;
+        this.messageService.add({ severity: 'success', summary: 'BOM approved' });
+        this.refreshRevisions();
         this.cdr.detectChanges();
       },
       error: () => { this.approving = false; this.cdr.detectChanges(); },
@@ -468,9 +486,27 @@ export class BomAuthoringComponent implements OnInit {
         this.rejecting = false;
         this.showRejectPanel = false;
         this.rejectReason = '';
+        this.messageService.add({ severity: 'warn', summary: 'BOM rejected — returned to Draft' });
+        this.refreshRevisions();
         this.cdr.detectChanges();
       },
       error: () => { this.rejecting = false; this.cdr.detectChanges(); },
+    });
+  }
+
+  createDraft(): void {
+    this.creatingDraft = true;
+    this.bomApi.patchHeader(this.bomId, {}).subscribe({
+      next: () => {
+        this.creatingDraft = false;
+        this.loadBom('DRAFT');
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.creatingDraft = false;
+        this.messageService.add({ severity: 'error', summary: 'Failed to create draft' });
+        this.cdr.detectChanges();
+      },
     });
   }
 
@@ -487,12 +523,34 @@ export class BomAuthoringComponent implements OnInit {
       next: () => {
         this.cancelling = false;
         this.messageService.add({ severity: 'info', summary: 'Draft cancelled' });
-        this.router.navigate(['/bom', this.bom?.parentItemId]);
+        this.router.navigate(['/bom']);
         this.cdr.detectChanges();
       },
       error: () => {
         this.cancelling = false;
         this.messageService.add({ severity: 'error', summary: 'Cancel draft failed' });
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private bomBreadcrumbLabel(bom: BomDto, partNumber: string): string {
+    const base = `${partNumber} Rev ${bom.revision}`;
+    if (bom.revisionStatus === 'DRAFT') return `${base} — Edit Draft`;
+    if (bom.revisionStatus === 'PENDING_APPROVAL') return `${base} — Pending Approval`;
+    return base;
+  }
+
+  private refreshRevisions(): void {
+    this.bomApi.listRevisions(this.bomId).subscribe({
+      next: revisions => {
+        this.revisionOptions = revisions.map(r => ({
+          label: 'Rev ' + r.revision + ' (' + this.revisionStatusLabel(r.revisionStatus) + ')',
+          value: r.revisionStatus,
+        }));
+        if (this.bom) {
+          this.selectedRevisionId = this.bom.revisionStatus;
+        }
         this.cdr.detectChanges();
       },
     });

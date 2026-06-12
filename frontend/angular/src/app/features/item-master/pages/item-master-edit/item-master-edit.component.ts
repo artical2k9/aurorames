@@ -11,6 +11,9 @@ import { TextareaModule } from 'primeng/textarea';
 import { MessageModule } from 'primeng/message';
 import { SkeletonModule } from 'primeng/skeleton';
 import { TagModule } from 'primeng/tag';
+import { ToastModule } from 'primeng/toast';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { MessageService, ConfirmationService } from 'primeng/api';
 import { BreadcrumbService } from '../../../../shared/ui';
 import { UdfFieldsComponent } from '../../../../shared/udf/udf-fields.component';
 import { ItemMasterApiService } from '../../services/item-master-api.service';
@@ -27,9 +30,13 @@ import { PlatformApiService } from '../../../../shared/platform';
     CommonModule, ReactiveFormsModule, FormsModule,
     ButtonModule, InputTextModule, SelectModule,
     ToggleSwitchModule, InputNumberModule, TextareaModule, MessageModule, SkeletonModule,
-    TagModule, UdfFieldsComponent,
+    TagModule, ToastModule, ConfirmDialogModule, UdfFieldsComponent,
   ],
+  providers: [MessageService, ConfirmationService],
   template: `
+    <p-toast />
+    <p-confirmDialog />
+
     <div class="imed">
 
       <div class="imed__header">
@@ -45,7 +52,7 @@ import { PlatformApiService } from '../../../../shared/platform';
         <div class="imed__header-actions">
           @if (item && item.revisionStatus === 'DRAFT') {
             <p-button label="Submit for Approval" severity="secondary" size="small"
-                      [loading]="submitting" (onClick)="submitDraft()" />
+                      [loading]="submitting" [disabled]="!canSubmit()" (onClick)="submitDraft()" />
             <p-button label="Cancel Draft" [link]="true" severity="danger" size="small"
                       (onClick)="cancelDraft()" />
           }
@@ -55,7 +62,6 @@ import { PlatformApiService } from '../../../../shared/platform';
             <p-button label="Reject" severity="danger" size="small"
                       [loading]="rejecting" (onClick)="showRejectPanel = true" />
           }
-          <p-button label="Back" severity="secondary" size="small" (onClick)="cancel()" />
           @if (item && item.revisionStatus === 'DRAFT') {
             <p-button label="Save Draft" severity="primary" size="small"
                       [loading]="saving" [disabled]="!canSave()" (onClick)="save()" />
@@ -296,13 +302,15 @@ import { PlatformApiService } from '../../../../shared/platform';
   `],
 })
 export class ItemMasterEditComponent implements OnInit {
-  private readonly fb            = inject(FormBuilder);
-  private readonly api           = inject(ItemMasterApiService);
-  private readonly platformApi   = inject(PlatformApiService);
-  private readonly router        = inject(Router);
-  private readonly route         = inject(ActivatedRoute);
-  private readonly breadcrumbSvc = inject(BreadcrumbService);
-  private readonly cdr           = inject(ChangeDetectorRef);
+  private readonly fb                  = inject(FormBuilder);
+  private readonly api                 = inject(ItemMasterApiService);
+  private readonly platformApi         = inject(PlatformApiService);
+  private readonly router              = inject(Router);
+  private readonly route               = inject(ActivatedRoute);
+  private readonly breadcrumbSvc       = inject(BreadcrumbService);
+  private readonly cdr                 = inject(ChangeDetectorRef);
+  private readonly messageService      = inject(MessageService);
+  private readonly confirmationService = inject(ConfirmationService);
 
   item: ItemMasterDto | null = null;
   itemId!: string;
@@ -318,9 +326,15 @@ export class ItemMasterEditComponent implements OnInit {
   makeActive = false;
   buyActive = false;
   makeBuyTouched = false;
+  makeBuyDirty = false;
 
   selectedTraceability = new Set<TraceabilityMethod>();
   traceabilityTouched = false;
+  traceabilityDirty = false;
+
+  get isDirty(): boolean {
+    return this.form.dirty || this.makeBuyDirty || this.traceabilityDirty;
+  }
 
   readonly traceOptions: { label: string; value: TraceabilityMethod; hint?: string }[] = [
     { label: 'None',      value: 'NONE' },
@@ -385,6 +399,7 @@ export class ItemMasterEditComponent implements OnInit {
 
   toggleTrace(m: TraceabilityMethod): void {
     this.traceabilityTouched = true;
+    this.traceabilityDirty = true;
     if (m === 'NONE') {
       this.selectedTraceability.clear();
       this.selectedTraceability.add('NONE');
@@ -454,30 +469,42 @@ export class ItemMasterEditComponent implements OnInit {
   // ── Make/Buy ─────────────────────────────────────────────────────────────────
 
   canSave(): boolean {
-    return this.form.valid
+    return this.isDirty
+      && this.form.valid
       && this.derivedMakeBuyCode !== null
       && this.selectedTraceability.size > 0
       && this.item?.revisionStatus !== 'PENDING_APPROVAL';
   }
 
+  canSubmit(): boolean {
+    return !this.isDirty
+      && this.form.valid
+      && this.derivedMakeBuyCode !== null
+      && this.selectedTraceability.size > 0
+      && this.item?.revisionStatus === 'DRAFT';
+  }
+
   toggleMake(): void {
     this.makeActive = !this.makeActive;
     this.makeBuyTouched = true;
+    this.makeBuyDirty = true;
     this.updateShelfLifeDaysValidity();
   }
 
   toggleBuy(): void {
     this.buyActive = !this.buyActive;
     this.makeBuyTouched = true;
+    this.makeBuyDirty = true;
     this.updateShelfLifeDaysValidity();
   }
 
   ngOnInit(): void {
     this.itemId = this.route.snapshot.paramMap.get('id')!;
+    const queryStatus = this.route.snapshot.queryParamMap.get('revisionStatus') as RevisionStatus | null;
     this.breadcrumbSvc.set([
       { label: 'Master Data' },
       { label: 'Item Master', route: ['/item-master'] },
-      { label: 'Create Revision' },
+      { label: queryStatus === 'DRAFT' ? 'Edit Draft' : 'Create Revision' },
     ]);
 
     this.form.get('shelfLifeControlled')!.valueChanges.subscribe(() => {
@@ -491,10 +518,10 @@ export class ItemMasterEditComponent implements OnInit {
       },
     });
 
-    this.loadItem();
+    this.loadItem(queryStatus ?? undefined);
   }
 
-  private loadItem(targetStatus?: 'PENDING_APPROVAL'): void {
+  private loadItem(targetStatus?: RevisionStatus): void {
     this.loading = true;
     this.api.getById(this.itemId, targetStatus).subscribe({
       next: item => {
@@ -515,7 +542,7 @@ export class ItemMasterEditComponent implements OnInit {
     this.breadcrumbSvc.set([
       { label: 'Master Data' },
       { label: 'Item Master', route: ['/item-master'] },
-      { label: `${item.partNumber} — Create Revision` },
+      { label: item.revisionStatus === 'DRAFT' ? `${item.partNumber} — Edit Draft` : `${item.partNumber} — Create Revision` },
     ]);
     this.form.patchValue({
       description:          item.description,
@@ -532,6 +559,9 @@ export class ItemMasterEditComponent implements OnInit {
     this.buyActive  = item.makeBuyCode === 'BUY'  || item.makeBuyCode === 'EITHER';
     this.initTraceability(item.traceabilityMethod);
     this.updateShelfLifeDaysValidity();
+    this.form.markAsPristine();
+    this.makeBuyDirty = false;
+    this.traceabilityDirty = false;
   }
 
   cancel(): void {
@@ -539,24 +569,43 @@ export class ItemMasterEditComponent implements OnInit {
   }
 
   submitDraft(): void {
-    this.submitting = true;
-    this.api.submit(this.itemId).subscribe({
-      next: item => {
-        this.item = item;
-        this.submitting = false;
-        this.cdr.detectChanges();
+    this.confirmationService.confirm({
+      message: `Submit ${this.item?.partNumber} Rev ${this.item?.revision} for approval? The revision will become read-only.`,
+      accept: () => {
+        this.submitting = true;
+        this.api.submit(this.itemId).subscribe({
+          next: item => {
+            this.item = item;
+            this.submitting = false;
+            this.messageService.add({ severity: 'success', summary: 'Submitted for approval' });
+            this.cdr.detectChanges();
+          },
+          error: () => {
+            this.submitting = false;
+            this.messageService.add({ severity: 'error', summary: 'Submit failed' });
+            this.cdr.detectChanges();
+          },
+        });
       },
-      error: () => { this.submitting = false; this.cdr.detectChanges(); },
     });
   }
 
   cancelDraft(): void {
-    this.api.cancelDraft(this.itemId).subscribe({
-      next: () => {
-        this.router.navigate(['/item-master']);
-        this.cdr.detectChanges();
+    this.confirmationService.confirm({
+      message: `Cancel the draft for ${this.item?.partNumber}? This cannot be undone.`,
+      accept: () => {
+        this.api.cancelDraft(this.itemId).subscribe({
+          next: () => {
+            this.messageService.add({ severity: 'info', summary: 'Draft cancelled' });
+            this.router.navigate(['/item-master']);
+            this.cdr.detectChanges();
+          },
+          error: () => {
+            this.messageService.add({ severity: 'error', summary: 'Failed to cancel draft' });
+            this.cdr.detectChanges();
+          },
+        });
       },
-      error: () => { this.cdr.detectChanges(); },
     });
   }
 
@@ -627,6 +676,7 @@ export class ItemMasterEditComponent implements OnInit {
         this.saving = false;
         this.item = updatedItem;
         this.populateForm(updatedItem);
+        this.messageService.add({ severity: 'success', summary: 'Draft saved' });
         this.cdr.detectChanges();
       },
       error: (err: { status: number; error?: { violations?: { field: string; message: string }[] } }) => {

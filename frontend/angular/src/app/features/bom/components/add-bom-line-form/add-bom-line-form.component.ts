@@ -160,7 +160,7 @@ export class AddBomLineFormComponent implements OnInit {
   ];
 
   form = this.fb.group({
-    componentSearch:    [null as ItemMasterDto | null],
+    componentSearch:    ['' as string],
     findNumber:         ['', Validators.required],
     quantity:           [null as number | null, Validators.required],
     unitOfMeasure:      ['', Validators.required],
@@ -192,7 +192,10 @@ export class AddBomLineFormComponent implements OnInit {
   onItemSelect(event: AutoCompleteSelectEvent): void {
     const item = event.value as ItemMasterDto;
     this.selectedRevisionId = item.revisionId;
-    this.form.patchValue({ unitOfMeasure: item.unitOfMeasure ?? '' });
+    this.form.patchValue({
+      componentSearch: item.partNumber,
+      unitOfMeasure: item.unitOfMeasure ?? '',
+    });
   }
 
   canSave(): boolean {
