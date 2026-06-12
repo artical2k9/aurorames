@@ -8,6 +8,13 @@
 
 **Input**: Jira Epic MES-12 — "P2 · Quality Inspection Planning (Control Plans)": Define inspection plans (control plans) per part: characteristics to measure, inspection methods, gauge and instrument type requirements, sample sizes, and accept/reject criteria. Control plans must exist before Work Orders referencing that route can be released to the shop floor. Microservice: quality-service (planning domain). New module under Quality > Inspection Plans in the sidebar. Inspection plans are revision controlled like a BOM or route and require formal approval before use in route creation.
 
+## Clarifications
+
+### Session 2026-06-12 (project owner via /speckit-clarify)
+
+- Q: Is one inspection plan per part number (per org) correct, with revisions providing all change control? → A: **One plan per part** — a second create for the same item returns 409; MES-9 resolves "the approved plan for item X" unambiguously. Multiple-plans-per-part (e.g. per route/process) is consciously rejected for v1.
+- Build order across prerequisite epics confirmed: MES-11 → MES-12 → MES-10.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Create an Inspection Plan for a Part (Priority: P1)
