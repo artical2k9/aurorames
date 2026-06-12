@@ -10,10 +10,10 @@
 
 | PR | Phases | Task Range | CI Anchor | Notes |
 |---|---|---|---|---|
-| PR 1 | Setup + US1 (authoring) + US2 (approval/e-sign) | T001–T036 | `./gradlew :services:engineering-service:check` | Migration + entities + revision workflow + signature service; KC re-auth IT path; coverage anchor for new packages |
-| PR 2 | US3 (media) | T037–T046 | `./gradlew :services:engineering-service:check` | Multipart upload + storage service + download auth |
-| PR 3 | US4 (skill gating defs + evaluation) | T047–T056 | `./gradlew :services:engineering-service:check` | WireMock contract tests vs labour API; live verification after MES-11 PR 2 merges |
-| PR 4 | US5 (frontend incl. signature dialog) | T057–T072 | `npm run lint && npm run test` + gateway smoke | Gateway route + ModuleKey ride along; ERR-MES-059/078 checks |
+| PR 1 | Setup + US1 (authoring) + US2 (approval/e-sign) | T001–T029 | `./gradlew :services:engineering-service:check` | Migration + entities + revision workflow + signature service; KC re-auth IT path; coverage anchor for new packages |
+| PR 2 | US3 (media) | T030–T036 | `./gradlew :services:engineering-service:check` | Multipart upload + storage service + download auth |
+| PR 3 | US4 (skill gating defs + evaluation) | T037–T044 | `./gradlew :services:engineering-service:check` | WireMock contract tests vs labour API; live verification after MES-11 PR 2 merges |
+| PR 4 | US5 (frontend incl. signature dialog) + compliance | T045–T059 | `npm run lint && npm run test` + gateway smoke | Gateway route + ModuleKey ride along; ERR-MES-059/078 checks |
 
 **Sequencing note**: PR 3 may merge against WireMock contract tests before MES-11 ships; task T056 (live integration verification) executes after MES-11 PR 2 is on Develop.
 
@@ -43,7 +43,7 @@
 
 - [ ] T008 [P] [US1] IT: create 201 rev 0 DRAFT; duplicate identifier 409; identifier suggestion endpoint in services/engineering-service/src/test/java/com/mes/engineering/integration/workinstruction/WorkInstructionControllerIT.java
 - [ ] T009 [P] [US1] IT: add steps 10/20/30 → returned in order; PATCH step; DELETE step; reorder endpoint; step ops on non-DRAFT 409 in WorkInstructionStepIT.java
-- [ ] T010 [P] [US1] IT: list paged + search + status filter; get with ?revisionNumber/?revisionStatus; org isolation; 401/403 in WorkInstructionControllerIT.java
+- [ ] T010 [P] [US1] IT: list paged + search + status filter; get with ?revisionNumber/?revisionStatus; org isolation; 401/403; DELETE 409 once ever-approved, 204 soft-delete for never-approved (FR-019) in WorkInstructionControllerIT.java
 - [ ] T011 [P] [US1] Unit: HTML sanitiser config (script tags stripped, allowed formatting preserved) in services/engineering-service/src/test/java/com/mes/engineering/workinstruction/service/HtmlSanitiserTest.java
 
 ### Implementation
@@ -70,7 +70,7 @@
 - [ ] T018 [P] [US2] IT: submit → PENDING_APPROVAL with metadata; approve with valid password (Testcontainers KC user) → APPROVED + signature (name/timestamp/meaning); signature retrievable in revision history in WorkInstructionWorkflowIT.java
 - [ ] T019 [P] [US2] IT: approve with wrong password → 422 SIGNATURE_VERIFICATION_FAILED, status PENDING_APPROVAL, failed attempt logged; reject(reason) → DRAFT; reject without reason 422 (same class)
 - [ ] T020 [P] [US2] IT: approve revision with zero steps 422; content edits on PENDING/APPROVED 409 across header/steps endpoints (same class)
-- [ ] T021 [P] [US2] IT: PATCH header on APPROVED auto-creates draft N+1 copying steps (+ skill reqs + media metadata when present); explicit create-revision endpoint; one-draft 409; cancel draft (same class)
+- [ ] T021 [P] [US2] IT: PATCH header on APPROVED auto-creates draft N+1 copying steps + customFields (media/skill copy verified later in their own phases); explicit create-revision endpoint; one-draft 409; cancel draft (same class)
 - [ ] T022 [P] [US2] Unit: SignatureService — signer identity from JWT (null-safe sub fallback per ERR-MES-060), meaning recorded, no update/delete repository methods exposed in SignatureServiceTest.java
 
 ### Implementation
@@ -78,7 +78,7 @@
 - [ ] T023 [P] [US2] Create ElectronicSignature entity (append-only) + repository (save/find only) in .../workinstruction/domain/ and .../repository/
 - [ ] T024 [US2] Implement KeycloakCredentialVerifier (direct-grant call to mes-signature-verify client, username from authenticated JWT, 401→false, discard token) in .../workinstruction/service/
 - [ ] T025 [US2] Implement SignatureService (verify + persist signature in same transaction as status change; failed-attempt audit log) in .../workinstruction/service/
-- [ ] T026 [US2] Add submit/approve/reject/create-revision/cancel-draft to WorkInstructionService incl. zero-step submit guard and copy-on-revision (steps, media rows, skill reqs, customFields) in .../workinstruction/service/
+- [ ] T026 [US2] Add submit/approve/reject/create-revision/cancel-draft to WorkInstructionService incl. zero-step submit guard and copy-on-revision (steps + customFields in this PR; media-row copy extends in T034, skill-req copy extends in T040 — each verified by that phase's ITs) in .../workinstruction/service/
 - [ ] T027 [US2] Add workflow endpoints to controller per contract; publish `engineering.work-instruction.approved` Kafka event (JsonSerializer — ERR-MES-063) via .../kafka/
 - [ ] T028 [US2] Run `./gradlew :services:engineering-service:check`; log/fix defects
 - [ ] T029 [US2] Pre-PR retrospective spot-check (ERR-MES-001 categories: Envers, KC clients, JWT sub, privilege registration, IT inheritance) and fix violations
@@ -104,7 +104,7 @@
 ### Implementation
 
 - [ ] T033 [P] [US3] Create MediaAttachment entity + repository in .../workinstruction/domain/ and .../repository/
-- [ ] T034 [US3] Implement MediaStorageService (volume-backed, interface for DEF-001 swap; streaming write, no full buffering) in .../workinstruction/service/
+- [ ] T034 [US3] Implement MediaStorageService (volume-backed, interface for DEF-001 swap; streaming write, no full buffering) and extend copy-on-revision to duplicate attachment metadata rows pointing at the same storage_path (refcount semantics) in .../workinstruction/service/
 - [ ] T035 [US3] Implement media endpoints (multipart upload, StreamingResponseBody download, caption/order patch, delete with refcount guard) in .../workinstruction/api/
 - [ ] T036 [US3] Run `./gradlew :services:engineering-service:check`; log/fix defects
 
@@ -128,7 +128,7 @@
 
 ### Implementation
 
-- [ ] T040 [P] [US4] Create SkillRequirement entity + repository in .../workinstruction/domain/ and .../repository/
+- [ ] T040 [P] [US4] Create SkillRequirement entity + repository and extend copy-on-revision to duplicate skill-requirement rows in .../workinstruction/domain/ and .../repository/
 - [ ] T041 [US4] Implement LabourServiceClient (RestClient, forwarded JWT, POST /api/v1/labour/qualifications/evaluate per MES-11 contract; GET /skills/{id} for denorm) in .../workinstruction/client/
 - [ ] T042 [US4] Implement QualificationService (fail-closed aggregation) + skill-requirement + qualification endpoints per contract in .../workinstruction/
 - [ ] T043 [US4] Run `./gradlew :services:engineering-service:check`; log/fix defects

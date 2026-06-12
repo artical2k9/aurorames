@@ -45,7 +45,7 @@ Base path (gateway): `/api/v1/work-instructions` → engineering-service. All en
 | GET | `/api/v1/work-instructions/{id}/skill-requirements?revisionNumber=N` | read | |
 | POST | `/api/v1/work-instructions/{id}/skill-requirements` | update | Body: `{ "skillId": uuid }` — code/name denormalised from labour-service at write |
 | DELETE | `/api/v1/work-instructions/{id}/skill-requirements/{reqId}` | update | |
-| GET | `/api/v1/work-instructions/{id}/qualification?employeeId=…&revisionNumber=N` | read | → `{ "qualified": bool, "missing": [ {skillId, skillCode, state} ], "reason": "OK"\|"VERIFICATION_UNAVAILABLE" }`; fail-closed |
+| GET | `/api/v1/work-instructions/{id}/qualification?employeeId=…|iamUserId=…&revisionNumber=N` | read | Exactly one of employeeId/iamUserId → `{ "qualified": bool, "missing": [ {skillId, skillCode, state} ], "reason": "OK"\|"VERIFICATION_UNAVAILABLE" }`; fail-closed (mirrors labour evaluate contract) |
 
 ## Events (Kafka)
 
