@@ -379,7 +379,7 @@ export class BomAuthoringComponent implements OnInit {
         bom: of(bom),
         item: this.itemApi.getById(bom.parentItemId),
         revisions: revisions$,
-        lines: this.bomApi.getLines(this.bomId),
+        lines: this.bomApi.getLines(this.bomId, bom.revision),
       })),
     ).subscribe({
       next: ({ bom, item, revisions, lines }) => {

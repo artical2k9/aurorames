@@ -207,14 +207,24 @@ public class BomService {
     }
 
     @Transactional(readOnly = true)
-    public List<BomLineDto> listEnrichedLines(UUID orgId, UUID bomId) {
+    public List<BomLineDto> listEnrichedLines(UUID orgId, UUID bomId, Integer revisionNumber) {
         Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        BomRevision displayRevision = resolveDisplayRevision(bom);
-        if (displayRevision == null) {
+        List<BomRevision> all = bomRevisionRepository.findAllByBomId(bom.getId());
+        BomRevision targetRevision;
+        if (revisionNumber != null) {
+            targetRevision = all.stream()
+                    .filter(r -> r.getRevision().equals(revisionNumber))
+                    .findFirst()
+                    .orElseThrow(() -> new BomNotFoundException(
+                            "No revision " + revisionNumber + " for BOM: " + bomId));
+        } else {
+            targetRevision = resolveDisplayRevision(all);
+        }
+        if (targetRevision == null) {
             return List.of();
         }
-        return bomLineRepository.findAllByBomRevisionId(displayRevision.getId())
+        return bomLineRepository.findAllByBomRevisionId(targetRevision.getId())
                 .stream()
                 .map(BomMapper::toLineDto)
                 .toList();

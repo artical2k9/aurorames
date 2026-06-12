@@ -124,9 +124,10 @@ public class BomController {
     @RequiresPrivilege("item-master:bom:manage")
     public List<BomLineDto> listLines(
             @AuthenticationPrincipal Jwt jwt,
-            @PathVariable UUID bomId) {
+            @PathVariable UUID bomId,
+            @RequestParam(required = false) Integer revisionNumber) {
 
-        return bomService.listEnrichedLines(JwtClaimsExtractor.orgId(jwt), bomId);
+        return bomService.listEnrichedLines(JwtClaimsExtractor.orgId(jwt), bomId, revisionNumber);
     }
 
     @PostMapping("/{bomId}/lines")

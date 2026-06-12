@@ -46,8 +46,11 @@ export class BomApiService {
     return this.http.get<BomRevisionSummaryDto[]>(`${this.base}/${bomId}/revisions`);
   }
 
-  getLines(bomId: string): Observable<BomLineDto[]> {
-    return this.http.get<BomLineDto[]>(`${this.base}/${bomId}/lines`);
+  getLines(bomId: string, revisionNumber?: number): Observable<BomLineDto[]> {
+    const params = revisionNumber !== undefined
+      ? new HttpParams().set('revisionNumber', revisionNumber)
+      : undefined;
+    return this.http.get<BomLineDto[]>(`${this.base}/${bomId}/lines`, { params });
   }
 
   addLine(bomId: string, req: CreateBomLineRequest): Observable<BomLineDto> {
