@@ -23,6 +23,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -70,6 +71,9 @@ public class BomLine {
 
     @Column(name = "effective_to_unit", length = 50)
     private String effectiveToUnit;
+
+    @Column(name = "custom_fields", columnDefinition = "jsonb")
+    private Map<String, Object> customFields;
 
     @CreatedBy
     @Column(name = "created_by", nullable = false, length = 255, updatable = false)
@@ -195,5 +199,13 @@ public class BomLine {
 
     public Instant getModifiedAt() {
         return modifiedAt;
+    }
+
+    public Map<String, Object> getCustomFields() {
+        return customFields;
+    }
+
+    public void setCustomFields(Map<String, Object> customFields) {
+        this.customFields = customFields;
     }
 }

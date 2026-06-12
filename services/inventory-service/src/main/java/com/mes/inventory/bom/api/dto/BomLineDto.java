@@ -3,6 +3,7 @@ package com.mes.inventory.bom.api.dto;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
 public class BomLineDto {
@@ -27,6 +28,7 @@ public class BomLineDto {
     private String makeBuyCode;
     private String createdBy;
     private Instant createdAt;
+    private Map<String, Object> customFields;
 
     public UUID getId() {
         return id;
@@ -186,5 +188,13 @@ public class BomLineDto {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Map<String, Object> getCustomFields() {
+        return customFields;
+    }
+
+    public void setCustomFields(Map<String, Object> customFields) {
+        this.customFields = customFields;
     }
 }

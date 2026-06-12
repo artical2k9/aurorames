@@ -196,6 +196,7 @@ public class BomService {
         line.setEffectiveToDate(req.getEffectiveToDate());
         line.setEffectiveFromUnit(req.getEffectiveFromUnit());
         line.setEffectiveToUnit(req.getEffectiveToUnit());
+        line.setCustomFields(req.getCustomFields());
         BomLine saved = bomLineRepository.save(line);
 
         CounterfeitRiskLevel risk = componentRevision.getCounterfeitRiskLevel();
@@ -356,6 +357,7 @@ public class BomService {
             copy.setEffectiveToDate(src.getEffectiveToDate());
             copy.setEffectiveFromUnit(src.getEffectiveFromUnit());
             copy.setEffectiveToUnit(src.getEffectiveToUnit());
+            copy.setCustomFields(src.getCustomFields());
             bomLineRepository.save(copy);
         }
     }
@@ -460,6 +462,9 @@ public class BomService {
         }
         if (req.getReferenceDesignators() != null) {
             line.setReferenceDesignators(req.getReferenceDesignators());
+        }
+        if (req.getCustomFields() != null) {
+            line.setCustomFields(req.getCustomFields());
         }
     }
 
