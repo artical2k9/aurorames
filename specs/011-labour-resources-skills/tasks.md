@@ -10,10 +10,10 @@
 
 | PR | Phases | Task Range | CI Anchor | Notes |
 |---|---|---|---|---|
-| PR 1 | Setup (scaffold) + US1 (employees) + US2 (skills) | T001–T035 | `./gradlew :services:labour-service:check` | Scaffold bundled with first two aggregates' ITs as coverage anchor; settings.gradle/compose/gateway/sonar updates |
-| PR 2 | US3 (certifications + bulk qualification API) | T036–T049 | `./gradlew :services:labour-service:check` | State-derivation unit tests + gating ITs; cross-service contract for MES-10 |
-| PR 3 | US4 (training records) | T050–T058 | `./gradlew :services:labour-service:check` | Independent of PR 2 except scaffold |
-| PR 4 | US5 (frontend Labour area + expiry dashboard) | T059–T072 | `npm run lint && npm run test` + gateway smoke | ModuleKey additions ride along; ERR-MES-059/078 checks |
+| PR 1 | Setup (scaffold) + US1 (employees) + US2 (skills) | T001–T025 | `./gradlew :services:labour-service:check` | Scaffold bundled with first two aggregates' ITs as coverage anchor; settings.gradle/compose/gateway/sonar updates |
+| PR 2 | US3 (certifications + bulk qualification API) | T026–T035 | `./gradlew :services:labour-service:check` | State-derivation unit tests + gating ITs; cross-service contract for MES-10 |
+| PR 3 | US4 (training records) | T036–T041 | `./gradlew :services:labour-service:check` | Independent of PR 2 except scaffold |
+| PR 4 | US5 (frontend Labour area + expiry dashboard) + compliance | T042–T054 | `npm run lint && npm run test` + gateway smoke | ModuleKey additions ride along; ERR-MES-059/078 checks |
 
 **Sequencing note**: PR 2 must merge before MES-10's skill-gating integration verification. PR 3 can be raised in parallel with PR 2 (different aggregates) but after PR 1 merges.
 
@@ -54,7 +54,7 @@
 
 - [ ] T016 [P] [US1] Create Employee entity + EmploymentStatus enum + repository per data-model.md in services/labour-service/src/main/java/com/mes/labour/employee/domain/ and .../repository/
 - [ ] T017 [US1] Implement EmployeeService (CRUD, uniqueness guards, iam-link uniqueness, status transitions) in .../employee/service/
-- [ ] T018 [US1] Create DTOs + mapper + EmployeeController per contract in .../employee/api/
+- [ ] T018 [US1] Create DTOs + mapper + EmployeeController per contract (excluding /profile and /training endpoints — those land with US3/US4 whose data they aggregate) in .../employee/api/
 - [ ] T019 [US1] Run `./gradlew :services:labour-service:check`; log/fix defects
 
 **Checkpoint**: Employees CRUD complete.
@@ -104,7 +104,7 @@
 - [ ] T031 [P] [US3] Create Certification entity + repository (incl. governing-cert query) in .../certification/domain/ and .../repository/
 - [ ] T032 [US3] Implement CertificationStateCalculator (final utility — ERR-MES-070) + CertificationService (award with expiry defaulting, revoke) in .../certification/service/
 - [ ] T033 [US3] Implement QualificationService (bulk evaluate, single query no N+1) + evaluate endpoint + DTOs in .../certification/
-- [ ] T034 [US3] Add certification endpoints (list with state/expiringWithinDays filters, get with state) + CertificationController in .../certification/api/
+- [ ] T034 [US3] Add certification endpoints (list with state/expiringWithinDays filters, get with state) + CertificationController, plus employee competency-profile endpoint GET /employees/{id}/profile (aggregates certifications + states; IT added here) in .../certification/api/ and .../employee/api/
 - [ ] T035 [US3] Run `./gradlew :services:labour-service:check`; log/fix defects
 
 **Checkpoint**: Gating contract live for MES-10.
@@ -127,7 +127,7 @@
 ### Implementation
 
 - [ ] T038 [P] [US4] Create TrainingEvent, TrainingAttendance entities + join table + repositories per data-model.md in .../training/domain/ and .../repository/
-- [ ] T039 [US4] Implement TrainingService + DTOs + TrainingController per contract in .../training/
+- [ ] T039 [US4] Implement TrainingService + DTOs + TrainingController per contract, incl. employee training-history endpoint GET /employees/{id}/training in .../training/
 - [ ] T040 [US4] Wire supporting-training lookup into certification detail DTO in .../certification/service/
 - [ ] T041 [US4] Run `./gradlew :services:labour-service:check`; log/fix defects
 
