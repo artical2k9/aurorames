@@ -8,7 +8,7 @@ import java.util.List;
  */
 public class QualityValidationException extends RuntimeException {
 
-    private final transient List<String> details;
+    private final List<String> details;
 
     public QualityValidationException(String message) {
         this(message, List.of());
