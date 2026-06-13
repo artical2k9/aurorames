@@ -36,7 +36,8 @@ import java.util.UUID;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
 @EmbeddedKafka(partitions = 1,
-        topics = {"iam.privilege-changes", "bom.released", "engineering.eco.events"},
+        topics = {"iam.privilege-changes", "bom.released", "engineering.eco.events",
+                "engineering.work-instruction.approved"},
         bootstrapServersProperty = "spring.kafka.bootstrap-servers")
 @Import(BaseIntegrationTest.TestSecurityConfig.class)
 public abstract class BaseIntegrationTest {
@@ -71,10 +72,15 @@ public abstract class BaseIntegrationTest {
                 case "SYSTEM_ADMIN" -> Set.of(
                         "item-master:records:view", "item-master:records:manage",
                         "item-master:bom:manage",  "item-master:eco:manage",
-                        "item-master:udf:manage");
+                        "item-master:udf:manage",
+                        "engineering:work-instruction:create", "engineering:work-instruction:read",
+                        "engineering:work-instruction:update", "engineering:work-instruction:delete",
+                        "engineering:work-instruction:approve");
                 case "ENGINEER" -> Set.of(
                         "item-master:records:view", "item-master:records:manage",
-                        "item-master:bom:manage",  "item-master:eco:manage");
+                        "item-master:bom:manage",  "item-master:eco:manage",
+                        "engineering:work-instruction:create", "engineering:work-instruction:read",
+                        "engineering:work-instruction:update", "engineering:work-instruction:approve");
                 default -> Set.of();
             };
         }
@@ -120,6 +126,9 @@ public abstract class BaseIntegrationTest {
                     .subject("test-user-" + UUID.randomUUID())
                     .claim("org_id", orgId)
                     .claim("roles", roles)
+                    .claim("preferred_username", "test-approver")
+                    .claim("given_name", "Test")
+                    .claim("family_name", "Approver")
                     .expirationTime(new Date(System.currentTimeMillis() + 3_600_000L))
                     .build();
             SignedJWT jwt = new SignedJWT(

@@ -64,6 +64,12 @@ spring:
             - Path=/api/v1/ecos/**
           filters:
             - StripPrefix=0
+        - id: engineering-service-work-instructions
+          uri: ${ENGINEERING_SERVICE_URL:http://engineering-service:8097}
+          predicates:
+            - Path=/api/v1/work-instructions/**
+          filters:
+            - StripPrefix=0
         - id: quality-service-inspection-plans
           uri: ${QUALITY_SERVICE_URL:http://quality-service:8099}
           predicates:
