@@ -1,6 +1,8 @@
 package com.mes.quality.inspectionplan.api;
 
 import com.mes.common.security.annotation.RequiresPrivilege;
+import com.mes.quality.inspectionplan.api.dto.CharacteristicDto;
+import com.mes.quality.inspectionplan.api.dto.CharacteristicRequest;
 import com.mes.quality.inspectionplan.api.dto.CreateInspectionPlanRequest;
 import com.mes.quality.inspectionplan.api.dto.InspectionPlanDto;
 import com.mes.quality.inspectionplan.api.dto.InspectionPlanRevisionSummaryDto;
@@ -8,6 +10,7 @@ import com.mes.quality.inspectionplan.api.dto.InspectionPlanSummaryDto;
 import com.mes.quality.inspectionplan.api.dto.PatchInspectionPlanHeaderRequest;
 import com.mes.quality.inspectionplan.api.dto.RejectRevisionRequest;
 import com.mes.quality.inspectionplan.domain.RevisionStatus;
+import com.mes.quality.inspectionplan.service.CharacteristicService;
 import com.mes.quality.inspectionplan.service.InspectionPlanService;
 import com.mes.udf.api.JwtClaimsExtractor;
 import jakarta.validation.Valid;
@@ -36,9 +39,12 @@ import java.util.UUID;
 public class InspectionPlanController {
 
     private final InspectionPlanService planService;
+    private final CharacteristicService characteristicService;
 
-    public InspectionPlanController(InspectionPlanService planService) {
+    public InspectionPlanController(InspectionPlanService planService,
+                                    CharacteristicService characteristicService) {
         this.planService = planService;
+        this.characteristicService = characteristicService;
     }
 
     @PostMapping
@@ -138,6 +144,47 @@ public class InspectionPlanController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID id) {
         planService.cancelDraft(JwtClaimsExtractor.orgId(jwt), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Characteristics (DRAFT revision only) ─────────────────────────────────
+
+    @GetMapping("/{id}/characteristics")
+    @RequiresPrivilege("quality:inspection-plan:read")
+    public List<CharacteristicDto> listCharacteristics(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @RequestParam(required = false) Integer revisionNumber) {
+        return characteristicService.list(JwtClaimsExtractor.orgId(jwt), id, revisionNumber);
+    }
+
+    @PostMapping("/{id}/characteristics")
+    @RequiresPrivilege("quality:inspection-plan:update")
+    public ResponseEntity<CharacteristicDto> addCharacteristic(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @Valid @RequestBody CharacteristicRequest request) {
+        CharacteristicDto dto = characteristicService.add(JwtClaimsExtractor.orgId(jwt), id, request);
+        return ResponseEntity.status(201).body(dto);
+    }
+
+    @PatchMapping("/{id}/characteristics/{charId}")
+    @RequiresPrivilege("quality:inspection-plan:update")
+    public CharacteristicDto updateCharacteristic(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @PathVariable UUID charId,
+            @Valid @RequestBody CharacteristicRequest request) {
+        return characteristicService.update(JwtClaimsExtractor.orgId(jwt), id, charId, request);
+    }
+
+    @DeleteMapping("/{id}/characteristics/{charId}")
+    @RequiresPrivilege("quality:inspection-plan:update")
+    public ResponseEntity<Void> deleteCharacteristic(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @PathVariable UUID charId) {
+        characteristicService.delete(JwtClaimsExtractor.orgId(jwt), id, charId);
         return ResponseEntity.noContent().build();
     }
 }

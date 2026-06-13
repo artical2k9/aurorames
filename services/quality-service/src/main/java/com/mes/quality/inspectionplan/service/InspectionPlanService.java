@@ -34,13 +34,16 @@ public class InspectionPlanService {
     private final InspectionPlanRepository planRepository;
     private final InspectionPlanRevisionRepository revisionRepository;
     private final InventoryServiceClient inventoryClient;
+    private final CharacteristicService characteristicService;
 
     public InspectionPlanService(InspectionPlanRepository planRepository,
                                  InspectionPlanRevisionRepository revisionRepository,
-                                 InventoryServiceClient inventoryClient) {
+                                 InventoryServiceClient inventoryClient,
+                                 CharacteristicService characteristicService) {
         this.planRepository = planRepository;
         this.revisionRepository = revisionRepository;
         this.inventoryClient = inventoryClient;
+        this.characteristicService = characteristicService;
     }
 
     public InspectionPlanDto createPlan(UUID orgId, CreateInspectionPlanRequest req) {
@@ -223,7 +226,9 @@ public class InspectionPlanService {
                 .orElseThrow(() -> new QualityConflictException(
                         "Cannot edit: no approved revision exists to base a draft on"));
         InspectionPlanRevision copy = copyRevision(lastApproved, maxRevision + 1, plan);
-        return revisionRepository.save(copy);
+        InspectionPlanRevision savedCopy = revisionRepository.save(copy);
+        characteristicService.copyCharacteristics(lastApproved.getId(), savedCopy);
+        return savedCopy;
     }
 
     private InspectionPlanRevision copyRevision(InspectionPlanRevision source, int newRevision,
