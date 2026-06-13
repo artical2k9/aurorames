@@ -35,7 +35,7 @@ Scaffold a new `quality-service` microservice (planning domain) providing revisi
 | Does this feature have an approved spec before this plan was created? | I — Spec-First | ✅ PASS — specs/012-quality-inspection-planning/spec.md (Jira MES-12) |
 | Are test tasks listed BEFORE implementation tasks for every user story? | II — TDD | ✅ PASS |
 | Is there a defect-registration step for test failures in the task list? | II — TDD | ✅ PASS — retrospective gate task |
-| Has a human reviewed and approved this AI-generated plan? | III — AI-Approved | ⏳ Pending owner review (clarify stage) |
+| Has a human reviewed and approved this AI-generated plan? | III — AI-Approved | ✅ PASS — owner approved via /speckit-clarify and authorised implementation (build order MES-11 → MES-12 → MES-10) |
 | Does the spec include a "Compliance References" section? | IV — Compliance | ✅ PASS — AS9100D §8.6, AS9103, AS9145, QIF, AS9102 partial |
 | Are all affected AS / ISA / NIST standards cited and addressed? | IV — Compliance | ✅ PASS |
 | Do all data mutations produce an audit log entry? | V — Auditability | ✅ PASS — Envers all entities + `_aud`; approval metadata on revision rows |

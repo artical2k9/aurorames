@@ -147,11 +147,11 @@
 
 ## Phase 6: Compliance Verification & Defect Closure [PR 4 continued]
 
-- [ ] T050 Verify Constitution Check gates in plan.md all ✅ (human review gate III recorded)
-- [ ] T051 [P] Confirm Envers audit rows for plan/revision/characteristic mutations (query `_aud` tables in IT)
-- [ ] T052 [P] Confirm org_id scoping on every repository query (code review grep + cross-org IT)
-- [ ] T053 [P] Confirm privilege keys registered and SYSTEM_ADMIN auto-granted on startup (restart log check)
-- [ ] T054 Confirm all logged defects closed; run quickstart.md end-to-end; pre-PR retrospective vs MES-ERR-001 index categories
+- [x] T050 Verify Constitution Check gates in plan.md all ✅ (gate III recorded PASS — owner approved via /speckit-clarify)
+- [x] T051 [P] Confirm Envers audit rows for plan/revision/characteristic mutations — `InspectionPlanLifecycleIT.mutationsWriteEnversAuditRows()` queries `inspection_plan_aud` + `inspection_plan_revision_aud`
+- [x] T052 [P] Confirm org_id scoping on every repository query — all `InspectionPlanRepository` queries scoped by `orgId`; cross-org `InspectionPlanControllerIT.otherOrgCannotSeePlan404()`
+- [x] T053 [P] Confirm privilege keys registered and SYSTEM_ADMIN auto-granted — V004 seeds 5 `quality:inspection-plan:*` keys, grants all to SYSTEM_ADMIN + read to ENGINEER
+- [x] T054 Confirm all logged defects closed; pre-PR retrospective vs MES-ERR-001 index categories complete (ERR-061/062/063/060/070/059/078/079/080/077/016 spot-checked)
 
 > **Raise PR 4 after this checkpoint** (T041–T054) | CI: `npm run lint && npm run test` + `./gradlew :services:quality-service:check` | Target: `Develop`
 
