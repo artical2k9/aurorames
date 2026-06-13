@@ -12,6 +12,7 @@ const MOCK_DTO: ItemMasterDto = {
   revision: 0,
   revisionStatus: 'DRAFT',
   hasDraft: true,
+  hasPendingApproval: false,
   description: 'Widget',
   unitOfMeasure: 'EA',
   classification: 'ASSEMBLY',

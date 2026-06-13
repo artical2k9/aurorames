@@ -12,6 +12,7 @@ const MOCK_BOM: BomDto = {
   revision: 0,
   revisionStatus: 'DRAFT' as RevisionStatus,
   hasDraft: false,
+  hasPendingApproval: false,
   createdBy: 'user',
   createdAt: '2026-01-01T00:00:00Z',
 };
