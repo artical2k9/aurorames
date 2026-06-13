@@ -47,6 +47,22 @@ class InspectionPlanControllerIT extends BaseIntegrationTest {
         return response.getBody().get("id").toString();
     }
 
+    /** Adds one SPECIFIC characteristic so the plan can pass the submit-gate. */
+    @SuppressWarnings("unchecked")
+    private void addCharacteristic(String planId) {
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("characteristicNumber", 10);
+        body.put("name", "Bore");
+        body.put("source", "DESIGN");
+        body.put("characteristicType", "SPECIFIC");
+        body.put("sampleSizeRule", "ALL");
+        body.put("nominalValue", 10.0);
+        ResponseEntity<Map> r = restTemplate.exchange(
+                PLANS + "/" + planId + "/characteristics", HttpMethod.POST,
+                jsonRequest(adminToken(), body), Map.class);
+        assertThat(r.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    }
+
     @SuppressWarnings("unchecked")
     @Test
     void createReturnsRevisionZeroDraft() {
@@ -91,6 +107,7 @@ class InspectionPlanControllerIT extends BaseIntegrationTest {
     @Test
     void submitApproveLifecycle() {
         String planId = createPlan(UUID.randomUUID().toString(), "PN-200", "Lifecycle plan");
+        addCharacteristic(planId);
 
         ResponseEntity<Map> submitted = restTemplate.exchange(
                 PLANS + "/" + planId + "/submit", HttpMethod.POST,
@@ -110,6 +127,7 @@ class InspectionPlanControllerIT extends BaseIntegrationTest {
     @Test
     void rejectReturnsToDraftAndRequiresReason() {
         String planId = createPlan(UUID.randomUUID().toString(), "PN-201", "Reject plan");
+        addCharacteristic(planId);
         restTemplate.exchange(PLANS + "/" + planId + "/submit", HttpMethod.POST,
                 jsonRequest(adminToken(), Map.of()), Map.class);
 
@@ -130,6 +148,7 @@ class InspectionPlanControllerIT extends BaseIntegrationTest {
     @Test
     void patchOnApprovedAutoCreatesDraftAndEnforcesOneDraft() {
         String planId = createPlan(UUID.randomUUID().toString(), "PN-202", "Auto draft plan");
+        addCharacteristic(planId);
         restTemplate.exchange(PLANS + "/" + planId + "/submit", HttpMethod.POST,
                 jsonRequest(adminToken(), Map.of()), Map.class);
         restTemplate.exchange(PLANS + "/" + planId + "/approve", HttpMethod.POST,
@@ -154,6 +173,7 @@ class InspectionPlanControllerIT extends BaseIntegrationTest {
     @Test
     void revisionHistoryOrderedAndDisplayResolution() {
         String planId = createPlan(UUID.randomUUID().toString(), "PN-203", "History plan");
+        addCharacteristic(planId);
         restTemplate.exchange(PLANS + "/" + planId + "/submit", HttpMethod.POST,
                 jsonRequest(adminToken(), Map.of()), Map.class);
         restTemplate.exchange(PLANS + "/" + planId + "/approve", HttpMethod.POST,

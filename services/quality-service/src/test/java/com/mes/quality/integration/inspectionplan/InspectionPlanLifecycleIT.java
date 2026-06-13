@@ -47,6 +47,19 @@ class InspectionPlanLifecycleIT extends BaseIntegrationTest {
         return response.getBody().get("id").toString();
     }
 
+    @SuppressWarnings("unchecked")
+    private void addCharacteristic(String planId) {
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("characteristicNumber", 10);
+        body.put("name", "Bore");
+        body.put("source", "DESIGN");
+        body.put("characteristicType", "SPECIFIC");
+        body.put("sampleSizeRule", "ALL");
+        body.put("nominalValue", 10.0);
+        restTemplate.exchange(PLANS + "/" + planId + "/characteristics", HttpMethod.POST,
+                jsonRequest(adminToken(), body), Map.class);
+    }
+
     @Test
     void deleteNeverApprovedReturns204() {
         String planId = createPlan(UUID.randomUUID().toString(), "PN-D1");
@@ -60,6 +73,7 @@ class InspectionPlanLifecycleIT extends BaseIntegrationTest {
     @Test
     void deleteEverApprovedReturns409() {
         String planId = createPlan(UUID.randomUUID().toString(), "PN-D2");
+        addCharacteristic(planId);
         restTemplate.exchange(PLANS + "/" + planId + "/submit", HttpMethod.POST,
                 jsonRequest(adminToken(), Map.of()), Map.class);
         restTemplate.exchange(PLANS + "/" + planId + "/approve", HttpMethod.POST,
@@ -75,6 +89,7 @@ class InspectionPlanLifecycleIT extends BaseIntegrationTest {
     @Test
     void mutationsWriteEnversAuditRows() {
         String planId = createPlan(UUID.randomUUID().toString(), "PN-AUD");
+        addCharacteristic(planId);
         restTemplate.exchange(PLANS + "/" + planId + "/submit", HttpMethod.POST,
                 jsonRequest(adminToken(), Map.of()), Map.class);
         restTemplate.exchange(PLANS + "/" + planId + "/approve", HttpMethod.POST,

@@ -35,15 +35,18 @@ public class InspectionPlanService {
     private final InspectionPlanRevisionRepository revisionRepository;
     private final InventoryServiceClient inventoryClient;
     private final CharacteristicService characteristicService;
+    private final com.mes.quality.kafka.QualityEventPublisher eventPublisher;
 
     public InspectionPlanService(InspectionPlanRepository planRepository,
                                  InspectionPlanRevisionRepository revisionRepository,
                                  InventoryServiceClient inventoryClient,
-                                 CharacteristicService characteristicService) {
+                                 CharacteristicService characteristicService,
+                                 com.mes.quality.kafka.QualityEventPublisher eventPublisher) {
         this.planRepository = planRepository;
         this.revisionRepository = revisionRepository;
         this.inventoryClient = inventoryClient;
         this.characteristicService = characteristicService;
+        this.eventPublisher = eventPublisher;
     }
 
     public InspectionPlanDto createPlan(UUID orgId, CreateInspectionPlanRequest req) {
@@ -101,7 +104,14 @@ public class InspectionPlanService {
 
     public InspectionPlanDto submit(UUID orgId, UUID planId, String actor) {
         InspectionPlanRevision draft = requireRevision(orgId, planId, RevisionStatus.DRAFT);
-        // Submit-gate validation (zero characteristics / invalid expressions) is added in US3.
+        // Submit-gate: a plan must have at least one characteristic and every CALCULATED
+        // expression must still be valid (a peer may have been deleted/retyped since save).
+        var characteristics = characteristicService.allInRevision(draft.getId());
+        if (characteristics.isEmpty()) {
+            throw new QualityValidationException(
+                    "Cannot submit an inspection plan with no characteristics");
+        }
+        characteristicService.revalidateExpressions(characteristics);
         draft.setRevisionStatus(RevisionStatus.PENDING_APPROVAL);
         draft.setSubmittedBy(actor);
         draft.setSubmittedAt(Instant.now());
@@ -118,7 +128,7 @@ public class InspectionPlanService {
         InspectionPlan plan = saved.getInspectionPlan();
         boolean hasDraft = revisionRepository
                 .existsByInspectionPlanIdAndRevisionStatus(plan.getId(), RevisionStatus.DRAFT);
-        // Kafka quality.inspection-plan.approved event is published in US3.
+        eventPublisher.publishApproved(plan, saved);
         return InspectionPlanMapper.toDto(plan, saved, hasDraft, false);
     }
 
@@ -192,6 +202,37 @@ public class InspectionPlanService {
                     .orElseThrow(() -> new QualityNotFoundException(PLAN_NOT_FOUND + plan.getId()));
             return InspectionPlanMapper.toSummaryDto(plan, display, hasDraft(all));
         });
+    }
+
+    @Transactional(readOnly = true)
+    public com.mes.quality.inspectionplan.api.dto.ApprovedPlanDto getApprovedByItem(UUID orgId, UUID itemId) {
+        InspectionPlan plan = planRepository.findByOrgIdAndItemId(orgId, itemId)
+                .orElseThrow(() -> new QualityNotFoundException(
+                        "NO_APPROVED_PLAN: no inspection plan for item " + itemId));
+        InspectionPlanRevision approved = latestApproved(plan)
+                .orElseThrow(() -> new QualityNotFoundException(
+                        "NO_APPROVED_PLAN: no approved revision for item " + itemId));
+        var characteristics = characteristicService.list(orgId, plan.getId(), approved.getRevision());
+        return new com.mes.quality.inspectionplan.api.dto.ApprovedPlanDto(
+                plan.getId(), plan.getItemId(), plan.getPartNumber(),
+                approved.getRevision(), approved.getName(), characteristics);
+    }
+
+    @Transactional(readOnly = true)
+    public com.mes.quality.inspectionplan.api.dto.PlanStatusDto statusByItem(UUID orgId, UUID itemId) {
+        InspectionPlan plan = planRepository.findByOrgIdAndItemId(orgId, itemId).orElse(null);
+        if (plan == null) {
+            return new com.mes.quality.inspectionplan.api.dto.PlanStatusDto(false, false, null);
+        }
+        return latestApproved(plan)
+                .map(r -> new com.mes.quality.inspectionplan.api.dto.PlanStatusDto(true, true, r.getRevision()))
+                .orElseGet(() -> new com.mes.quality.inspectionplan.api.dto.PlanStatusDto(true, false, null));
+    }
+
+    private java.util.Optional<InspectionPlanRevision> latestApproved(InspectionPlan plan) {
+        return revisionRepository.findByInspectionPlanId(plan.getId()).stream()
+                .filter(r -> r.getRevisionStatus() == RevisionStatus.APPROVED)
+                .max(Comparator.comparingInt(InspectionPlanRevision::getRevision));
     }
 
     @Transactional(readOnly = true)
