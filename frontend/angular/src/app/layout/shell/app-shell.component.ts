@@ -29,6 +29,9 @@ import {
   LucideClipboardCheck,
   LucideUsers,
   LucideRuler,
+  LucideContact,
+  LucideAward,
+  LucideBadgeCheck,
 } from '@lucide/angular';
 import { ThemeToggleComponent } from '../../shared/theme';
 import { ThemeService } from '../../shared/theme';
@@ -36,7 +39,7 @@ import { BreadcrumbComponent, BreadcrumbService } from '../../shared/ui';
 
 const NAV_COLLAPSED_KEY = 'aurora-mes-nav-collapsed';
 
-type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering' | 'production' | 'materials' | 'inventory' | 'receiving' | 'users' | 'uom';
+type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering' | 'production' | 'materials' | 'inventory' | 'receiving' | 'users' | 'uom' | 'labour' | 'employees' | 'skills' | 'certifications';
 
 interface ChildNavItem {
   label: string;
@@ -65,6 +68,7 @@ interface NavItem {
     LucideUserCog, LucideList, LucideLayoutGrid, LucideBell, LucideLogOut,
     LucideDatabase, LucideSlidersHorizontal, LucideChevronDown, LucideHammer,
     LucideFactory, LucideBoxes, LucideArchive, LucideClipboardCheck, LucideUsers, LucideRuler,
+    LucideContact, LucideAward, LucideBadgeCheck,
     ThemeToggleComponent,
   ],
   template: `
@@ -159,6 +163,7 @@ interface NavItem {
                       @case ('production')  { <svg lucideFactory  [size]="18" [strokeWidth]="2"></svg> }
                       @case ('master-data') { <svg lucideDatabase [size]="18" [strokeWidth]="2"></svg> }
                       @case ('materials')   { <svg lucideBoxes    [size]="18" [strokeWidth]="2"></svg> }
+                      @case ('labour')      { <svg lucideUsers    [size]="18" [strokeWidth]="2"></svg> }
                     }
                   </span>
                   @if (!collapsed) {
@@ -182,6 +187,9 @@ interface NavItem {
                               @case ('inventory')    { <svg lucideArchive           [size]="15" [strokeWidth]="2"></svg> }
                               @case ('receiving')    { <svg lucideClipboardCheck    [size]="15" [strokeWidth]="2"></svg> }
                               @case ('udf')          { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('employees')      { <svg lucideContact    [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('skills')         { <svg lucideAward      [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('certifications') { <svg lucideBadgeCheck [size]="15" [strokeWidth]="2"></svg> }
                             }
                           </span>
                           <span class="shell__nav-label">{{ child.label }}</span>
@@ -201,6 +209,9 @@ interface NavItem {
                               @case ('inventory')    { <svg lucideArchive           [size]="15" [strokeWidth]="2"></svg> }
                               @case ('receiving')    { <svg lucideClipboardCheck    [size]="15" [strokeWidth]="2"></svg> }
                               @case ('udf')          { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('employees')      { <svg lucideContact    [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('skills')         { <svg lucideAward      [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('certifications') { <svg lucideBadgeCheck [size]="15" [strokeWidth]="2"></svg> }
                             }
                           </span>
                           <span class="shell__nav-label">{{ child.label }}</span>
@@ -390,9 +401,19 @@ export class AppShellComponent implements OnInit {
         { label: 'Receiving Inspection', iconKey: 'receiving', path: '/receiving',  disabled: true },
       ],
     },
+    {
+      label:    'Labour',
+      iconKey:  'labour',
+      path:     '',
+      children: [
+        { label: 'Employees',      iconKey: 'employees',      path: '/labour/employees' },
+        { label: 'Skills',         iconKey: 'skills',         path: '/labour/skills' },
+        { label: 'Certifications', iconKey: 'certifications', path: '/labour/certifications' },
+      ],
+    },
   ];
 
-  expandedGroups = new Set<string>(['Engineering', 'Production', 'Master Data', 'Materials', 'Settings']);
+  expandedGroups = new Set<string>(['Engineering', 'Production', 'Master Data', 'Materials', 'Labour', 'Settings']);
 
   isGroupExpanded(label: string): boolean {
     return this.expandedGroups.has(label);
