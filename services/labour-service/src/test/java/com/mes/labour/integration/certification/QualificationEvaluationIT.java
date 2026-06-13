@@ -185,6 +185,31 @@ class QualificationEvaluationIT extends BaseIntegrationTest {
     }
 
     @Test
+    void twentySkillEvaluateCompletesUnder500ms() {
+        // SC-005: bulk qualification evaluate must stay under 500 ms for a 20-skill request.
+        String emp = createEmployee("E-QUAL-PERF");
+        java.util.List<String> skillIds = new java.util.ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            String skillId = createSkill("SK-PERF-" + i);
+            skillIds.add(skillId);
+            awardWithExpiry(emp, skillId, LocalDate.now().plusYears(1), false);
+        }
+        Map<String, Object> request = Map.of("employeeId", emp, "skillIds", skillIds);
+
+        // Warm up once so JIT / connection-pool priming does not skew the measured call.
+        evaluate(request);
+
+        long startNanos = System.nanoTime();
+        Map<String, Object> evaluation = evaluate(request);
+        long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000L;
+
+        assertThat((List<?>) evaluation.get("results")).hasSize(20);
+        assertThat(elapsedMillis)
+                .as("20-skill evaluate latency (ms)")
+                .isLessThan(500L);
+    }
+
+    @Test
     void renewalNewestCertificationGoverns() {
         String emp = createEmployee("E-QUAL-006");
         String skill = createSkill("SK-QUAL-I");

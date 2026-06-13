@@ -35,7 +35,7 @@ Scaffold a new `labour-service` microservice (ISA-95 Personnel domain) providing
 | Does this feature have an approved spec before this plan was created? | I — Spec-First | ✅ PASS — specs/011-labour-resources-skills/spec.md (Jira MES-11) |
 | Are test tasks listed BEFORE implementation tasks for every user story? | II — TDD | ✅ PASS — tasks.md orders tests first per story |
 | Is there a defect-registration step for test failures in the task list? | II — TDD | ✅ PASS — retrospective gate task |
-| Has a human reviewed and approved this AI-generated plan? | III — AI-Approved | ⏳ Pending owner review (clarify stage) |
+| Has a human reviewed and approved this AI-generated plan? | III — AI-Approved | ✅ PASS — owner reviewed via /speckit-clarify (4 answers recorded) and authorised implementation 2026-06-13 |
 | Does the spec include a "Compliance References" section? | IV — Compliance | ✅ PASS — AS9100D §7.2, AS9146, ISA-95 Part 2, CMMC PS |
 | Are all affected AS / ISA / NIST standards cited and addressed? | IV — Compliance | ✅ PASS |
 | Do all data mutations produce an audit log entry? | V — Auditability | ✅ PASS — Envers all entities + `_aud` tables; revocation/training-outcome changes audited |
