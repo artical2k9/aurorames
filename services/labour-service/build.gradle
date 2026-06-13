@@ -1,0 +1,64 @@
+// labour-service — Labour Resources & Skills for Aurora MES (ISA-95 Personnel domain).
+// Owns the labour PostgreSQL schema. Provides the bulk qualification evaluation API
+// consumed by engineering-service (work-instruction skill gating) and shopfloor-service.
+
+plugins {
+    id 'org.springframework.boot'
+}
+
+dependencies {
+    // ── Shared libraries ──────────────────────────────────────────────────────
+    implementation project(':libs:lib-common-security')
+    implementation project(':libs:lib-common-audit')
+    implementation project(':libs:mes-udf-lib')
+
+    // ── Spring Boot Admin client self-registration ────────────────────────────
+    implementation libs.spring.boot.admin.client
+
+    // ── Web + Persistence + Validation ───────────────────────────────────────
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // ── Flyway ────────────────────────────────────────────────────────────────
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    // ── PostgreSQL driver ─────────────────────────────────────────────────────
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // ── JSONB ─────────────────────────────────────────────────────────────────
+    implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.9.0'
+
+    // ── Jackson ───────────────────────────────────────────────────────────────
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // ── API documentation ─────────────────────────────────────────────────────
+    implementation libs.springdoc.openapi.webmvc
+
+    // ── Tests ─────────────────────────────────────────────────────────────────
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation(testFixtures(project(':libs:lib-common-security')))
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
+}
+
+// Copy IAM service migrations to iam-bootstrap/ in the test classpath so
+// BaseIntegrationTest.bootstrapIamSchema() can prime the iam.* tables before
+// labour-service's own Flyway runs V004 (which INSERTs into iam.privilege).
+processTestResources {
+    from('../iam-service/src/main/resources/db/migration') {
+        into 'iam-bootstrap'
+    }
+}
+
+test {
+    def dockerHost = System.getenv('DOCKER_HOST')
+    if (dockerHost) {
+        environment 'DOCKER_HOST', dockerHost
+        systemProperty 'api.version', '1.41'
+    }
+}

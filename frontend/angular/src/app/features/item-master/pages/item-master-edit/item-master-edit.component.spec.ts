@@ -58,7 +58,7 @@ describe('ItemMasterEditComponent', () => {
         { provide: BreadcrumbService, useValue: mockBreadcrumb },
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: { get: () => 'abc-123' } } },
+          useValue: { snapshot: { paramMap: { get: () => 'abc-123' }, queryParamMap: { get: () => null } } },
         },
       ],
     }).compileComponents();
@@ -97,6 +97,7 @@ describe('ItemMasterEditComponent', () => {
 
   it('canSave() returns true when form valid', () => {
     fixture.detectChanges();
+    component.form.markAsDirty();
     expect(component.canSave()).toBe(true);
   });
 
