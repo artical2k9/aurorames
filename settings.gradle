@@ -34,3 +34,4 @@ include 'services:work-order-service'
 // MES-111 — Service Decomposition
 include 'services:inventory-service'
 include 'services:engineering-service'
+include 'services:quality-service'
