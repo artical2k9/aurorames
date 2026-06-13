@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan at:
-specs/011-labour-resources-skills/plan.md
+specs/012-quality-inspection-planning/plan.md
 <!-- SPECKIT END -->
 
 ## Branching Strategy

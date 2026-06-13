@@ -39,7 +39,7 @@ import { BreadcrumbComponent, BreadcrumbService } from '../../shared/ui';
 
 const NAV_COLLAPSED_KEY = 'aurora-mes-nav-collapsed';
 
-type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering' | 'production' | 'materials' | 'inventory' | 'receiving' | 'users' | 'uom' | 'labour' | 'employees' | 'skills' | 'certifications';
+type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering' | 'production' | 'materials' | 'inventory' | 'receiving' | 'users' | 'uom' | 'labour' | 'employees' | 'skills' | 'certifications' | 'quality' | 'inspection-plans';
 
 interface ChildNavItem {
   label: string;
@@ -164,6 +164,7 @@ interface NavItem {
                       @case ('master-data') { <svg lucideDatabase [size]="18" [strokeWidth]="2"></svg> }
                       @case ('materials')   { <svg lucideBoxes    [size]="18" [strokeWidth]="2"></svg> }
                       @case ('labour')      { <svg lucideUsers    [size]="18" [strokeWidth]="2"></svg> }
+                      @case ('quality')     { <svg lucideClipboardCheck [size]="18" [strokeWidth]="2"></svg> }
                     }
                   </span>
                   @if (!collapsed) {
@@ -190,6 +191,7 @@ interface NavItem {
                               @case ('employees')      { <svg lucideContact    [size]="15" [strokeWidth]="2"></svg> }
                               @case ('skills')         { <svg lucideAward      [size]="15" [strokeWidth]="2"></svg> }
                               @case ('certifications') { <svg lucideBadgeCheck [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('inspection-plans') { <svg lucideClipboardCheck [size]="15" [strokeWidth]="2"></svg> }
                             }
                           </span>
                           <span class="shell__nav-label">{{ child.label }}</span>
@@ -212,6 +214,7 @@ interface NavItem {
                               @case ('employees')      { <svg lucideContact    [size]="15" [strokeWidth]="2"></svg> }
                               @case ('skills')         { <svg lucideAward      [size]="15" [strokeWidth]="2"></svg> }
                               @case ('certifications') { <svg lucideBadgeCheck [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('inspection-plans') { <svg lucideClipboardCheck [size]="15" [strokeWidth]="2"></svg> }
                             }
                           </span>
                           <span class="shell__nav-label">{{ child.label }}</span>
@@ -411,9 +414,17 @@ export class AppShellComponent implements OnInit {
         { label: 'Certifications', iconKey: 'certifications', path: '/labour/certifications' },
       ],
     },
+    {
+      label:    'Quality',
+      iconKey:  'quality',
+      path:     '',
+      children: [
+        { label: 'Inspection Plans', iconKey: 'inspection-plans', path: '/quality/inspection-plans' },
+      ],
+    },
   ];
 
-  expandedGroups = new Set<string>(['Engineering', 'Production', 'Master Data', 'Materials', 'Labour', 'Settings']);
+  expandedGroups = new Set<string>(['Engineering', 'Production', 'Master Data', 'Materials', 'Labour', 'Quality', 'Settings']);
 
   isGroupExpanded(label: string): boolean {
     return this.expandedGroups.has(label);

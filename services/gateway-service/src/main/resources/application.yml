@@ -64,6 +64,12 @@ spring:
             - Path=/api/v1/ecos/**
           filters:
             - StripPrefix=0
+        - id: quality-service-inspection-plans
+          uri: ${QUALITY_SERVICE_URL:http://quality-service:8099}
+          predicates:
+            - Path=/api/v1/inspection-plans/**
+          filters:
+            - StripPrefix=0
         - id: platform-service-preferences
           uri: ${PLATFORM_SERVICE_URL:http://platform-service:8090}
           predicates:

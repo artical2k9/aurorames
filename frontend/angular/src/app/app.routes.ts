@@ -125,6 +125,18 @@ export const routes: Routes = [
           import('./features/labour/pages/certification-list/certification-list.component')
             .then(m => m.CertificationListComponent),
       },
+      {
+        path: 'quality/inspection-plans',
+        loadComponent: () =>
+          import('./features/inspection-plans/pages/inspection-plan-list/inspection-plan-list.component')
+            .then(m => m.InspectionPlanListComponent),
+      },
+      {
+        path: 'quality/inspection-plans/:id',
+        loadComponent: () =>
+          import('./features/inspection-plans/pages/inspection-plan-detail/inspection-plan-detail.component')
+            .then(m => m.InspectionPlanDetailComponent),
+      },
     ],
   },
 ];
