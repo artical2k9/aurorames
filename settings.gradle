@@ -34,4 +34,9 @@ include 'services:work-order-service'
 // MES-111 — Service Decomposition
 include 'services:inventory-service'
 include 'services:engineering-service'
+
+// MES-11 — Labour Resources & Skills
+include 'services:labour-service'
+
+// MES-12 — Quality Inspection Planning
 include 'services:quality-service'
