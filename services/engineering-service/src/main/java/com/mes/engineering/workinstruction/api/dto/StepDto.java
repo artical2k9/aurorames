@@ -1,5 +1,6 @@
 package com.mes.engineering.workinstruction.api.dto;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -8,5 +9,6 @@ public record StepDto(
         Integer stepNumber,
         String title,
         String bodyHtml,
-        Map<String, Object> customFields) {
+        Map<String, Object> customFields,
+        List<MediaAttachmentDto> media) {
 }

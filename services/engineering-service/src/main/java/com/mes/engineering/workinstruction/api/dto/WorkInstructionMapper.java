@@ -50,9 +50,9 @@ public final class WorkInstructionMapper {
                 rev.getCustomFields());
     }
 
-    public static StepDto toStepDto(WorkInstructionStep step) {
+    public static StepDto toStepDto(WorkInstructionStep step, List<MediaAttachmentDto> media) {
         return new StepDto(step.getId(), step.getStepNumber(), step.getTitle(),
-                step.getBodyHtml(), step.getCustomFields());
+                step.getBodyHtml(), step.getCustomFields(), media);
     }
 
     public static SignatureDto toSignatureDto(ElectronicSignature sig) {

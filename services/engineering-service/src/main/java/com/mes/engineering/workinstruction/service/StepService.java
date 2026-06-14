@@ -25,15 +25,17 @@ public class StepService {
     private static final int STEP_INCREMENT = 10;
 
     private final WorkInstructionStepRepository stepRepository;
+    private final MediaService mediaService;
 
-    public StepService(WorkInstructionStepRepository stepRepository) {
+    public StepService(WorkInstructionStepRepository stepRepository, MediaService mediaService) {
         this.stepRepository = stepRepository;
+        this.mediaService = mediaService;
     }
 
     @Transactional(readOnly = true)
     public List<StepDto> stepsOf(UUID revisionId) {
         return stepRepository.findByRevisionIdOrderByStepNumberAsc(revisionId).stream()
-                .map(WorkInstructionMapper::toStepDto)
+                .map(s -> WorkInstructionMapper.toStepDto(s, mediaService.listForStep(s.getId())))
                 .toList();
     }
 
@@ -50,7 +52,7 @@ public class StepService {
         step.setTitle(req.getTitle());
         step.setBodyHtml(HtmlSanitiser.sanitise(req.getBodyHtml()));
         step.setCustomFields(req.getCustomFields());
-        return WorkInstructionMapper.toStepDto(stepRepository.save(step));
+        return WorkInstructionMapper.toStepDto(stepRepository.save(step), List.of());
     }
 
     public StepDto updateStep(WorkInstructionRevision draft, UUID stepId, StepRequest req) {
@@ -61,7 +63,8 @@ public class StepService {
         if (req.getCustomFields() != null) {
             step.setCustomFields(req.getCustomFields());
         }
-        return WorkInstructionMapper.toStepDto(stepRepository.save(step));
+        return WorkInstructionMapper.toStepDto(stepRepository.save(step),
+                mediaService.listForStep(step.getId()));
     }
 
     public void deleteStep(WorkInstructionRevision draft, UUID stepId) {
@@ -95,7 +98,10 @@ public class StepService {
         return stepsOf(draft.getId());
     }
 
-    /** Copy all steps from a source revision into a new draft revision (copy-on-revision). */
+    /**
+     * Copy all steps from a source revision into a new draft revision (copy-on-revision), including
+     * each step's media attachment rows (which point at the same shared object keys).
+     */
     public void copySteps(UUID sourceRevisionId, WorkInstructionRevision target) {
         for (WorkInstructionStep src : stepRepository.findByRevisionIdOrderByStepNumberAsc(sourceRevisionId)) {
             WorkInstructionStep copy = new WorkInstructionStep();
@@ -104,7 +110,8 @@ public class StepService {
             copy.setTitle(src.getTitle());
             copy.setBodyHtml(src.getBodyHtml());
             copy.setCustomFields(src.getCustomFields());
-            stepRepository.save(copy);
+            WorkInstructionStep savedCopy = stepRepository.save(copy);
+            mediaService.copyMediaForStep(src.getId(), savedCopy);
         }
     }
 
