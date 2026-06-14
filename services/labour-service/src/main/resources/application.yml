@@ -53,6 +53,17 @@ spring:
           jwk-set-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mes}/protocol/openid-connect/certs
           issuer-uri: ${KEYCLOAK_EXTERNAL_URL:http://localhost:8080/realms/mes}
 
+  # Kafka consumer — listens for iam.user.created to create the linked employee record.
+  # iam-service publishes the payload as a JSON string, so we use String deserializers and
+  # parse with Jackson in the listener (no type-header coupling).
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: labour-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
 server:
   port: 8098
 
@@ -72,3 +83,7 @@ mes:
     privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL_SECONDS:300}
   labour:
     expiry-warning-days: ${LABOUR_EXPIRY_WARNING_DAYS:30}
+
+labour:
+  events:
+    user-created-topic: ${IAM_USER_CREATED_TOPIC:iam.user.created}

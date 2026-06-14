@@ -17,6 +17,8 @@ export interface CreateUserRequest {
   firstName: string;
   lastName: string;
   roles: string[];
+  employeeNumber: string;
+  hireDate?: string;
   initialPassword?: string;
   temporaryPassword?: boolean;
 }

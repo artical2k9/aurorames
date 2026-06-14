@@ -419,12 +419,15 @@ services:
       IAM_SERVICE_URL: http://iam-service:8085
       MES_SECURITY_WEBHOOK_TOKEN: ${MES_SECURITY_WEBHOOK_TOKEN:?MES_SECURITY_WEBHOOK_TOKEN must be set}
       ADMIN_SERVICE_URL: http://admin-service:8888
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
       - "8098:8098"
     depends_on:
       postgres:
         condition: service_healthy
       keycloak:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
       iam-service:
         condition: service_healthy

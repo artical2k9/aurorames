@@ -2,6 +2,7 @@ package com.mes.iam.unit.service;
 
 import com.mes.iam.api.dto.UserResponse;
 import com.mes.iam.exception.UserNotFoundException;
+import com.mes.iam.kafka.UserCreatedEventPublisher;
 import com.mes.iam.keycloak.KeycloakAdminClient;
 import com.mes.iam.keycloak.KeycloakTokenClient;
 import com.mes.iam.service.UserService;
@@ -31,6 +32,7 @@ class UserServiceTest {
 
     @Mock KeycloakAdminClient keycloakAdminClient;
     @Mock KeycloakTokenClient keycloakTokenClient;
+    @Mock UserCreatedEventPublisher userCreatedEventPublisher;
 
     @InjectMocks UserService userService;
 
@@ -45,11 +47,14 @@ class UserServiceTest {
                 .thenReturn(Optional.of(userRep(USER_ID, "alice@test.com", "Alice", "Smith", true)));
 
         UserResponse response = userService.createUser("alice@test.com", "Alice", "Smith",
-                ORG_ID, List.of("SYSTEM_ADMIN"), null, false);
+                ORG_ID, List.of("SYSTEM_ADMIN"), null, false, "EMP-001", null);
 
         assertThat(response.id()).isEqualTo(USER_ID);
         assertThat(response.email()).isEqualTo("alice@test.com");
         assertThat(response.roles()).containsExactly("SYSTEM_ADMIN");
+        verify(userCreatedEventPublisher).publishUserCreated(
+                eq(USER_ID), eq(ORG_ID), eq("alice@test.com"), eq("Alice"), eq("Smith"),
+                eq("EMP-001"), eq(null));
     }
 
     @Test
@@ -59,7 +64,8 @@ class UserServiceTest {
         when(keycloakAdminClient.findUserById(USER_ID))
                 .thenReturn(Optional.of(userRep(USER_ID, "a@b.com", "A", "B", true)));
 
-        userService.createUser("a@b.com", "A", "B", ORG_ID, List.of("VIEWER"), null, false);
+        userService.createUser("a@b.com", "A", "B", ORG_ID, List.of("VIEWER"), null, false,
+                "EMP-002", null);
 
         verify(keycloakAdminClient).assignUserRoles(USER_ID, List.of("VIEWER"));
         verify(keycloakAdminClient).sendPasswordEmail(USER_ID);

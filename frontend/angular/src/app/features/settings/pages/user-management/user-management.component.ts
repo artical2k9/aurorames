@@ -15,10 +15,10 @@ import { SkeletonModule } from 'primeng/skeleton';
 import { CheckboxModule } from 'primeng/checkbox';
 import { MessageService } from 'primeng/api';
 import {
-  LucidePencil,
+  LucideUserPen,
   LucideUserPlus,
   LucideUserX,
-  LucideKeyRound,
+  LucideUserKey,
   LucideTriangleAlert,
 } from '@lucide/angular';
 import { BreadcrumbService } from '../../../../shared/ui';
@@ -39,8 +39,8 @@ interface RoleOption { label: string; value: string; }
     TableModule, DialogModule, ButtonModule,
     MultiSelectModule, InputTextModule, TagModule,
     ToastModule, MessageModule, SkeletonModule, CheckboxModule,
-    LucidePencil, LucideUserPlus, LucideUserX,
-    LucideKeyRound, LucideTriangleAlert,
+    LucideUserPen, LucideUserPlus, LucideUserX,
+    LucideUserKey, LucideTriangleAlert,
   ],
   providers: [MessageService],
   template: `
@@ -111,11 +111,11 @@ interface RoleOption { label: string; value: string; }
               <td>
                 <div class="um__actions">
                   <button class="um__action-btn" title="Edit user" (click)="openEdit(user)">
-                    <svg lucidePencil [size]="14" [strokeWidth]="2"></svg>
+                    <svg lucideUserPen [size]="14" [strokeWidth]="2"></svg>
                   </button>
                   <button class="um__action-btn" title="Reset password"
                           (click)="openEdit(user, true)">
-                    <svg lucideKeyRound [size]="14" [strokeWidth]="2"></svg>
+                    <svg lucideUserKey [size]="14" [strokeWidth]="2"></svg>
                   </button>
                   @if (user.enabled) {
                     @if (pendingDeactivateId === user.id) {
@@ -177,6 +177,18 @@ interface RoleOption { label: string; value: string; }
               <input pInputText id="email" formControlName="email" type="email"
                      [class.ng-invalid]="isInvalid('email')" />
             </div>
+            <div class="um__field-row">
+              <div class="um__field">
+                <label for="employeeNumber">Employee Number *</label>
+                <input pInputText id="employeeNumber" formControlName="employeeNumber"
+                       [class.ng-invalid]="isInvalid('employeeNumber')" />
+              </div>
+              <div class="um__field">
+                <label for="hireDate">Hire Date</label>
+                <input pInputText id="hireDate" formControlName="hireDate" type="date" />
+              </div>
+            </div>
+            <p class="um__hint">A linked employee record is created automatically.</p>
           } @else {
             <div class="um__readonly-header">
               <strong>{{ selectedUser?.firstName }} {{ selectedUser?.lastName }}</strong>
@@ -309,6 +321,8 @@ export class UserManagementComponent implements OnInit {
     firstName:          ['', Validators.required],
     lastName:           ['', Validators.required],
     email:              ['', [Validators.required, Validators.email]],
+    employeeNumber:     ['', Validators.required],
+    hireDate:           [''],
     roles:              [[] as string[]],
     // create-only
     setInitialPassword: [false],
@@ -369,7 +383,7 @@ export class UserManagementComponent implements OnInit {
       roles: [], setInitialPassword: false,
       temporaryPassword: true, temporaryReset: true,
     });
-    ['firstName', 'lastName', 'email'].forEach(f => {
+    ['firstName', 'lastName', 'email', 'employeeNumber'].forEach(f => {
       this.form.get(f)?.setValidators(
         f === 'email' ? [Validators.required, Validators.email] : Validators.required);
       this.form.get(f)?.updateValueAndValidity();
@@ -386,7 +400,7 @@ export class UserManagementComponent implements OnInit {
       resetPassword: '', confirmResetPassword: '',
       temporaryReset: true,
     });
-    ['firstName', 'lastName', 'email'].forEach(f => {
+    ['firstName', 'lastName', 'email', 'employeeNumber'].forEach(f => {
       this.form.get(f)?.clearValidators();
       this.form.get(f)?.updateValueAndValidity();
     });
@@ -423,7 +437,11 @@ export class UserManagementComponent implements OnInit {
     const v = this.form.value;
     const req: CreateUserRequest = {
       email: v.email, firstName: v.firstName, lastName: v.lastName, roles: v.roles,
+      employeeNumber: v.employeeNumber,
     };
+    if (v.hireDate) {
+      req.hireDate = v.hireDate;
+    }
     if (v.setInitialPassword && v.initialPassword) {
       req.initialPassword  = v.initialPassword;
       req.temporaryPassword = v.temporaryPassword;
