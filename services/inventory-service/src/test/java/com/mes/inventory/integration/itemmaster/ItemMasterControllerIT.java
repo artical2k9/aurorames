@@ -218,7 +218,7 @@ class ItemMasterControllerIT extends BaseIntegrationTest {
         createItemAndGetId(token, "NOTSRCH-OTHER-001");
 
         ResponseEntity<Map> response = restTemplate.exchange(
-                BASE_URL + "?search=SRCH-MATCH",
+                BASE_URL + "?search=SRCH-MATCH&size=500",
                 HttpMethod.GET, bearerRequest(token), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -238,7 +238,7 @@ class ItemMasterControllerIT extends BaseIntegrationTest {
         restTemplate.exchange(BASE_URL, HttpMethod.POST, jsonRequest(token, buyReq), Map.class);
 
         ResponseEntity<Map> response = restTemplate.exchange(
-                BASE_URL + "?makeBuyCode=BUY",
+                BASE_URL + "?makeBuyCode=BUY&size=500",
                 HttpMethod.GET, bearerRequest(token), Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);

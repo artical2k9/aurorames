@@ -74,15 +74,16 @@ public class ItemRevisionController {
         return ResponseEntity.created(location).body(dto);
     }
 
-    /** T025 — Get item by identity UUID. Optional revisionStatus selects which revision to show. */
+    /** T025 — Get item by identity UUID. Optional revisionStatus or revisionNumber selects which revision to show. */
     @GetMapping("/{itemId}")
     @RequiresPrivilege("item-master:records:view")
     public ItemMasterDto get(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID itemId,
-            @RequestParam(required = false) RevisionStatus revisionStatus) {
+            @RequestParam(required = false) RevisionStatus revisionStatus,
+            @RequestParam(required = false) Integer revisionNumber) {
 
-        return service.getItem(JwtClaimsExtractor.orgId(jwt), itemId, revisionStatus);
+        return service.getItem(JwtClaimsExtractor.orgId(jwt), itemId, revisionStatus, revisionNumber);
     }
 
     /** T026 — Patch item (auto-creates DRAFT if currently APPROVED). */

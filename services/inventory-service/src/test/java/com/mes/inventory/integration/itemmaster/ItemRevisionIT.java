@@ -87,6 +87,41 @@ class ItemRevisionIT extends BaseIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void getItem_byRevisionNumber_selectsThatRevision() {
+        String eng    = engineerToken();
+        String admin  = adminToken();
+        String itemId = createItemAndGetId(eng, "REV-GET-001");
+        submitDraft(eng, itemId);
+        approveDraft(admin, itemId);
+        restTemplate.exchange(BASE_URL + "/" + itemId, HttpMethod.PATCH,
+                jsonRequest(eng, Map.of("description", "Rev 1 update")), Map.class);
+
+        ResponseEntity<Map> rev0 = restTemplate.exchange(
+                BASE_URL + "/" + itemId + "?revisionNumber=0",
+                HttpMethod.GET, bearerRequest(eng), Map.class);
+        assertThat(rev0.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(rev0.getBody().get("revision")).isEqualTo(0);
+        assertThat(rev0.getBody().get("revisionStatus")).isEqualTo("APPROVED");
+
+        ResponseEntity<Map> rev1 = restTemplate.exchange(
+                BASE_URL + "/" + itemId + "?revisionNumber=1",
+                HttpMethod.GET, bearerRequest(eng), Map.class);
+        assertThat(rev1.getBody().get("revision")).isEqualTo(1);
+        assertThat(rev1.getBody().get("revisionStatus")).isEqualTo("DRAFT");
+    }
+
+    @Test
+    void getItem_unknownRevisionNumber_returns404() {
+        String eng    = engineerToken();
+        String itemId = createItemAndGetId(eng, "REV-GET-404");
+        ResponseEntity<Map> response = restTemplate.exchange(
+                BASE_URL + "/" + itemId + "?revisionNumber=99",
+                HttpMethod.GET, bearerRequest(eng), Map.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private String engineerToken() {
