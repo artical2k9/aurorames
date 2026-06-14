@@ -2,27 +2,41 @@ import {
   AfterViewInit, ChangeDetectorRef, Component, DestroyRef, inject, OnInit,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { CommonModule } from '@angular/common';
+import { catchError, map, of } from 'rxjs';
+import { AsyncPipe, CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TableModule } from 'primeng/table';
 import { SelectModule } from 'primeng/select';
 import { ButtonModule } from 'primeng/button';
+import { PopoverModule } from 'primeng/popover';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
+import { LucideColumnsSettings } from '@lucide/angular';
+import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { BreadcrumbService } from '../../../../shared/ui';
+import { UdfApiService } from '../../../../shared/udf/udf-api.service';
 import { LabourApiService } from '../../services/labour-api.service';
+import { DEFAULT_CERTIFICATION_COLUMNS } from '../../constants/default-columns';
 import { CertificationDto, CertificationState } from '../../models/labour.model';
 
 @Component({
   selector: 'app-certification-list',
   standalone: true,
   imports: [
-    CommonModule, FormsModule,
-    TableModule, SelectModule, ButtonModule, TagModule, ToastModule,
+    CommonModule, AsyncPipe, FormsModule,
+    TableModule, SelectModule, ButtonModule, PopoverModule, TagModule, ToastModule,
+    ColumnPickerComponent, LucideColumnsSettings,
   ],
-  providers: [MessageService],
+  providers: [
+    MessageService,
+    {
+      provide: GridPreferenceService,
+      useFactory: () =>
+        new GridPreferenceService('CERTIFICATION', DEFAULT_CERTIFICATION_COLUMNS),
+    },
+  ],
   template: `
     <p-toast />
 
@@ -32,42 +46,64 @@ import { CertificationDto, CertificationState } from '../../models/labour.model'
           <h2 class="cl__title">Certifications</h2>
           <span class="cl__count">({{ rows.length }} shown)</span>
         </div>
-        <p-select [options]="expiryWindowOptions" [(ngModel)]="expiringWithinDays"
-                  optionLabel="label" optionValue="value"
-                  placeholder="Expiry window" [showClear]="true"
-                  (onChange)="reload()" styleClass="cl__window-filter" />
+        <div class="cl__toolbar">
+          <p-select [options]="expiryWindowOptions" [(ngModel)]="expiringWithinDays"
+                    optionLabel="label" optionValue="value"
+                    placeholder="Expiry window" [showClear]="true"
+                    (onChange)="reload()" styleClass="cl__window-filter" />
+          <p-button [rounded]="true" [text]="true"
+                    aria-label="Customise columns" (onClick)="colPickerPanel.toggle($event)">
+            <svg lucideColumnsSettings [size]="16" [strokeWidth]="1.75"></svg>
+          </p-button>
+        </div>
       </div>
 
-      <p-table [value]="rows" [paginator]="true" [rows]="20"
+      <p-popover #colPickerPanel>
+        <app-column-picker
+          [columns]="(gridPreference.activeColumns$ | async) ?? []"
+          (applied)="onColumnsApplied($event); colPickerPanel.hide()"
+          (cancelled)="colPickerPanel.hide()"
+          (reset)="gridPreference.reset(); colPickerPanel.hide()"
+        />
+      </p-popover>
+
+      <p-table [columns]="(gridPreference.activeColumns$ | async) ?? []"
+               [value]="rows" [paginator]="true" [rows]="20"
                [loading]="loading"
                styleClass="p-datatable-gridlines p-datatable-sm">
-        <ng-template pTemplate="header">
+        <ng-template pTemplate="header" let-columns>
           <tr>
-            <th>Employee #</th>
-            <th>Skill</th>
-            <th>Name</th>
-            <th>State</th>
-            <th>Award Date</th>
-            <th>Expiry</th>
+            @for (col of visibleColumns(columns); track col.key) {
+              <th>{{ col.label }}</th>
+            }
             <th style="width:6rem">Actions</th>
           </tr>
         </ng-template>
-        <ng-template pTemplate="body" let-cert>
+        <ng-template pTemplate="body" let-cert let-columns="columns">
           <tr>
-            <td>{{ cert.employeeNumber }}</td>
-            <td>{{ cert.skillCode }}</td>
-            <td>{{ cert.skillName }}</td>
-            <td><p-tag [value]="stateLabel(cert.state)" [severity]="stateSeverity(cert.state)" /></td>
-            <td>{{ cert.awardDate }}</td>
-            <td>{{ cert.expiryDate || 'Never' }}</td>
+            @for (col of visibleColumns(columns); track col.key) {
+              <td>
+                @switch (col.key) {
+                  @case ('state') {
+                    <p-tag [value]="stateLabel(cert.state)" [severity]="stateSeverity(cert.state)" />
+                  }
+                  @case ('expiryDate') {
+                    {{ cert.expiryDate || 'Never' }}
+                  }
+                  @default {
+                    {{ getCellValue(cert, col) ?? '—' }}
+                  }
+                }
+              </td>
+            }
             <td>
               <p-button label="Employee" [text]="true" size="small"
                         (onClick)="navigateToEmployee(cert.employeeId)" />
             </td>
           </tr>
         </ng-template>
-        <ng-template pTemplate="emptymessage">
-          <tr><td colspan="7">No certifications found.</td></tr>
+        <ng-template pTemplate="emptymessage" let-columns>
+          <tr><td [attr.colspan]="visibleColumnCount(columns) + 1">No certifications found.</td></tr>
         </ng-template>
       </p-table>
     </div>
@@ -81,6 +117,7 @@ import { CertificationDto, CertificationState } from '../../models/labour.model'
     .cl__heading-left { display: flex; align-items: baseline; gap: 0.5rem; }
     .cl__title { margin: 0; font-size: 1.375rem; font-weight: 700; }
     .cl__count { font-size: 0.875rem; color: var(--p-text-muted-color); }
+    .cl__toolbar { display: flex; align-items: center; gap: 0.5rem; }
     :host ::ng-deep .cl__window-filter { min-width: 200px; }
   `],
 })
@@ -89,6 +126,8 @@ export class CertificationListComponent implements OnInit, AfterViewInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly udfApi = inject(UdfApiService);
+  readonly gridPreference = inject(GridPreferenceService);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
 
   rows: CertificationDto[] = [];
@@ -106,6 +145,22 @@ export class CertificationListComponent implements OnInit, AfterViewInit {
       { label: 'Labour' },
       { label: 'Certifications' },
     ]);
+    this.udfApi.listFields('CERTIFICATION').pipe(
+      map(udfs => udfs.map((u, i): ColumnDef => ({
+        key: u.fieldKey,
+        label: u.label,
+        visible: false,
+        order: DEFAULT_CERTIFICATION_COLUMNS.length + i,
+        udf: true,
+      }))),
+      catchError(() => of([])),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: udfCols => {
+        this.gridPreference.load(udfCols);
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   ngAfterViewInit(): void {
@@ -114,6 +169,24 @@ export class CertificationListComponent implements OnInit, AfterViewInit {
 
   reload(): void {
     this.fetchRows();
+  }
+
+  onColumnsApplied(columns: ColumnDef[]): void {
+    this.gridPreference.apply(columns);
+  }
+
+  getCellValue(cert: CertificationDto, col: ColumnDef): unknown {
+    if (!col.udf) return (cert as unknown as Record<string, unknown>)[col.key];
+    const direct = (cert as unknown as Record<string, unknown>)[col.key];
+    return direct !== undefined ? direct : cert.customFields?.[col.key];
+  }
+
+  visibleColumns(columns: ColumnDef[]): ColumnDef[] {
+    return columns.filter(c => c.visible).sort((a, b) => a.order - b.order);
+  }
+
+  visibleColumnCount(columns: ColumnDef[]): number {
+    return this.visibleColumns(columns).length;
   }
 
   navigateToEmployee(employeeId: string): void {
