@@ -61,6 +61,7 @@ public final class BomMapper {
         dto.setEffectiveToUnit(line.getEffectiveToUnit());
         dto.setCreatedBy(line.getCreatedBy());
         dto.setCreatedAt(line.getCreatedAt());
+        dto.setCustomFields(line.getCustomFields());
 
         ItemRevision ir = line.getComponentItemRevision();
         if (ir != null) {

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
 public class CreateBomLineRequest {
@@ -30,6 +31,7 @@ public class CreateBomLineRequest {
     private LocalDate effectiveToDate;
     private String effectiveFromUnit;
     private String effectiveToUnit;
+    private Map<String, Object> customFields;
 
     public UUID getComponentItemRevisionId() {
         return componentItemRevisionId;
@@ -109,5 +111,13 @@ public class CreateBomLineRequest {
 
     public void setEffectiveToUnit(String effectiveToUnit) {
         this.effectiveToUnit = effectiveToUnit;
+    }
+
+    public Map<String, Object> getCustomFields() {
+        return customFields;
+    }
+
+    public void setCustomFields(Map<String, Object> customFields) {
+        this.customFields = customFields;
     }
 }

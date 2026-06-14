@@ -93,10 +93,10 @@ public class BomService {
     }
 
     @Transactional(readOnly = true)
-    public BomDto getBom(UUID orgId, UUID bomId, RevisionStatus requestedStatus) {
+    public BomDto getBom(UUID orgId, UUID bomId, RevisionStatus requestedStatus, Integer revisionNumber) {
         Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        return buildDto(bom, requestedStatus);
+        return buildDto(bom, requestedStatus, revisionNumber);
     }
 
     public BomDto submitDraft(UUID orgId, UUID bomId, String actor) {
@@ -196,6 +196,7 @@ public class BomService {
         line.setEffectiveToDate(req.getEffectiveToDate());
         line.setEffectiveFromUnit(req.getEffectiveFromUnit());
         line.setEffectiveToUnit(req.getEffectiveToUnit());
+        line.setCustomFields(req.getCustomFields());
         BomLine saved = bomLineRepository.save(line);
 
         CounterfeitRiskLevel risk = componentRevision.getCounterfeitRiskLevel();
@@ -207,14 +208,24 @@ public class BomService {
     }
 
     @Transactional(readOnly = true)
-    public List<BomLineDto> listEnrichedLines(UUID orgId, UUID bomId) {
+    public List<BomLineDto> listEnrichedLines(UUID orgId, UUID bomId, Integer revisionNumber) {
         Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        BomRevision displayRevision = resolveDisplayRevision(bom);
-        if (displayRevision == null) {
+        List<BomRevision> all = bomRevisionRepository.findAllByBomId(bom.getId());
+        BomRevision targetRevision;
+        if (revisionNumber != null) {
+            targetRevision = all.stream()
+                    .filter(r -> r.getRevision().equals(revisionNumber))
+                    .findFirst()
+                    .orElseThrow(() -> new BomNotFoundException(
+                            "No revision " + revisionNumber + " for BOM: " + bomId));
+        } else {
+            targetRevision = resolveDisplayRevision(all);
+        }
+        if (targetRevision == null) {
             return List.of();
         }
-        return bomLineRepository.findAllByBomRevisionId(displayRevision.getId())
+        return bomLineRepository.findAllByBomRevisionId(targetRevision.getId())
                 .stream()
                 .map(BomMapper::toLineDto)
                 .toList();
@@ -278,6 +289,7 @@ public class BomService {
                             "Cannot edit: no approved revision exists to base the draft on"));
             draft = copyBomRevision(lastApproved, maxRevision + 1, bom);
             draft = bomRevisionRepository.save(draft);
+            copyLinesFromRevision(lastApproved, draft);
         }
 
         if (req.getDescription() != null) {
@@ -314,7 +326,7 @@ public class BomService {
     public BomDto getBomDisplayRevision(UUID orgId, UUID bomId) {
         Bom bom = bomRepository.findByOrgIdAndId(orgId, bomId)
                 .orElseThrow(() -> new BomNotFoundException(BOM_NOT_FOUND + bomId));
-        return buildDto(bom, null);
+        return buildDto(bom, null, null);
     }
 
     /** T086 — Return all BOM revisions for a BOM identity, ordered by revision ASC. */
@@ -329,6 +341,26 @@ public class BomService {
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    private void copyLinesFromRevision(BomRevision source, BomRevision dest) {
+        List<BomLine> sourceLines = bomLineRepository.findAllByBomRevisionId(source.getId());
+        for (BomLine src : sourceLines) {
+            BomLine copy = new BomLine();
+            copy.setBomRevision(dest);
+            copy.setComponentItemRevision(src.getComponentItemRevision());
+            copy.setQuantity(src.getQuantity());
+            copy.setUnitOfMeasure(src.getUnitOfMeasure());
+            copy.setFindNumber(src.getFindNumber());
+            copy.setReferenceDesignators(src.getReferenceDesignators());
+            copy.setEffectivityMethod(src.getEffectivityMethod());
+            copy.setEffectiveFromDate(src.getEffectiveFromDate());
+            copy.setEffectiveToDate(src.getEffectiveToDate());
+            copy.setEffectiveFromUnit(src.getEffectiveFromUnit());
+            copy.setEffectiveToUnit(src.getEffectiveToUnit());
+            copy.setCustomFields(src.getCustomFields());
+            bomLineRepository.save(copy);
+        }
+    }
 
     private BomRevision copyBomRevision(BomRevision source, int newRevision, Bom bom) {
         BomRevision copy = new BomRevision();
@@ -359,13 +391,19 @@ public class BomService {
         return dto;
     }
 
-    private BomDto buildDto(Bom bom, RevisionStatus requestedStatus) {
+    private BomDto buildDto(Bom bom, RevisionStatus requestedStatus, Integer revisionNumber) {
         List<BomRevision> all = bomRevisionRepository.findAllByBomId(bom.getId());
         BomRevision display;
-        if (requestedStatus != null) {
+        if (revisionNumber != null) {
+            display = all.stream()
+                    .filter(r -> r.getRevision().equals(revisionNumber))
+                    .findFirst()
+                    .orElseThrow(() -> new BomNotFoundException(
+                            "No revision " + revisionNumber + " for BOM: " + bom.getId()));
+        } else if (requestedStatus != null) {
             display = all.stream()
                     .filter(r -> r.getRevisionStatus() == requestedStatus)
-                    .findFirst()
+                    .max(Comparator.comparingInt(BomRevision::getRevision))
                     .orElseThrow(() -> new BomNotFoundException(
                             "No revision with status " + requestedStatus + " for BOM: " + bom.getId()));
         } else {
@@ -381,18 +419,14 @@ public class BomService {
         return BomMapper.toDto(bom, display, hasDraft, hasPendingApproval);
     }
 
-    private BomRevision resolveDisplayRevision(Bom bom) {
-        List<BomRevision> all = bomRevisionRepository.findAllByBomId(bom.getId());
-        return resolveDisplayRevision(all);
-    }
-
     private BomRevision resolveDisplayRevision(List<BomRevision> revisions) {
         for (RevisionStatus status : new RevisionStatus[]{
                 RevisionStatus.APPROVED, RevisionStatus.PENDING_APPROVAL, RevisionStatus.DRAFT}) {
-            for (BomRevision r : revisions) {
-                if (r.getRevisionStatus() == status) {
-                    return r;
-                }
+            var match = revisions.stream()
+                    .filter(r -> r.getRevisionStatus() == status)
+                    .max(Comparator.comparingInt(BomRevision::getRevision));
+            if (match.isPresent()) {
+                return match.get();
             }
         }
         return null;
@@ -423,6 +457,9 @@ public class BomService {
         }
         if (req.getReferenceDesignators() != null) {
             line.setReferenceDesignators(req.getReferenceDesignators());
+        }
+        if (req.getCustomFields() != null) {
+            line.setCustomFields(req.getCustomFields());
         }
     }
 

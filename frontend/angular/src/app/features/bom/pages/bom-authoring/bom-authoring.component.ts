@@ -369,31 +369,31 @@ export class BomAuthoringComponent implements OnInit {
     this.loadBom(queryStatus ?? undefined);
   }
 
-  loadBom(targetStatus?: RevisionStatus): void {
+  loadBom(targetStatus?: RevisionStatus, targetRevisionNumber?: number): void {
     this.loading = true;
     this.loadError = false;
     const revisions$: Observable<BomRevisionSummaryDto[]> =
       this.bomApi.listRevisions(this.bomId).pipe(catchError(() => of([])));
-    this.bomApi.getById(this.bomId, targetStatus).pipe(
+    this.bomApi.getById(this.bomId, targetStatus, targetRevisionNumber).pipe(
       switchMap(bom => forkJoin({
         bom: of(bom),
         item: this.itemApi.getById(bom.parentItemId),
         revisions: revisions$,
-        lines: this.bomApi.getLines(this.bomId),
+        lines: this.bomApi.getLines(this.bomId, bom.revision),
       })),
     ).subscribe({
       next: ({ bom, item, revisions, lines }) => {
-        if (!targetStatus && bom.hasPendingApproval && bom.revisionStatus !== 'PENDING_APPROVAL') {
+        if (!targetStatus && targetRevisionNumber === undefined && bom.hasPendingApproval && bom.revisionStatus !== 'PENDING_APPROVAL') {
           this.loadBom('PENDING_APPROVAL');
           return;
         }
         this.bom = bom;
-        this.selectedRevisionId = bom.revisionStatus;
+        this.selectedRevisionId = bom.revision.toString();
         this.parentItem = item;
         this.lines = lines;
         this.revisionOptions = revisions.map(r => ({
           label: 'Rev ' + r.revision + ' (' + this.revisionStatusLabel(r.revisionStatus) + ')',
-          value: r.revisionStatus,
+          value: r.revision.toString(),
         }));
         this.loading = false;
         this.breadcrumbSvc.set([
@@ -411,9 +411,10 @@ export class BomAuthoringComponent implements OnInit {
     });
   }
 
-  onRevisionChange(status: RevisionStatus): void {
-    if (status && status !== this.bom?.revisionStatus) {
-      this.loadBom(status === 'APPROVED' ? undefined : status);
+  onRevisionChange(revisionStr: string): void {
+    const revNum = parseInt(revisionStr, 10);
+    if (!isNaN(revNum) && revNum !== this.bom?.revision) {
+      this.loadBom(undefined, revNum);
     }
   }
 
@@ -546,10 +547,10 @@ export class BomAuthoringComponent implements OnInit {
       next: revisions => {
         this.revisionOptions = revisions.map(r => ({
           label: 'Rev ' + r.revision + ' (' + this.revisionStatusLabel(r.revisionStatus) + ')',
-          value: r.revisionStatus,
+          value: r.revision.toString(),
         }));
         if (this.bom) {
-          this.selectedRevisionId = this.bom.revisionStatus;
+          this.selectedRevisionId = this.bom.revision.toString();
         }
         this.cdr.detectChanges();
       },

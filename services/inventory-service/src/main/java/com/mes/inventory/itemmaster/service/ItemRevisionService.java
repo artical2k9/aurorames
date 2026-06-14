@@ -63,7 +63,7 @@ public class ItemRevisionService {
 
     /** T018 — Get the display revision for an item identity. */
     @Transactional(readOnly = true)
-    public ItemMasterDto getItem(UUID orgId, UUID itemId, RevisionStatus requestedStatus) {
+    public ItemMasterDto getItem(UUID orgId, UUID itemId, RevisionStatus requestedStatus, Integer revisionNumber) {
         Item item = itemRepository.findByOrgIdAndId(orgId, itemId)
                 .orElseThrow(() -> new ItemMasterNotFoundException("Item not found: " + itemId));
 
@@ -72,10 +72,19 @@ public class ItemRevisionService {
             throw new ItemMasterNotFoundException("Item has no revisions: " + itemId);
         }
 
-        ItemRevision display = resolveDisplayRevision(all, requestedStatus);
-        if (display == null) {
-            throw new ItemMasterNotFoundException(
-                    "No revision with status " + requestedStatus + " for item: " + itemId);
+        ItemRevision display;
+        if (revisionNumber != null) {
+            display = all.stream()
+                    .filter(r -> r.getRevision().equals(revisionNumber))
+                    .findFirst()
+                    .orElseThrow(() -> new ItemMasterNotFoundException(
+                            "No revision " + revisionNumber + " for item: " + itemId));
+        } else {
+            display = resolveDisplayRevision(all, requestedStatus);
+            if (display == null) {
+                throw new ItemMasterNotFoundException(
+                        "No revision with status " + requestedStatus + " for item: " + itemId);
+            }
         }
         boolean hasDraft = all.stream()
                 .anyMatch(r -> r.getRevisionStatus() == RevisionStatus.DRAFT);

@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import {
   ItemMasterDto,
   ItemMasterListParams,
+  ItemRevisionSummaryDto,
   Page,
   CreateItemMasterRequest,
   PatchItemMasterRequest,
@@ -27,9 +28,15 @@ export class ItemMasterApiService {
     return this.http.get<Page<ItemMasterDto>>(this.base, { params: httpParams });
   }
 
-  getById(id: string, revisionStatus?: RevisionStatus): Observable<ItemMasterDto> {
-    const params = revisionStatus ? new HttpParams().set('revisionStatus', revisionStatus) : undefined;
-    return this.http.get<ItemMasterDto>(`${this.base}/${id}`, { params });
+  getById(id: string, revisionStatus?: RevisionStatus, revisionNumber?: number): Observable<ItemMasterDto> {
+    let params = new HttpParams();
+    if (revisionStatus) params = params.set('revisionStatus', revisionStatus);
+    if (revisionNumber !== undefined) params = params.set('revisionNumber', revisionNumber);
+    return this.http.get<ItemMasterDto>(`${this.base}/${id}`, { params: params.keys().length ? params : undefined });
+  }
+
+  listRevisions(id: string): Observable<ItemRevisionSummaryDto[]> {
+    return this.http.get<ItemRevisionSummaryDto[]>(`${this.base}/${id}/revisions`);
   }
 
   create(req: CreateItemMasterRequest): Observable<ItemMasterDto> {
