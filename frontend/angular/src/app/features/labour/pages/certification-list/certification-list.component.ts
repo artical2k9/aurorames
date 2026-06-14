@@ -13,11 +13,14 @@ import { PopoverModule } from 'primeng/popover';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideColumnsSettings } from '@lucide/angular';
+import { LucideColumnsSettings, LucideView, LucidePencil } from '@lucide/angular';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { BreadcrumbService } from '../../../../shared/ui';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
 import { LabourApiService } from '../../services/labour-api.service';
+import {
+  AwardCertificationDialogComponent,
+} from '../../components/award-certification-dialog/award-certification-dialog.component';
 import { DEFAULT_CERTIFICATION_COLUMNS } from '../../constants/default-columns';
 import { CertificationDto, CertificationState } from '../../models/labour.model';
 
@@ -27,7 +30,8 @@ import { CertificationDto, CertificationState } from '../../models/labour.model'
   imports: [
     CommonModule, AsyncPipe, FormsModule,
     TableModule, SelectModule, ButtonModule, PopoverModule, TagModule, ToastModule,
-    ColumnPickerComponent, LucideColumnsSettings,
+    ColumnPickerComponent, LucideColumnsSettings, LucideView, LucidePencil,
+    AwardCertificationDialogComponent,
   ],
   providers: [
     MessageService,
@@ -97,8 +101,16 @@ import { CertificationDto, CertificationState } from '../../models/labour.model'
               </td>
             }
             <td>
-              <p-button label="Employee" [text]="true" size="small"
-                        (onClick)="navigateToEmployee(cert.employeeId)" />
+              <p-button [rounded]="true" [text]="true" size="small"
+                        title="View employee" aria-label="View employee"
+                        (onClick)="navigateToEmployee(cert.employeeId)">
+                <svg lucideView [size]="16" [strokeWidth]="1.75"></svg>
+              </p-button>
+              <p-button [rounded]="true" [text]="true" size="small"
+                        title="Re-certify" aria-label="Re-certify"
+                        (onClick)="openRecertify(cert)">
+                <svg lucidePencil [size]="16" [strokeWidth]="1.75"></svg>
+              </p-button>
             </td>
           </tr>
         </ng-template>
@@ -106,6 +118,15 @@ import { CertificationDto, CertificationState } from '../../models/labour.model'
           <tr><td [attr.colspan]="visibleColumnCount(columns) + 1">No certifications found.</td></tr>
         </ng-template>
       </p-table>
+
+      @if (recertifyEmployeeId) {
+        <app-award-certification-dialog
+          [visible]="showRecertify"
+          [employeeId]="recertifyEmployeeId"
+          (visibleChange)="showRecertify = $event"
+          (awarded)="onRecertified()"
+        />
+      }
     </div>
   `,
   styles: [`
@@ -127,12 +148,16 @@ export class CertificationListComponent implements OnInit, AfterViewInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly udfApi = inject(UdfApiService);
+  private readonly messageService = inject(MessageService);
   readonly gridPreference = inject(GridPreferenceService);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
 
   rows: CertificationDto[] = [];
   loading = true;
   expiringWithinDays: number | null = null;
+
+  showRecertify = false;
+  recertifyEmployeeId = '';
 
   readonly expiryWindowOptions = [
     { label: 'Expiring within 30 days', value: 30 },
@@ -191,6 +216,16 @@ export class CertificationListComponent implements OnInit, AfterViewInit {
 
   navigateToEmployee(employeeId: string): void {
     this.router.navigate(['/labour/employees', employeeId]);
+  }
+
+  openRecertify(cert: CertificationDto): void {
+    this.recertifyEmployeeId = cert.employeeId;
+    this.showRecertify = true;
+  }
+
+  onRecertified(): void {
+    this.messageService.add({ severity: 'success', summary: 'Certification awarded' });
+    this.fetchRows();
   }
 
   stateLabel(state: CertificationState): string {

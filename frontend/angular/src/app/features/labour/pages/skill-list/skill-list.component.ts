@@ -15,7 +15,7 @@ import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideColumnsSettings } from '@lucide/angular';
+import { LucideColumnsSettings, LucidePencil } from '@lucide/angular';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { BreadcrumbService } from '../../../../shared/ui';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
@@ -30,7 +30,7 @@ import { SkillDto } from '../../models/labour.model';
     CommonModule, AsyncPipe, FormsModule,
     TableModule, InputTextModule, InputNumberModule, CheckboxModule,
     ButtonModule, PopoverModule, TagModule, DialogModule, ToastModule,
-    ColumnPickerComponent, LucideColumnsSettings,
+    ColumnPickerComponent, LucideColumnsSettings, LucidePencil,
   ],
   providers: [
     MessageService,
@@ -79,7 +79,7 @@ import { SkillDto } from '../../models/labour.model';
             @for (col of visibleColumns(columns); track col.key) {
               <th>{{ col.label }}</th>
             }
-            <th style="width:7rem">Actions</th>
+            <th style="width:10rem">Actions</th>
           </tr>
         </ng-template>
         <ng-template pTemplate="body" let-skill let-columns="columns">
@@ -104,6 +104,10 @@ import { SkillDto } from '../../models/labour.model';
               </td>
             }
             <td>
+              <p-button [rounded]="true" [text]="true" size="small"
+                        title="Edit" aria-label="Edit" (onClick)="openEdit(skill)">
+                <svg lucidePencil [size]="16" [strokeWidth]="1.75"></svg>
+              </p-button>
               <p-button [label]="skill.active ? 'Deactivate' : 'Activate'"
                         [text]="true" size="small"
                         (onClick)="toggleActive(skill)" />
@@ -140,6 +144,34 @@ import { SkillDto } from '../../models/labour.model';
           <p-button label="Create" severity="primary" size="small"
                     [loading]="saving" [disabled]="!draft.skillCode || !draft.name"
                     (onClick)="create()" />
+        </ng-template>
+      </p-dialog>
+
+      <p-dialog header="Edit Skill" [(visible)]="showEdit" [modal]="true"
+                [style]="{ width: '420px' }">
+        <div class="skl__form">
+          <label>Skill Code</label>
+          <input pInputText [value]="editDraft.skillCode" disabled />
+          <label>Name *</label>
+          <input pInputText [(ngModel)]="editDraft.name" />
+          <label>Category</label>
+          <input pInputText [(ngModel)]="editDraft.category" />
+          <label>Validity (months, empty = never expires)</label>
+          <p-inputNumber [(ngModel)]="editDraft.validityMonths" [min]="1" [showButtons]="false" />
+          <label class="skl__checkbox">
+            <p-checkbox [(ngModel)]="editCertRequired" [binary]="true" />
+            Certification required
+          </label>
+          @if (editError) {
+            <small class="skl__error">{{ editError }}</small>
+          }
+        </div>
+        <ng-template pTemplate="footer">
+          <p-button label="Cancel" severity="secondary" size="small"
+                    (onClick)="showEdit = false" />
+          <p-button label="Save" severity="primary" size="small"
+                    [loading]="savingEdit" [disabled]="!editDraft.name"
+                    (onClick)="saveEdit()" />
         </ng-template>
       </p-dialog>
     </div>
@@ -181,6 +213,13 @@ export class SkillListComponent implements OnInit, AfterViewInit {
   serverError = '';
   draft: Partial<SkillDto> = {};
   certificationRequired = true;
+
+  showEdit = false;
+  savingEdit = false;
+  editError = '';
+  editId = '';
+  editDraft: Partial<SkillDto> = {};
+  editCertRequired = true;
 
   ngOnInit(): void {
     this.breadcrumbSvc.set([
@@ -264,6 +303,43 @@ export class SkillListComponent implements OnInit, AfterViewInit {
           this.cdr.detectChanges();
         },
       });
+  }
+
+  openEdit(skill: SkillDto): void {
+    this.editId = skill.id;
+    this.editDraft = {
+      skillCode: skill.skillCode,
+      name: skill.name,
+      category: skill.category,
+      validityMonths: skill.validityMonths,
+    };
+    this.editCertRequired = skill.certificationRequired;
+    this.editError = '';
+    this.showEdit = true;
+  }
+
+  saveEdit(): void {
+    this.savingEdit = true;
+    this.editError = '';
+    this.api.patchSkill(this.editId, {
+      name: this.editDraft.name,
+      category: this.editDraft.category,
+      validityMonths: this.editDraft.validityMonths,
+      certificationRequired: this.editCertRequired,
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.savingEdit = false;
+        this.showEdit = false;
+        this.messageService.add({ severity: 'success', summary: 'Skill updated' });
+        this.fetchRows();
+        this.cdr.detectChanges();
+      },
+      error: err => {
+        this.savingEdit = false;
+        this.editError = err?.error?.error ?? 'Failed to update skill';
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   toggleActive(skill: SkillDto): void {
