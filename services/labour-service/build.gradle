@@ -21,6 +21,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
+    // ── Kafka (consumer: iam.user.created → create linked employee) ───────────
+    implementation 'org.springframework.kafka:spring-kafka'
+
     // ── Flyway ────────────────────────────────────────────────────────────────
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
@@ -40,6 +43,7 @@ dependencies {
 
     // ── Tests ─────────────────────────────────────────────────────────────────
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:postgresql'
     testImplementation(testFixtures(project(':libs:lib-common-security')))

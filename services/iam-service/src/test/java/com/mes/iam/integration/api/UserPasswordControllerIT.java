@@ -228,7 +228,7 @@ class UserPasswordControllerIT {
 
     private UserResponse createUser(String email) {
         CreateUserRequest req = new CreateUserRequest(email, "Test", "User",
-                List.of("SYSTEM_ADMIN"), null, false);
+                List.of("SYSTEM_ADMIN"), null, false, "EMP-IT", null);
         return Objects.requireNonNull(
                 restTemplate.exchange("/users", HttpMethod.POST,
                         new HttpEntity<>(req, bearerHeaders(adminToken)),

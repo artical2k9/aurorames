@@ -47,7 +47,8 @@ public class UserController {
         UserResponse user = userService.createUser(
                 request.email(), request.firstName(), request.lastName(),
                 orgId(principal), request.roles(),
-                request.initialPassword(), request.temporaryPassword());
+                request.initialPassword(), request.temporaryPassword(),
+                request.employeeNumber(), request.hireDate());
         return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
 

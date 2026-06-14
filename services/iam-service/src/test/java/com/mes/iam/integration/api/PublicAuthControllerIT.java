@@ -228,7 +228,7 @@ class PublicAuthControllerIT {
 
     private String createUserAndSetTempPassword(String email, String tempPassword) {
         CreateUserRequest req = new CreateUserRequest(email, "Test", "User",
-                List.of("SYSTEM_ADMIN"), null, false);
+                List.of("SYSTEM_ADMIN"), null, false, "EMP-IT", null);
         UserResponse user = Objects.requireNonNull(
                 restTemplate.exchange("/users", HttpMethod.POST,
                         new HttpEntity<>(req, adminBearerHeaders()),
@@ -246,7 +246,7 @@ class PublicAuthControllerIT {
 
     private String createUserWithPermanentPassword(String email, String password) {
         CreateUserRequest req = new CreateUserRequest(email, "Test", "User",
-                List.of("SYSTEM_ADMIN"), null, false);
+                List.of("SYSTEM_ADMIN"), null, false, "EMP-IT", null);
         UserResponse user = Objects.requireNonNull(
                 restTemplate.exchange("/users", HttpMethod.POST,
                         new HttpEntity<>(req, adminBearerHeaders()),

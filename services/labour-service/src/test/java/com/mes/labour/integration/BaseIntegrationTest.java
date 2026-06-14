@@ -19,6 +19,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -34,6 +35,8 @@ import java.util.UUID;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
+@EmbeddedKafka(partitions = 1, topics = {"iam.user.created"},
+        bootstrapServersProperty = "spring.kafka.bootstrap-servers")
 @Import(BaseIntegrationTest.TestSecurityConfig.class)
 public abstract class BaseIntegrationTest {
 

@@ -48,8 +48,7 @@ import { EmployeeDto, EmploymentStatus } from '../../models/labour.model';
           <h2 class="eml__title">Employees</h2>
           <span class="eml__count">({{ totalRecords }} employees)</span>
         </div>
-        <p-button label="New Employee" icon="pi pi-plus" severity="primary"
-                  size="small" (onClick)="openCreate()" />
+        <!-- Employees are created via Settings › User Management (every employee has a login). -->
       </div>
 
       <div class="eml__toolbar">
