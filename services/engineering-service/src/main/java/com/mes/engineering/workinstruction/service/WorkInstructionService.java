@@ -37,6 +37,7 @@ public class WorkInstructionService {
     private final WorkInstructionRevisionRepository revisionRepository;
     private final ElectronicSignatureRepository signatureRepository;
     private final StepService stepService;
+    private final SkillRequirementService skillRequirementService;
     private final SignatureService signatureService;
     private final WorkInstructionEventPublisher eventPublisher;
 
@@ -44,12 +45,14 @@ public class WorkInstructionService {
                                   WorkInstructionRevisionRepository revisionRepository,
                                   ElectronicSignatureRepository signatureRepository,
                                   StepService stepService,
+                                  SkillRequirementService skillRequirementService,
                                   SignatureService signatureService,
                                   WorkInstructionEventPublisher eventPublisher) {
         this.wiRepository = wiRepository;
         this.revisionRepository = revisionRepository;
         this.signatureRepository = signatureRepository;
         this.stepService = stepService;
+        this.skillRequirementService = skillRequirementService;
         this.signatureService = signatureService;
         this.eventPublisher = eventPublisher;
     }
@@ -266,6 +269,7 @@ public class WorkInstructionService {
         WorkInstructionRevision copy = copyRevision(lastApproved, maxRevision + 1, wi);
         WorkInstructionRevision savedCopy = revisionRepository.save(copy);
         stepService.copySteps(lastApproved.getId(), savedCopy);
+        skillRequirementService.copySkillRequirements(lastApproved.getId(), savedCopy);
         return savedCopy;
     }
 
@@ -273,6 +277,23 @@ public class WorkInstructionService {
     public WorkInstructionRevision requireEditableDraft(UUID orgId, UUID wiId) {
         WorkInstruction wi = requireWi(orgId, wiId);
         return resolveOrCreateDraft(wi);
+    }
+
+    /**
+     * Resolve a revision for read-only access: the given revision number, or the display revision
+     * (APPROVED &gt; PENDING &gt; DRAFT, highest revision) when no number is supplied.
+     */
+    @Transactional(readOnly = true)
+    public WorkInstructionRevision resolveReadRevision(UUID orgId, UUID wiId, Integer revisionNumber) {
+        WorkInstruction wi = requireWi(orgId, wiId);
+        List<WorkInstructionRevision> all = revisionRepository.findByWorkInstructionId(wi.getId());
+        if (revisionNumber != null) {
+            return all.stream().filter(r -> r.getRevision().equals(revisionNumber)).findFirst()
+                    .orElseThrow(() -> new WorkInstructionNotFoundException(
+                            "No revision " + revisionNumber + " for work instruction: " + wiId));
+        }
+        return resolveDisplayRevision(all)
+                .orElseThrow(() -> new WorkInstructionNotFoundException(WI_NOT_FOUND + wiId));
     }
 
     // ── Private helpers ─────────────────────────────────────────────────────────
