@@ -19,6 +19,7 @@ const MOCK_BOM: BomDto = {
   revision: 0,
   revisionStatus: 'DRAFT' as RevisionStatus,
   hasDraft: false,
+  hasPendingApproval: false,
   createdBy: 'user',
   createdAt: '2026-01-01T00:00:00Z',
 };
@@ -51,6 +52,7 @@ describe('BomAuthoringComponent', () => {
 
   const mockBomApi = {
     getById: vi.fn().mockReturnValue(of(MOCK_BOM)),
+    listRevisions: vi.fn().mockReturnValue(of([])),
     getLines: vi.fn().mockReturnValue(of([])),
     patchHeader: vi.fn().mockReturnValue(of(MOCK_BOM)),
     submitBom: vi.fn().mockReturnValue(of(APPROVED_BOM)),
@@ -81,7 +83,7 @@ describe('BomAuthoringComponent', () => {
         { provide: ItemMasterApiService, useValue: mockItemApi },
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: { get: () => 'bom-1' } } },
+          useValue: { snapshot: { paramMap: { get: () => 'bom-1' }, queryParamMap: { get: () => null } } },
         },
         {
           provide: GridPreferenceService,

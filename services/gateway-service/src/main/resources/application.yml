@@ -64,6 +64,18 @@ spring:
             - Path=/api/v1/ecos/**
           filters:
             - StripPrefix=0
+        - id: engineering-service-work-instructions
+          uri: ${ENGINEERING_SERVICE_URL:http://engineering-service:8097}
+          predicates:
+            - Path=/api/v1/work-instructions/**
+          filters:
+            - StripPrefix=0
+        - id: quality-service-inspection-plans
+          uri: ${QUALITY_SERVICE_URL:http://quality-service:8099}
+          predicates:
+            - Path=/api/v1/inspection-plans/**
+          filters:
+            - StripPrefix=0
         - id: platform-service-preferences
           uri: ${PLATFORM_SERVICE_URL:http://platform-service:8090}
           predicates:
@@ -74,6 +86,12 @@ spring:
           uri: ${WORK_ORDER_SERVICE_URL:http://work-order-service:8095}
           predicates:
             - Path=/api/v1/work-orders/**
+          filters:
+            - StripPrefix=0
+        - id: labour-service
+          uri: ${LABOUR_SERVICE_URL:http://labour-service:8098}
+          predicates:
+            - Path=/api/v1/labour/**
           filters:
             - StripPrefix=0
 

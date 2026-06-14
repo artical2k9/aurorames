@@ -1,5 +1,8 @@
 package com.mes.engineering.config;
 
+import com.mes.engineering.workinstruction.service.MediaProperties;
+import com.mes.engineering.workinstruction.service.SignatureProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.AuditorAware;
@@ -9,6 +12,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import java.util.Optional;
 
 @Configuration
+@EnableConfigurationProperties({SignatureProperties.class, MediaProperties.class})
 public class AppConfig {
 
     @Bean

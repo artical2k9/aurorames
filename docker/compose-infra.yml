@@ -18,6 +18,10 @@ services:
       INVENTORY_DB_PASSWORD: ${INVENTORY_DB_PASSWORD:?INVENTORY_DB_PASSWORD must be set}
       ENGINEERING_DB_USER: ${ENGINEERING_DB_USER:?ENGINEERING_DB_USER must be set}
       ENGINEERING_DB_PASSWORD: ${ENGINEERING_DB_PASSWORD:?ENGINEERING_DB_PASSWORD must be set}
+      QUALITY_DB_USER: ${QUALITY_DB_USER:?QUALITY_DB_USER must be set}
+      QUALITY_DB_PASSWORD: ${QUALITY_DB_PASSWORD:?QUALITY_DB_PASSWORD must be set}
+      LABOUR_DB_USER: ${LABOUR_DB_USER:?LABOUR_DB_USER must be set}
+      LABOUR_DB_PASSWORD: ${LABOUR_DB_PASSWORD:?LABOUR_DB_PASSWORD must be set}
     ports:
       - "5432:5432"
     volumes:
@@ -164,6 +168,8 @@ services:
       WORK_ORDER_SERVICE_URL: http://work-order-service:8095
       INVENTORY_SERVICE_URL: http://inventory-service:8096
       ENGINEERING_SERVICE_URL: http://engineering-service:8097
+      LABOUR_SERVICE_URL: http://labour-service:8098
+      QUALITY_SERVICE_URL: http://quality-service:8099
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
       - "${GATEWAY_PORT:-8082}:8082"
@@ -366,9 +372,15 @@ services:
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mes}
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${KEYCLOAK_EXTERNAL_URL:-http://localhost:8080/realms/mes}
       IAM_SERVICE_URL: http://iam-service:8085
+      LABOUR_SERVICE_URL: http://labour-service:8098
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MES_SECURITY_WEBHOOK_TOKEN: ${MES_SECURITY_WEBHOOK_TOKEN:?MES_SECURITY_WEBHOOK_TOKEN must be set}
       ADMIN_SERVICE_URL: http://admin-service:8888
+      # Work Instructions (MES-10): e-signature KC client + MinIO media store.
+      MES_SIGNATURE_VERIFY_SECRET: ${MES_SIGNATURE_VERIFY_SECRET:?MES_SIGNATURE_VERIFY_SECRET must be set}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set}
     ports:
       - "8097:8097"
     depends_on:
@@ -380,6 +392,8 @@ services:
         condition: service_healthy
       iam-service:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8097/actuator/health || exit 1"]
       interval: 15s
@@ -389,10 +403,107 @@ services:
     networks:
       - mes-net
 
+  # ── Labour Service (Labour Resources & Skills — ISA-95 Personnel) ──────────
+  labour-service:
+    build:
+      context: ..
+      dockerfile: services/labour-service/Dockerfile
+    container_name: labour-service
+    restart: unless-stopped
+    environment:
+      LABOUR_DB_URL: jdbc:postgresql://postgres:5432/mes?currentSchema=labour
+      LABOUR_DB_USER: ${LABOUR_DB_USER:?LABOUR_DB_USER must be set}
+      LABOUR_DB_PASSWORD: ${LABOUR_DB_PASSWORD:?LABOUR_DB_PASSWORD must be set}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mes}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${KEYCLOAK_EXTERNAL_URL:-http://localhost:8080/realms/mes}
+      IAM_SERVICE_URL: http://iam-service:8085
+      MES_SECURITY_WEBHOOK_TOKEN: ${MES_SECURITY_WEBHOOK_TOKEN:?MES_SECURITY_WEBHOOK_TOKEN must be set}
+      ADMIN_SERVICE_URL: http://admin-service:8888
+    ports:
+      - "8098:8098"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      iam-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8098/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - mes-net
+
+  # ── Quality Service (Quality & Inspection Planning) ────────────────────────
+  quality-service:
+    build:
+      context: ..
+      dockerfile: services/quality-service/Dockerfile
+    container_name: quality-service
+    restart: unless-stopped
+    environment:
+      QUALITY_DB_URL: jdbc:postgresql://postgres:5432/mes?currentSchema=quality
+      QUALITY_DB_USER: ${QUALITY_DB_USER:?QUALITY_DB_USER must be set}
+      QUALITY_DB_PASSWORD: ${QUALITY_DB_PASSWORD:?QUALITY_DB_PASSWORD must be set}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mes}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${KEYCLOAK_EXTERNAL_URL:-http://localhost:8080/realms/mes}
+      IAM_SERVICE_URL: http://iam-service:8085
+      INVENTORY_SERVICE_URL: http://inventory-service:8096
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MES_SECURITY_WEBHOOK_TOKEN: ${MES_SECURITY_WEBHOOK_TOKEN:?MES_SECURITY_WEBHOOK_TOKEN must be set}
+      ADMIN_SERVICE_URL: http://admin-service:8888
+    ports:
+      - "8099:8099"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      iam-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8099/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - mes-net
+
+  # ── MinIO (S3-compatible object store for Work Instructions media — MES-10) ──
+  minio:
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+    container_name: minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD must be set}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    volumes:
+      - minio-data:/data
+    networks:
+      - mes-net
+
 volumes:
   postgres-data:
     driver: local
   kafka-data:
+    driver: local
+  minio-data:
     driver: local
 
 networks:

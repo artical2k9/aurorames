@@ -33,6 +33,10 @@ dependencies {
     // ── JSONB ─────────────────────────────────────────────────────────────────
     implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.9.0'
 
+    // ── Work Instructions (MES-10): media object store + HTML sanitisation ─────
+    implementation libs.minio
+    implementation libs.owasp.html.sanitizer
+
     // ── Jackson ───────────────────────────────────────────────────────────────
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
@@ -48,6 +52,8 @@ dependencies {
     testImplementation 'org.springframework.kafka:spring-kafka-test'
     testImplementation(testFixtures(project(':libs:lib-common-security')))
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
+    testImplementation libs.wiremock
+    testImplementation libs.testcontainers.minio
 }
 
 // Copy IAM service migrations to iam-bootstrap/ in the test classpath so

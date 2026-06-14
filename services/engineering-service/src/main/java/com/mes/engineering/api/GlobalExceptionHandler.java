@@ -2,6 +2,9 @@ package com.mes.engineering.api;
 
 import com.mes.engineering.eco.service.EcoConflictException;
 import com.mes.engineering.eco.service.EcoNotFoundException;
+import com.mes.engineering.workinstruction.service.WorkInstructionConflictException;
+import com.mes.engineering.workinstruction.service.WorkInstructionNotFoundException;
+import com.mes.engineering.workinstruction.service.WorkInstructionValidationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -22,6 +25,23 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(EcoConflictException.class)
     public ResponseEntity<Map<String, String>> handleEcoConflict(EcoConflictException ex) {
         return ResponseEntity.status(409).body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(WorkInstructionNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleWiNotFound(WorkInstructionNotFoundException ex) {
+        return ResponseEntity.status(404).body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(WorkInstructionConflictException.class)
+    public ResponseEntity<Map<String, String>> handleWiConflict(WorkInstructionConflictException ex) {
+        return ResponseEntity.status(409).body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(WorkInstructionValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleWiValidation(WorkInstructionValidationException ex) {
+        return ResponseEntity.status(422).body(Map.of(
+                "error", ex.getMessage(),
+                "details", ex.getDetails()));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
