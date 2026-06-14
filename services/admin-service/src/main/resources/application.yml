@@ -21,7 +21,15 @@ spring:
             scope: openid,profile,email
         provider:
           keycloak:
-            issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mes}
+            # Split-horizon Keycloak: the browser reaches KC at the public host while this
+            # service reaches it over the Docker network. Configure endpoints explicitly so
+            # Spring does NOT run issuer-uri OIDC discovery (which asserts the discovered issuer
+            # equals the requested host and crashes the context — KC advertises the public host).
+            authorization-uri: ${KEYCLOAK_AUTH_URI:http://localhost:8080/realms/mes/protocol/openid-connect/auth}
+            token-uri: ${KEYCLOAK_TOKEN_URI:http://keycloak:8080/realms/mes/protocol/openid-connect/token}
+            jwk-set-uri: ${KEYCLOAK_JWKS_URI:http://keycloak:8080/realms/mes/protocol/openid-connect/certs}
+            user-info-uri: ${KEYCLOAK_USERINFO_URI:http://keycloak:8080/realms/mes/protocol/openid-connect/userinfo}
+            user-name-attribute: preferred_username
 
 server:
   port: 8888
