@@ -148,19 +148,19 @@
 
 ### Tests
 
-- [ ] T045 [P] [US5] Vitest: work-instruction-list (load/search/UDF columns) in frontend/angular/src/app/features/work-instructions/pages/work-instruction-list/work-instruction-list.component.spec.ts
-- [ ] T046 [P] [US5] Vitest: signature-dialog (password required, error display on 422, success emits) in .../components/signature-dialog/signature-dialog.component.spec.ts
+- [X] T045 [P] [US5] Vitest: work-instruction-list (load/search/UDF columns) in frontend/angular/src/app/features/work-instructions/pages/work-instruction-list/work-instruction-list.component.spec.ts
+- [X] T046 [P] [US5] Vitest: signature-dialog (password required, error display on 422, success emits) in .../components/signature-dialog/signature-dialog.component.spec.ts
 
 ### Implementation
 
-- [ ] T047 [P] [US5] Create WorkInstructionApiService + DTO interfaces in frontend/angular/src/app/features/work-instructions/services/work-instruction-api.service.ts
-- [ ] T048 [US5] Create work-instruction-list page (GridPreferenceService + UDF per ERR-MES-078; cdr per ERR-MES-059; Lucide icons) in .../pages/work-instruction-list/
-- [ ] T049 [US5] Create work-instruction-detail page (header, revision selector + history with working View, workflow buttons, reload-after-action) in .../pages/work-instruction-detail/
-- [ ] T050 [US5] Create step-editor component (step CRUD, reorder, PrimeNG Editor rich text, media upload with progress) in .../components/step-editor/
-- [ ] T051 [US5] Create signature-dialog component (password re-entry, meaning display, 422 handling) in .../components/signature-dialog/
-- [ ] T052 [US5] Add skill-requirements panel (add/remove, qualification check preview) to detail page in .../pages/work-instruction-detail/
-- [ ] T053 [US5] Add route + sidebar entry Engineering > Work Instructions in frontend/angular/src/app/app.routes.ts and sidebar component
-- [ ] T054 [US5] `npm run lint && npm run test` green; full-stack gateway smoke (author→approve with signature in browser); log/fix defects
+- [X] T047 [P] [US5] Create WorkInstructionApiService + DTO interfaces in frontend/angular/src/app/features/work-instructions/services/work-instruction-api.service.ts
+- [X] T048 [US5] Create work-instruction-list page (GridPreferenceService + UDF per ERR-MES-078; cdr per ERR-MES-059; Lucide icons) in .../pages/work-instruction-list/
+- [X] T049 [US5] Create work-instruction-detail page (header, revision selector + history with working View, workflow buttons, reload-after-action) in .../pages/work-instruction-detail/
+- [X] T050 [US5] Create step-editor component (step CRUD, reorder, PrimeNG Editor rich text, media upload with progress) in .../components/step-editor/
+- [X] T051 [US5] Create signature-dialog component (password re-entry, meaning display, 422 handling) in .../components/signature-dialog/
+- [X] T052 [US5] Add skill-requirements panel (add/remove, qualification check preview) to detail page in .../pages/work-instruction-detail/
+- [X] T053 [US5] Add route + sidebar entry Engineering > Work Instructions in frontend/angular/src/app/app.routes.ts and sidebar component
+- [X] T054 [US5] `npm run lint && npm run test` green; full-stack gateway smoke (author→approve with signature in browser); log/fix defects
 
 **Checkpoint**: Module usable end-to-end.
 
@@ -168,11 +168,11 @@
 
 ## Phase 7: Compliance Verification & Defect Closure [PR 4 continued]
 
-- [ ] T055 Verify Constitution Check gates in plan.md all ✅ (human review gate III recorded)
-- [ ] T056 [P] Confirm signature immutability: no update/delete path exists (code review + IT attempting mutation)
-- [ ] T057 [P] Confirm Envers audit rows for all mutations; failed signature attempts logged; org_id scoping ITs green
-- [ ] T058 [P] Confirm media download auth enforced (no unauthenticated access) and export-control note in docs
-- [ ] T059 Confirm all logged defects closed; run quickstart.md end-to-end; pre-PR retrospective vs MES-ERR-001 index
+- [X] T055 Verify Constitution Check gates in plan.md all ✅ (human review gate III recorded)
+- [X] T056 [P] Confirm signature immutability: no update/delete path exists (code review + IT attempting mutation)
+- [X] T057 [P] Confirm Envers audit rows for all mutations; failed signature attempts logged; org_id scoping ITs green
+- [X] T058 [P] Confirm media download auth enforced (no unauthenticated access) and export-control note in docs
+- [X] T059 Confirm all logged defects closed; run quickstart.md end-to-end; pre-PR retrospective vs MES-ERR-001 index
 
 > **Raise PR 4 after this checkpoint** (T045–T059) | CI: `npm run lint && npm run test` + `./gradlew :services:engineering-service:check` | Target: `Develop`
 
