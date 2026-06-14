@@ -136,31 +136,6 @@ import { EmployeeDto, EmploymentStatus } from '../../models/labour.model';
         </ng-template>
       </p-table>
 
-      <!-- Create dialog -->
-      <p-dialog header="New Employee" [(visible)]="showCreate" [modal]="true"
-                [style]="{ width: '420px' }">
-        <div class="eml__form">
-          <label>Employee Number *</label>
-          <input pInputText [(ngModel)]="draft.employeeNumber" />
-          <label>First Name *</label>
-          <input pInputText [(ngModel)]="draft.firstName" />
-          <label>Last Name *</label>
-          <input pInputText [(ngModel)]="draft.lastName" />
-          <label>Email</label>
-          <input pInputText [(ngModel)]="draft.email" />
-          @if (serverError) {
-            <small class="eml__error">{{ serverError }}</small>
-          }
-        </div>
-        <ng-template pTemplate="footer">
-          <p-button label="Cancel" severity="secondary" size="small"
-                    (onClick)="showCreate = false" />
-          <p-button label="Create" severity="primary" size="small"
-                    [loading]="saving" [disabled]="!canSave()"
-                    (onClick)="create()" />
-        </ng-template>
-      </p-dialog>
-
       <!-- Edit dialog -->
       <p-dialog header="Edit Employee" [(visible)]="showEdit" [modal]="true"
                 [style]="{ width: '420px' }">
@@ -227,11 +202,6 @@ export class EmployeeListComponent implements OnInit, AfterViewInit {
 
   searchTerm = '';
   selectedStatus: EmploymentStatus | null = null;
-
-  showCreate = false;
-  saving = false;
-  serverError = '';
-  draft: Partial<EmployeeDto> = {};
 
   showEdit = false;
   savingEdit = false;
@@ -324,16 +294,6 @@ export class EmployeeListComponent implements OnInit, AfterViewInit {
     this.router.navigate(['/labour/employees', id]);
   }
 
-  openCreate(): void {
-    this.draft = {};
-    this.serverError = '';
-    this.showCreate = true;
-  }
-
-  canSave(): boolean {
-    return !!(this.draft.employeeNumber && this.draft.firstName && this.draft.lastName);
-  }
-
   openEdit(employee: EmployeeDto): void {
     this.editId = employee.id;
     this.editDraft = {
@@ -373,27 +333,6 @@ export class EmployeeListComponent implements OnInit, AfterViewInit {
         this.cdr.detectChanges();
       },
     });
-  }
-
-  create(): void {
-    this.saving = true;
-    this.serverError = '';
-    this.api.createEmployee(this.draft)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.saving = false;
-          this.showCreate = false;
-          this.messageService.add({ severity: 'success', summary: 'Employee created' });
-          this.fetchRows();
-          this.cdr.detectChanges();
-        },
-        error: err => {
-          this.saving = false;
-          this.serverError = err?.error?.error ?? 'Failed to create employee';
-          this.cdr.detectChanges();
-        },
-      });
   }
 
   private fetchRows(): void {
