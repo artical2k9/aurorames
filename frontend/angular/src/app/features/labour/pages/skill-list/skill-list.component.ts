@@ -2,30 +2,43 @@ import {
   AfterViewInit, ChangeDetectorRef, Component, DestroyRef, inject, OnInit,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { CommonModule } from '@angular/common';
+import { catchError, map, of } from 'rxjs';
+import { AsyncPipe, CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TableModule, TableLazyLoadEvent } from 'primeng/table';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { CheckboxModule } from 'primeng/checkbox';
 import { ButtonModule } from 'primeng/button';
+import { PopoverModule } from 'primeng/popover';
 import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
+import { LucideColumnsSettings } from '@lucide/angular';
+import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { BreadcrumbService } from '../../../../shared/ui';
+import { UdfApiService } from '../../../../shared/udf/udf-api.service';
 import { LabourApiService } from '../../services/labour-api.service';
+import { DEFAULT_SKILL_COLUMNS } from '../../constants/default-columns';
 import { SkillDto } from '../../models/labour.model';
 
 @Component({
   selector: 'app-skill-list',
   standalone: true,
   imports: [
-    CommonModule, FormsModule,
+    CommonModule, AsyncPipe, FormsModule,
     TableModule, InputTextModule, InputNumberModule, CheckboxModule,
-    ButtonModule, TagModule, DialogModule, ToastModule,
+    ButtonModule, PopoverModule, TagModule, DialogModule, ToastModule,
+    ColumnPickerComponent, LucideColumnsSettings,
   ],
-  providers: [MessageService],
+  providers: [
+    MessageService,
+    {
+      provide: GridPreferenceService,
+      useFactory: () => new GridPreferenceService('SKILL', DEFAULT_SKILL_COLUMNS),
+    },
+  ],
   template: `
     <p-toast />
 
@@ -40,35 +53,56 @@ import { SkillDto } from '../../models/labour.model';
         <input pInputText type="text" placeholder="Search code, name or category..."
                [(ngModel)]="searchTerm" (keyup.enter)="reload()" />
         <p-button label="Search" severity="secondary" size="small" (onClick)="reload()" />
+        <p-button [rounded]="true" [text]="true"
+                  aria-label="Customise columns" (onClick)="colPickerPanel.toggle($event)">
+          <svg lucideColumnsSettings [size]="16" [strokeWidth]="1.75"></svg>
+        </p-button>
       </div>
 
-      <p-table [value]="rows" [lazy]="true" [lazyLoadOnInit]="false" [paginator]="true"
+      <p-popover #colPickerPanel>
+        <app-column-picker
+          [columns]="(gridPreference.activeColumns$ | async) ?? []"
+          (applied)="onColumnsApplied($event); colPickerPanel.hide()"
+          (cancelled)="colPickerPanel.hide()"
+          (reset)="gridPreference.reset(); colPickerPanel.hide()"
+        />
+      </p-popover>
+
+      <p-table [columns]="(gridPreference.activeColumns$ | async) ?? []"
+               [value]="rows" [lazy]="true" [lazyLoadOnInit]="false" [paginator]="true"
                [rows]="pageSize" [totalRecords]="totalRecords"
                (onLazyLoad)="onLazyLoad($event)"
                [loading]="loading"
                styleClass="p-datatable-gridlines p-datatable-sm">
-        <ng-template pTemplate="header">
+        <ng-template pTemplate="header" let-columns>
           <tr>
-            <th>Code</th>
-            <th>Name</th>
-            <th>Category</th>
-            <th>Cert Required</th>
-            <th>Validity (months)</th>
-            <th>Active</th>
+            @for (col of visibleColumns(columns); track col.key) {
+              <th>{{ col.label }}</th>
+            }
             <th style="width:7rem">Actions</th>
           </tr>
         </ng-template>
-        <ng-template pTemplate="body" let-skill>
+        <ng-template pTemplate="body" let-skill let-columns="columns">
           <tr>
-            <td>{{ skill.skillCode }}</td>
-            <td>{{ skill.name }}</td>
-            <td>{{ skill.category || '—' }}</td>
-            <td>{{ skill.certificationRequired ? 'Yes' : 'No' }}</td>
-            <td>{{ skill.validityMonths ?? 'Never expires' }}</td>
-            <td>
-              <p-tag [value]="skill.active ? 'Active' : 'Inactive'"
-                     [severity]="skill.active ? 'success' : 'secondary'" />
-            </td>
+            @for (col of visibleColumns(columns); track col.key) {
+              <td>
+                @switch (col.key) {
+                  @case ('active') {
+                    <p-tag [value]="skill.active ? 'Active' : 'Inactive'"
+                           [severity]="skill.active ? 'success' : 'secondary'" />
+                  }
+                  @case ('certificationRequired') {
+                    {{ skill.certificationRequired ? 'Yes' : 'No' }}
+                  }
+                  @case ('validityMonths') {
+                    {{ skill.validityMonths ?? 'Never expires' }}
+                  }
+                  @default {
+                    {{ getCellValue(skill, col) ?? '—' }}
+                  }
+                }
+              </td>
+            }
             <td>
               <p-button [label]="skill.active ? 'Deactivate' : 'Activate'"
                         [text]="true" size="small"
@@ -76,8 +110,8 @@ import { SkillDto } from '../../models/labour.model';
             </td>
           </tr>
         </ng-template>
-        <ng-template pTemplate="emptymessage">
-          <tr><td colspan="7">No skills defined.</td></tr>
+        <ng-template pTemplate="emptymessage" let-columns>
+          <tr><td [attr.colspan]="visibleColumnCount(columns) + 1">No skills defined.</td></tr>
         </ng-template>
       </p-table>
 
@@ -131,6 +165,8 @@ export class SkillListComponent implements OnInit, AfterViewInit {
   private readonly messageService = inject(MessageService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly udfApi = inject(UdfApiService);
+  readonly gridPreference = inject(GridPreferenceService);
   private readonly breadcrumbSvc = inject(BreadcrumbService);
 
   rows: SkillDto[] = [];
@@ -151,6 +187,22 @@ export class SkillListComponent implements OnInit, AfterViewInit {
       { label: 'Labour' },
       { label: 'Skills' },
     ]);
+    this.udfApi.listFields('SKILL').pipe(
+      map(udfs => udfs.map((u, i): ColumnDef => ({
+        key: u.fieldKey,
+        label: u.label,
+        visible: false,
+        order: DEFAULT_SKILL_COLUMNS.length + i,
+        udf: true,
+      }))),
+      catchError(() => of([])),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: udfCols => {
+        this.gridPreference.load(udfCols);
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   ngAfterViewInit(): void {
@@ -166,6 +218,24 @@ export class SkillListComponent implements OnInit, AfterViewInit {
   reload(): void {
     this.currentPage = 0;
     this.fetchRows();
+  }
+
+  onColumnsApplied(columns: ColumnDef[]): void {
+    this.gridPreference.apply(columns);
+  }
+
+  getCellValue(skill: SkillDto, col: ColumnDef): unknown {
+    if (!col.udf) return (skill as unknown as Record<string, unknown>)[col.key];
+    const direct = (skill as unknown as Record<string, unknown>)[col.key];
+    return direct !== undefined ? direct : skill.customFields?.[col.key];
+  }
+
+  visibleColumns(columns: ColumnDef[]): ColumnDef[] {
+    return columns.filter(c => c.visible).sort((a, b) => a.order - b.order);
+  }
+
+  visibleColumnCount(columns: ColumnDef[]): number {
+    return this.visibleColumns(columns).length;
   }
 
   openCreate(): void {
