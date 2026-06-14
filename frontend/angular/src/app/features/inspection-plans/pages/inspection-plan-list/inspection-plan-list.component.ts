@@ -2,12 +2,15 @@ import {
   AfterViewInit, ChangeDetectorRef, Component, DestroyRef, inject, OnInit,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, debounceTime, distinctUntilChanged, catchError, map, of } from 'rxjs';
+import {
+  Subject, debounceTime, distinctUntilChanged, switchMap, catchError, map, of,
+} from 'rxjs';
 import { AsyncPipe, CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TableModule, TableLazyLoadEvent } from 'primeng/table';
 import { InputTextModule } from 'primeng/inputtext';
+import { AutoCompleteModule, AutoCompleteSelectEvent } from 'primeng/autocomplete';
 import { ButtonModule } from 'primeng/button';
 import { PopoverModule } from 'primeng/popover';
 import { TagModule } from 'primeng/tag';
@@ -18,6 +21,8 @@ import { LucideColumnsSettings, LucideView } from '@lucide/angular';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { BreadcrumbService } from '../../../../shared/ui';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
+import { ItemMasterApiService } from '../../../item-master/services/item-master-api.service';
+import { ItemMasterDto } from '../../../item-master/models/item-master.model';
 import { InspectionPlanApiService } from '../../services/inspection-plan-api.service';
 import { DEFAULT_INSPECTION_PLAN_COLUMNS } from '../../constants/default-columns';
 import { InspectionPlanSummaryDto, RevisionStatus } from '../../models/inspection-plan.model';
@@ -27,7 +32,7 @@ import { InspectionPlanSummaryDto, RevisionStatus } from '../../models/inspectio
   standalone: true,
   imports: [
     CommonModule, AsyncPipe, FormsModule,
-    TableModule, InputTextModule, ButtonModule,
+    TableModule, InputTextModule, AutoCompleteModule, ButtonModule,
     PopoverModule, TagModule, DialogModule, ToastModule,
     ColumnPickerComponent, LucideColumnsSettings, LucideView,
   ],
@@ -127,8 +132,27 @@ import { InspectionPlanSummaryDto, RevisionStatus } from '../../models/inspectio
       <p-dialog header="New Inspection Plan" [(visible)]="showCreate" [modal]="true"
                 [style]="{ width: '460px' }">
         <div class="ipl__form">
-          <label>Item ID *</label>
-          <input pInputText [(ngModel)]="draft.itemId" placeholder="Item master UUID" />
+          <label>Part Number *</label>
+          <p-autocomplete [(ngModel)]="partNumberModel"
+                          [suggestions]="itemSuggestions"
+                          field="partNumber"
+                          placeholder="Search approved part number..."
+                          [dropdown]="false"
+                          [minLength]="1"
+                          (completeMethod)="onSearchItem($event)"
+                          (onSelect)="onItemSelect($event)">
+            <ng-template #item let-item>
+              <div class="ipl__suggestion">
+                <span class="ipl__suggestion-pn">{{ item.partNumber }}</span>
+                <span class="ipl__suggestion-rev">Rev {{ item.revision }}</span>
+                <span class="ipl__suggestion-desc">— {{ item.description }}</span>
+              </div>
+            </ng-template>
+          </p-autocomplete>
+          @if (selectedItemLabel) {
+            <small class="ipl__hint">Plan will be linked to {{ selectedItemLabel }}
+              (current revision shown for reference only).</small>
+          }
           <label>Plan Name *</label>
           <input pInputText [(ngModel)]="draft.name" />
           <label>Description</label>
@@ -163,6 +187,14 @@ import { InspectionPlanSummaryDto, RevisionStatus } from '../../models/inspectio
     .ipl__form { display: flex; flex-direction: column; gap: 0.375rem; }
     .ipl__form label { font-size: 0.8125rem; font-weight: 600; margin-top: 0.375rem; }
     .ipl__error { color: var(--p-red-500); }
+    .ipl__hint { font-size: 0.75rem; color: var(--p-text-muted-color); }
+    .ipl__suggestion { display: flex; align-items: baseline; gap: 0.5rem; }
+    .ipl__suggestion-pn { font-weight: 600; }
+    .ipl__suggestion-rev { font-size: 0.75rem; color: var(--p-text-muted-color); }
+    .ipl__suggestion-desc { font-size: 0.8125rem; color: var(--p-text-muted-color); }
+    :host ::ng-deep .ipl__form p-autocomplete,
+    :host ::ng-deep .ipl__form .p-autocomplete { width: 100%; }
+    :host ::ng-deep .ipl__form .p-autocomplete-input { width: 100%; }
   `],
 })
 export class InspectionPlanListComponent implements OnInit, AfterViewInit {
@@ -172,6 +204,7 @@ export class InspectionPlanListComponent implements OnInit, AfterViewInit {
   private readonly destroyRef     = inject(DestroyRef);
   private readonly cdr            = inject(ChangeDetectorRef);
   private readonly udfApi         = inject(UdfApiService);
+  private readonly itemApi        = inject(ItemMasterApiService);
   readonly gridPreference         = inject(GridPreferenceService);
   private readonly breadcrumbSvc  = inject(BreadcrumbService);
 
@@ -188,7 +221,12 @@ export class InspectionPlanListComponent implements OnInit, AfterViewInit {
   serverError = '';
   draft: { itemId?: string; name?: string; description?: string } = {};
 
+  itemSuggestions: ItemMasterDto[] = [];
+  partNumberModel: ItemMasterDto | string = '';
+  selectedItemLabel = '';
+
   private readonly searchSubject = new Subject<string>();
+  private readonly searchItemSubject = new Subject<string>();
 
   ngOnInit(): void {
     this.breadcrumbSvc.set([
@@ -218,6 +256,16 @@ export class InspectionPlanListComponent implements OnInit, AfterViewInit {
     ).subscribe(() => {
       this.currentPage = 0;
       this.fetchRows();
+    });
+    this.searchItemSubject.pipe(
+      debounceTime(250),
+      distinctUntilChanged(),
+      switchMap(q => this.itemApi.list({ search: q, page: 0, size: 10, revisionStatus: 'APPROVED' })
+        .pipe(catchError(() => of({ content: [], totalElements: 0 })))),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(page => {
+      this.itemSuggestions = page.content;
+      this.cdr.detectChanges();
     });
   }
 
@@ -281,8 +329,24 @@ export class InspectionPlanListComponent implements OnInit, AfterViewInit {
 
   openCreate(): void {
     this.draft = {};
+    this.partNumberModel = '';
+    this.selectedItemLabel = '';
+    this.itemSuggestions = [];
     this.serverError = '';
     this.showCreate = true;
+  }
+
+  onSearchItem(event: { query: string }): void {
+    // A fresh search invalidates any prior selection until the user picks again.
+    this.draft.itemId = undefined;
+    this.selectedItemLabel = '';
+    this.searchItemSubject.next(event.query);
+  }
+
+  onItemSelect(event: AutoCompleteSelectEvent): void {
+    const item = event.value as ItemMasterDto;
+    this.draft.itemId = item.id;
+    this.selectedItemLabel = `${item.partNumber} (Rev ${item.revision})`;
   }
 
   canSave(): boolean {
