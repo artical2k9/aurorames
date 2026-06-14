@@ -97,16 +97,16 @@
 
 ### Tests (write first, confirm failing)
 
-- [ ] T030 [P] [US3] IT: multipart upload PNG/PDF 201 with metadata; oversize 422 naming limit; unsupported type 422; upload to non-DRAFT 409 in WorkInstructionMediaIT.java
-- [ ] T031 [P] [US3] IT: download streams with correct content type + auth required (401 without token); caption/order PATCH; delete removes row, binary retained while other revision references it (same class)
-- [ ] T032 [P] [US3] Unit: MediaStorageService path layout {orgId}/{instructionId}/{attachmentId}, orphan-cleanup guard, reference counting in MediaStorageServiceTest.java
+- [X] T030 [P] [US3] IT: multipart upload PNG/PDF 201 with metadata; oversize 422 naming limit; unsupported type 422; upload to non-DRAFT 409 in WorkInstructionMediaIT.java
+- [X] T031 [P] [US3] IT: download streams with correct content type + auth required (401 without token); caption/order PATCH; delete removes row, binary retained while other revision references it (same class)
+- [X] T032 [P] [US3] Unit: MediaStorageService path layout {orgId}/{instructionId}/{attachmentId}, orphan-cleanup guard, reference counting in MediaStorageServiceTest.java
 
 ### Implementation
 
-- [ ] T033 [P] [US3] Create MediaAttachment entity + repository in .../workinstruction/domain/ and .../repository/
-- [ ] T034 [US3] Implement MediaStorageService (MinIO SDK behind interface; bucket auto-create on startup; streaming put/get, no full buffering; Testcontainers MinIO in ITs) and extend copy-on-revision to duplicate attachment metadata rows pointing at the same object key (refcount semantics) in .../workinstruction/service/
-- [ ] T035 [US3] Implement media endpoints (multipart upload, StreamingResponseBody download, caption/order patch, delete with refcount guard) in .../workinstruction/api/
-- [ ] T036 [US3] Run `./gradlew :services:engineering-service:check`; log/fix defects
+- [X] T033 [P] [US3] Create MediaAttachment entity + repository in .../workinstruction/domain/ and .../repository/
+- [X] T034 [US3] Implement MediaStorageService (MinIO SDK behind interface; bucket auto-create on startup; streaming put/get, no full buffering; Testcontainers MinIO in ITs) and extend copy-on-revision to duplicate attachment metadata rows pointing at the same object key (refcount semantics) in .../workinstruction/service/
+- [X] T035 [US3] Implement media endpoints (multipart upload, StreamingResponseBody download, caption/order patch, delete with refcount guard) in .../workinstruction/api/
+- [X] T036 [US3] Run `./gradlew :services:engineering-service:check`; log/fix defects
 
 **Checkpoint**: Media complete.
 
