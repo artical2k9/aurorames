@@ -70,3 +70,4 @@ iam:
     token: ${IAM_WEBHOOK_TOKEN:dev-webhook-secret-change-in-production}
   events:
     topic: iam.events
+    user-created-topic: iam.user.created

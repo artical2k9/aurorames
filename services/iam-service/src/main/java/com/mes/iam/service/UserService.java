@@ -5,9 +5,11 @@ import com.mes.iam.exception.InvalidCredentialsException;
 import com.mes.iam.exception.UserNotFoundException;
 import com.mes.iam.keycloak.KeycloakAdminClient;
 import com.mes.iam.keycloak.KeycloakTokenClient;
+import com.mes.iam.kafka.UserCreatedEventPublisher;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,16 +19,20 @@ public class UserService {
 
     private final KeycloakAdminClient keycloakAdminClient;
     private final KeycloakTokenClient keycloakTokenClient;
+    private final UserCreatedEventPublisher userCreatedEventPublisher;
 
     public UserService(KeycloakAdminClient keycloakAdminClient,
-                       KeycloakTokenClient keycloakTokenClient) {
+                       KeycloakTokenClient keycloakTokenClient,
+                       UserCreatedEventPublisher userCreatedEventPublisher) {
         this.keycloakAdminClient = keycloakAdminClient;
         this.keycloakTokenClient = keycloakTokenClient;
+        this.userCreatedEventPublisher = userCreatedEventPublisher;
     }
 
     public UserResponse createUser(String email, String firstName, String lastName,
                                     UUID orgId, List<String> roles,
-                                    String initialPassword, boolean temporaryPassword) {
+                                    String initialPassword, boolean temporaryPassword,
+                                    String employeeNumber, LocalDate hireDate) {
         String userId = keycloakAdminClient.createUser(email, firstName, lastName, orgId);
         keycloakAdminClient.assignUserRoles(userId, roles);
         if (initialPassword != null && !initialPassword.isBlank()) {
@@ -36,6 +42,11 @@ public class UserService {
         }
         UserRepresentation u = keycloakAdminClient.findUserById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
+
+        // Emit the event so labour-service creates the linked employee record (MES-117).
+        userCreatedEventPublisher.publishUserCreated(
+                userId, orgId, email, firstName, lastName, employeeNumber, hireDate);
+
         return toResponse(u, roles);
     }
 

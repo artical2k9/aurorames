@@ -9,16 +9,21 @@ import com.mes.labour.employee.domain.EmploymentStatus;
 import com.mes.labour.employee.repository.EmployeeRepository;
 import com.mes.labour.service.LabourConflictException;
 import com.mes.labour.service.LabourNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Service
 @Transactional
 public class EmployeeService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(EmployeeService.class);
 
     private static final String EMPLOYEE_NOT_FOUND = "Employee not found: ";
 
@@ -26,6 +31,41 @@ public class EmployeeService {
 
     public EmployeeService(EmployeeRepository employeeRepository) {
         this.employeeRepository = employeeRepository;
+    }
+
+    /**
+     * Create the employee record linked to a newly-created IAM user (consumed from
+     * {@code iam.user.created}). Idempotent: a redelivered event for an already-linked user is a
+     * no-op, and a clashing employee number is logged and skipped rather than crashing the
+     * consumer.
+     */
+    public void createFromUser(UUID orgId, String iamUserId, String employeeNumber,
+                               String firstName, String lastName, String email, LocalDate hireDate) {
+        if (iamUserId == null || iamUserId.isBlank()) {
+            LOG.warn("iam.user.created event missing userId for org {} — skipping", orgId);
+            return;
+        }
+        if (employeeRepository.existsByOrgIdAndIamUserId(orgId, iamUserId)) {
+            return; // already linked — idempotent on redelivery
+        }
+        if (employeeNumber != null
+                && employeeRepository.existsByOrgIdAndEmployeeNumber(orgId, employeeNumber)) {
+            LOG.warn("Employee number {} already exists for org {}; not auto-creating from user {}",
+                    employeeNumber, orgId, iamUserId);
+            return;
+        }
+        Employee employee = new Employee();
+        employee.setOrgId(orgId);
+        employee.setEmployeeNumber(employeeNumber);
+        employee.setFirstName(firstName);
+        employee.setLastName(lastName);
+        employee.setEmail(email);
+        employee.setHireDate(hireDate);
+        employee.setIamUserId(iamUserId);
+        employee.setEmploymentStatus(EmploymentStatus.ACTIVE);
+        employeeRepository.save(employee);
+        LOG.info("Created employee {} linked to IAM user {} (org {})",
+                employeeNumber, iamUserId, orgId);
     }
 
     public EmployeeDto create(UUID orgId, CreateEmployeeRequest req) {
