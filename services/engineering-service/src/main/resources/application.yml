@@ -92,6 +92,12 @@ mes:
     iam-service-url: ${IAM_SERVICE_URL:http://iam-service:8085}
     privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL_SECONDS:300}
 
+  # Inter-service calls. Work Instructions skill gating evaluates operator qualifications
+  # against labour-service (MES-11); a short timeout lets evaluation fail closed when it is slow.
+  engineering:
+    labour-service-url: ${LABOUR_SERVICE_URL:http://labour-service:8098}
+    labour-service-timeout-ms: ${LABOUR_SERVICE_TIMEOUT_MS:2000}
+
   # Work Instructions electronic signature: password re-authentication against Keycloak
   # via the mes-signature-verify confidential client (Direct Access Grant). No local
   # credential store; the verification token is discarded immediately (research.md R1).

@@ -122,16 +122,16 @@
 
 ### Tests (write first, confirm failing)
 
-- [ ] T037 [P] [US4] IT: add/remove skill requirement on DRAFT (denormalised code/name fetched from labour API — WireMock); duplicate skillId 409; ops on non-DRAFT 409 in WorkInstructionSkillIT.java
-- [ ] T038 [P] [US4] IT (WireMock): evaluation maps labour bulk response → qualified/missing list; EXPIRING_SOON qualifies; EXPIRED/REVOKED/NOT_HELD do not; labour 5xx/timeout → fail-closed VERIFICATION_UNAVAILABLE in QualificationEvaluationIT.java
-- [ ] T039 [P] [US4] Unit: LabourServiceClient timeout config (2 s) + error mapping in LabourServiceClientTest.java
+- [X] T037 [P] [US4] IT: add/remove skill requirement on DRAFT (denormalised code/name fetched from labour API — WireMock); duplicate skillId 409; ops on non-DRAFT 409 in WorkInstructionSkillIT.java
+- [X] T038 [P] [US4] IT (WireMock): evaluation maps labour bulk response → qualified/missing list; EXPIRING_SOON qualifies; EXPIRED/REVOKED/NOT_HELD do not; labour 5xx/timeout → fail-closed VERIFICATION_UNAVAILABLE in QualificationEvaluationIT.java
+- [X] T039 [P] [US4] Unit: LabourServiceClient timeout config (2 s) + error mapping in LabourServiceClientTest.java
 
 ### Implementation
 
-- [ ] T040 [P] [US4] Create SkillRequirement entity + repository and extend copy-on-revision to duplicate skill-requirement rows in .../workinstruction/domain/ and .../repository/
-- [ ] T041 [US4] Implement LabourServiceClient (RestClient, forwarded JWT, POST /api/v1/labour/qualifications/evaluate per MES-11 contract; GET /skills/{id} for denorm) in .../workinstruction/client/
-- [ ] T042 [US4] Implement QualificationService (fail-closed aggregation) + skill-requirement + qualification endpoints per contract in .../workinstruction/
-- [ ] T043 [US4] Run `./gradlew :services:engineering-service:check`; log/fix defects
+- [X] T040 [P] [US4] Create SkillRequirement entity + repository and extend copy-on-revision to duplicate skill-requirement rows in .../workinstruction/domain/ and .../repository/
+- [X] T041 [US4] Implement LabourServiceClient (RestClient, forwarded JWT, POST /api/v1/labour/qualifications/evaluate per MES-11 contract; GET /skills/{id} for denorm) in .../workinstruction/client/
+- [X] T042 [US4] Implement QualificationService (fail-closed aggregation) + skill-requirement + qualification endpoints per contract in .../workinstruction/
+- [X] T043 [US4] Run `./gradlew :services:engineering-service:check`; log/fix defects
 - [ ] T044 [US4] Post-MES-11 live verification: run evaluation against real labour-service via gateway, confirm 200 paths (execute after MES-11 PR 2 merges)
 
 **Checkpoint**: Gating definitions + evaluation contract complete.
