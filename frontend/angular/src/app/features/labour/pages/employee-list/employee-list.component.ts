@@ -15,7 +15,7 @@ import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideColumnsSettings, LucideView } from '@lucide/angular';
+import { LucideColumnsSettings, LucideView, LucidePencil } from '@lucide/angular';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { BreadcrumbService } from '../../../../shared/ui';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
@@ -30,7 +30,7 @@ import { EmployeeDto, EmploymentStatus } from '../../models/labour.model';
     CommonModule, AsyncPipe, FormsModule,
     TableModule, InputTextModule, SelectModule, ButtonModule,
     PopoverModule, TagModule, DialogModule, ToastModule,
-    ColumnPickerComponent, LucideColumnsSettings, LucideView,
+    ColumnPickerComponent, LucideColumnsSettings, LucideView, LucidePencil,
   ],
   providers: [
     MessageService,
@@ -96,7 +96,7 @@ import { EmployeeDto, EmploymentStatus } from '../../models/labour.model';
             @for (col of visibleColumns(columns); track col.key) {
               <th>{{ col.label }}</th>
             }
-            <th style="width:6rem">Actions</th>
+            <th style="width:7rem">Actions</th>
           </tr>
         </ng-template>
 
@@ -120,6 +120,11 @@ import { EmployeeDto, EmploymentStatus } from '../../models/labour.model';
                         title="View" aria-label="View"
                         (onClick)="navigateToDetail(employee.id)">
                 <svg lucideView [size]="16" [strokeWidth]="1.75"></svg>
+              </p-button>
+              <p-button [rounded]="true" [text]="true" size="small"
+                        title="Edit" aria-label="Edit"
+                        (onClick)="openEdit(employee)">
+                <svg lucidePencil [size]="16" [strokeWidth]="1.75"></svg>
               </p-button>
             </td>
           </tr>
@@ -154,6 +159,34 @@ import { EmployeeDto, EmploymentStatus } from '../../models/labour.model';
           <p-button label="Create" severity="primary" size="small"
                     [loading]="saving" [disabled]="!canSave()"
                     (onClick)="create()" />
+        </ng-template>
+      </p-dialog>
+
+      <!-- Edit dialog -->
+      <p-dialog header="Edit Employee" [(visible)]="showEdit" [modal]="true"
+                [style]="{ width: '420px' }">
+        <div class="eml__form">
+          <label>Employee Number</label>
+          <input pInputText [value]="editDraft.employeeNumber" disabled />
+          <label>First Name *</label>
+          <input pInputText [(ngModel)]="editDraft.firstName" />
+          <label>Last Name *</label>
+          <input pInputText [(ngModel)]="editDraft.lastName" />
+          <label>Email</label>
+          <input pInputText [(ngModel)]="editDraft.email" />
+          <label>Status</label>
+          <p-select [options]="statusOptions" [(ngModel)]="editDraft.employmentStatus"
+                    optionLabel="label" optionValue="value" />
+          @if (editError) {
+            <small class="eml__error">{{ editError }}</small>
+          }
+        </div>
+        <ng-template pTemplate="footer">
+          <p-button label="Cancel" severity="secondary" size="small"
+                    (onClick)="showEdit = false" />
+          <p-button label="Save" severity="primary" size="small"
+                    [loading]="savingEdit" [disabled]="!canSaveEdit()"
+                    (onClick)="saveEdit()" />
         </ng-template>
       </p-dialog>
     </div>
@@ -200,6 +233,12 @@ export class EmployeeListComponent implements OnInit, AfterViewInit {
   saving = false;
   serverError = '';
   draft: Partial<EmployeeDto> = {};
+
+  showEdit = false;
+  savingEdit = false;
+  editError = '';
+  editId = '';
+  editDraft: Partial<EmployeeDto> = {};
 
   private readonly searchSubject = new Subject<string>();
 
@@ -294,6 +333,47 @@ export class EmployeeListComponent implements OnInit, AfterViewInit {
 
   canSave(): boolean {
     return !!(this.draft.employeeNumber && this.draft.firstName && this.draft.lastName);
+  }
+
+  openEdit(employee: EmployeeDto): void {
+    this.editId = employee.id;
+    this.editDraft = {
+      employeeNumber: employee.employeeNumber,
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      email: employee.email,
+      employmentStatus: employee.employmentStatus,
+    };
+    this.editError = '';
+    this.showEdit = true;
+  }
+
+  canSaveEdit(): boolean {
+    return !!(this.editDraft.firstName && this.editDraft.lastName);
+  }
+
+  saveEdit(): void {
+    this.savingEdit = true;
+    this.editError = '';
+    this.api.patchEmployee(this.editId, {
+      firstName: this.editDraft.firstName,
+      lastName: this.editDraft.lastName,
+      email: this.editDraft.email,
+      employmentStatus: this.editDraft.employmentStatus,
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.savingEdit = false;
+        this.showEdit = false;
+        this.messageService.add({ severity: 'success', summary: 'Employee updated' });
+        this.fetchRows();
+        this.cdr.detectChanges();
+      },
+      error: err => {
+        this.savingEdit = false;
+        this.editError = err?.error?.error ?? 'Failed to update employee';
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   create(): void {

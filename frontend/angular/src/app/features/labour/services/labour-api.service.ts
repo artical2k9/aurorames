@@ -44,6 +44,14 @@ export class LabourApiService {
     return this.http.get<Page<TrainingHistoryEntryDto>>(`${this.base}/employees/${id}/training`);
   }
 
+  createTrainingEvent(req: {
+    title: string; trainingDate: string; durationMinutes?: number;
+    trainer?: string; notes?: string; skillIds?: string[];
+    attendees: { employeeId: string; outcome?: string }[];
+  }): Observable<unknown> {
+    return this.http.post(`${this.base}/training-events`, req);
+  }
+
   // ── Skills ─────────────────────────────────────────────────────────────────
 
   listSkills(opts: {
