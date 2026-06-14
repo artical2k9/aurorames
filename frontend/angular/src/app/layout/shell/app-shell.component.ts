@@ -27,6 +27,7 @@ import {
   LucideBoxes,
   LucideArchive,
   LucideClipboardCheck,
+  LucideFileText,
   LucideUsers,
   LucideRuler,
   LucideContact,
@@ -39,7 +40,7 @@ import { BreadcrumbComponent, BreadcrumbService } from '../../shared/ui';
 
 const NAV_COLLAPSED_KEY = 'aurora-mes-nav-collapsed';
 
-type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering' | 'production' | 'materials' | 'inventory' | 'receiving' | 'users' | 'uom' | 'labour' | 'employees' | 'skills' | 'certifications' | 'quality' | 'inspection-plans';
+type NavIconKey = 'dashboard' | 'item-master' | 'bom' | 'eco' | 'work-orders' | 'settings' | 'help' | 'master-data' | 'udf' | 'engineering' | 'production' | 'materials' | 'inventory' | 'receiving' | 'users' | 'uom' | 'labour' | 'employees' | 'skills' | 'certifications' | 'quality' | 'inspection-plans' | 'work-instructions';
 
 interface ChildNavItem {
   label: string;
@@ -67,7 +68,8 @@ interface NavItem {
     LucidePanelLeftOpen, LucidePanelLeftClose,
     LucideUserCog, LucideList, LucideLayoutGrid, LucideBell, LucideLogOut,
     LucideDatabase, LucideSlidersHorizontal, LucideChevronDown, LucideHammer,
-    LucideFactory, LucideBoxes, LucideArchive, LucideClipboardCheck, LucideUsers, LucideRuler,
+    LucideFactory, LucideBoxes, LucideArchive, LucideClipboardCheck, LucideFileText,
+    LucideUsers, LucideRuler,
     LucideContact, LucideAward, LucideBadgeCheck,
     ThemeToggleComponent,
   ],
@@ -192,6 +194,7 @@ interface NavItem {
                               @case ('skills')         { <svg lucideAward      [size]="15" [strokeWidth]="2"></svg> }
                               @case ('certifications') { <svg lucideBadgeCheck [size]="15" [strokeWidth]="2"></svg> }
                               @case ('inspection-plans') { <svg lucideClipboardCheck [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('work-instructions') { <svg lucideFileText [size]="15" [strokeWidth]="2"></svg> }
                             }
                           </span>
                           <span class="shell__nav-label">{{ child.label }}</span>
@@ -215,6 +218,7 @@ interface NavItem {
                               @case ('skills')         { <svg lucideAward      [size]="15" [strokeWidth]="2"></svg> }
                               @case ('certifications') { <svg lucideBadgeCheck [size]="15" [strokeWidth]="2"></svg> }
                               @case ('inspection-plans') { <svg lucideClipboardCheck [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('work-instructions') { <svg lucideFileText [size]="15" [strokeWidth]="2"></svg> }
                             }
                           </span>
                           <span class="shell__nav-label">{{ child.label }}</span>
@@ -377,6 +381,7 @@ export class AppShellComponent implements OnInit {
       children: [
         { label: 'BOM', iconKey: 'bom', path: '/bom' },
         { label: 'ECO', iconKey: 'eco', path: '/ecos' },
+        { label: 'Work Instructions', iconKey: 'work-instructions', path: '/engineering/work-instructions' },
       ],
     },
     {

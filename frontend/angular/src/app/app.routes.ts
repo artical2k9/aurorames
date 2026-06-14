@@ -137,6 +137,18 @@ export const routes: Routes = [
           import('./features/inspection-plans/pages/inspection-plan-detail/inspection-plan-detail.component')
             .then(m => m.InspectionPlanDetailComponent),
       },
+      {
+        path: 'engineering/work-instructions',
+        loadComponent: () =>
+          import('./features/work-instructions/pages/work-instruction-list/work-instruction-list.component')
+            .then(m => m.WorkInstructionListComponent),
+      },
+      {
+        path: 'engineering/work-instructions/:id',
+        loadComponent: () =>
+          import('./features/work-instructions/pages/work-instruction-detail/work-instruction-detail.component')
+            .then(m => m.WorkInstructionDetailComponent),
+      },
     ],
   },
 ];
