@@ -80,6 +80,10 @@ mes:
   security:
     iam-service-url: ${IAM_SERVICE_URL:http://iam-service:8085}
     privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL_SECONDS:300}
+    # Shared webhook token — used OUTBOUND by lib-common-security's PrivilegeRegistryClient
+    # to authenticate privilege-resolution calls to iam-service (must match MES_SECURITY_WEBHOOK_TOKEN
+    # across services), even though routing-service exposes no inbound webhook endpoints.
+    webhook-token: ${MES_SECURITY_WEBHOOK_TOKEN:}
 
 routing:
   events:

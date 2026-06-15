@@ -65,7 +65,10 @@ public class RouteService {
     @Transactional(readOnly = true)
     public Page<RouteDto> list(UUID orgId, String search, Pageable pageable) {
         String normalised = (search == null || search.isBlank()) ? null : search;
-        return routes.search(orgId, normalised, pageable).map(RouteService::toDto);
+        Page<Route> page = (normalised == null)
+                ? routes.findByOrgId(orgId, pageable)
+                : routes.search(orgId, normalised, pageable);
+        return page.map(RouteService::toDto);
     }
 
     public RouteDto patch(UUID orgId, UUID id, PatchRouteRequest req) {

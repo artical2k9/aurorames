@@ -495,6 +495,7 @@ services:
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/mes}
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${KEYCLOAK_EXTERNAL_URL:-http://localhost:8080/realms/mes}
       IAM_SERVICE_URL: http://iam-service:8085
+      MES_SECURITY_WEBHOOK_TOKEN: ${MES_SECURITY_WEBHOOK_TOKEN:?MES_SECURITY_WEBHOOK_TOKEN must be set}
       ADMIN_SERVICE_URL: http://admin-service:8888
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:

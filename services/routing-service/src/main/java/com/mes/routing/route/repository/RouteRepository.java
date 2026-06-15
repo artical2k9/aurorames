@@ -19,11 +19,15 @@ public interface RouteRepository extends JpaRepository<Route, UUID> {
 
     List<Route> findByInspectionPlanRevisionId(UUID inspectionPlanRevisionId);
 
+    Page<Route> findByOrgId(UUID orgId, Pageable pageable);
+
+    // Non-null search only — keeping a `:search is null OR ...` guard makes PostgreSQL type the
+    // null param as bytea and fail at plan time (text ~~ bytea). The service picks this vs
+    // findByOrgId based on whether a search term is present.
     @Query("""
             select r from Route r
             where r.orgId = :orgId
-              and (:search is null
-                   or cast(r.partId as string) like concat('%', :search, '%')
+              and (cast(r.partId as string) like concat('%', :search, '%')
                    or lower(r.reasonForRevision) like lower(concat('%', :search, '%')))
             """)
     Page<Route> search(@Param("orgId") UUID orgId, @Param("search") String search, Pageable pageable);

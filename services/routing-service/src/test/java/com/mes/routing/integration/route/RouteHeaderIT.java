@@ -85,6 +85,27 @@ class RouteHeaderIT extends BaseIntegrationTest {
     }
 
     @Test
+    void listWithAndWithoutSearchBothSucceed() {
+        String reason = "Searchable-" + UUID.randomUUID();
+        restTemplate.exchange("/api/v1/routes", HttpMethod.POST, jsonRequest(admin(),
+                Map.of("partId", UUID.randomUUID().toString(), "partRevision", "A",
+                        "routeTypeId", standardRouteTypeId(), "reasonForRevision", reason)), Map.class);
+
+        // No-search path (the one that previously failed: null param typed as bytea).
+        ResponseEntity<Map> noSearch = restTemplate.exchange("/api/v1/routes",
+                HttpMethod.GET, bearerRequest(admin()), Map.class);
+        assertThat(noSearch.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        // Search path matching the reason text.
+        ResponseEntity<Map> searched = restTemplate.exchange(
+                "/api/v1/routes?search=" + reason, HttpMethod.GET, bearerRequest(admin()), Map.class);
+        assertThat(searched.getStatusCode()).isEqualTo(HttpStatus.OK);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> content = (List<Map<String, Object>>) searched.getBody().get("content");
+        assertThat(content).anySatisfy(m -> assertThat(m.get("reasonForRevision")).isEqualTo(reason));
+    }
+
+    @Test
     void routesAreOrgScoped() {
         ResponseEntity<Map> created = restTemplate.exchange("/api/v1/routes", HttpMethod.POST,
                 jsonRequest(admin(), Map.of("partId", UUID.randomUUID().toString(), "partRevision", "A",
