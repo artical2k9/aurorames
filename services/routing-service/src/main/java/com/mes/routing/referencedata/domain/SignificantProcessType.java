@@ -5,7 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import org.hibernate.envers.Audited;
 
-/** A special-process type (e.g. brazing, EB welding) with the approver role required to approve a route containing it (FR-024). */
+/** A special-process type (e.g. brazing, EB welding) with the approver role required to approve it (FR-024). */
 @Entity
 @Audited
 @Table(name = "significant_process_type", schema = "routing")

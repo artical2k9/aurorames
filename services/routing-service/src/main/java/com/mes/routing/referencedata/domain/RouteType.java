@@ -5,7 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import org.hibernate.envers.Audited;
 
-/** Route classification; seeded protected Standard (one per org), alternates (NPI/FAI/Process Improvement) user-added. */
+/** Route classification; seeded protected Standard (one per org), alternates (NPI/FAI/...) user-added. */
 @Entity
 @Audited
 @Table(name = "route_type", schema = "routing")
