@@ -1,0 +1,85 @@
+spring:
+  application:
+    name: routing-service
+
+  # routing-service owns its own SecurityFilterChain via @EnableMESSecurity. Exclude the
+  # shared lib's auto-configuration to prevent two "any request" filter chains conflicting
+  # under Spring Security 6.5+ (ERR-MES-038).
+  autoconfigure:
+    exclude:
+      - com.mes.common.security.config.MESSecurityAutoConfiguration
+
+  datasource:
+    url: ${ROUTING_DB_URL:jdbc:postgresql://localhost:5432/mes?currentSchema=routing}
+    username: ${ROUTING_DB_USER:routing_user}
+    password: ${ROUTING_DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    schemas: routing
+    default-schema: routing
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: routing
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        org.hibernate.envers.default_schema: routing
+        org.hibernate.envers.audit_table_schema: routing
+        envers:
+          audit_strategy: org.hibernate.envers.strategy.ValidityAuditStrategy
+          audit_strategy_validity_end_rev_field_name: REVEND
+          audit_strategy_validity_revend_timestamp_field_name: REVEND_TSTMP
+          audit_strategy_validity_store_revend_timestamp: true
+          revision_field_name: rev
+          revision_type_field_name: revtype
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: routing-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  boot:
+    admin:
+      client:
+        url: ${ADMIN_SERVICE_URL:http://admin-service:8888}
+        instance:
+          prefer-ip: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mes}/protocol/openid-connect/certs
+          issuer-uri: ${KEYCLOAK_EXTERNAL_URL:http://localhost:8080/realms/mes}
+
+server:
+  port: 8100
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers
+  endpoint:
+    health:
+      show-details: when-authorized
+
+mes:
+  security:
+    iam-service-url: ${IAM_SERVICE_URL:http://iam-service:8085}
+    privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL_SECONDS:300}
+  routing:
+    events:
+      route-approved-topic: ${ROUTING_ROUTE_APPROVED_TOPIC:routing.route.approved}
