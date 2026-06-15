@@ -7,12 +7,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface RouteRepository extends JpaRepository<Route, UUID> {
 
     Optional<Route> findByOrgIdAndId(UUID orgId, UUID id);
+
+    List<Route> findByBomRevisionId(UUID bomRevisionId);
+
+    List<Route> findByInspectionPlanRevisionId(UUID inspectionPlanRevisionId);
 
     @Query("""
             select r from Route r

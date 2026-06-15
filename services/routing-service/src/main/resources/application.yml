@@ -80,6 +80,9 @@ mes:
   security:
     iam-service-url: ${IAM_SERVICE_URL:http://iam-service:8085}
     privilege-cache-ttl-seconds: ${PRIVILEGE_CACHE_TTL_SECONDS:300}
-  routing:
-    events:
-      route-approved-topic: ${ROUTING_ROUTE_APPROVED_TOPIC:routing.route.approved}
+
+routing:
+  events:
+    route-approved-topic: ${ROUTING_ROUTE_APPROVED_TOPIC:routing.route.approved}
+    bom-revision-superseded-topic: ${ROUTING_BOM_SUPERSEDED_TOPIC:inventory.bom.revision.superseded}
+    inspection-plan-revision-superseded-topic: ${ROUTING_IP_SUPERSEDED_TOPIC:quality.inspection-plan.revision.superseded}
