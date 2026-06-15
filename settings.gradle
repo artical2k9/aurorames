@@ -40,3 +40,6 @@ include 'services:labour-service'
 
 // MES-12 — Quality Inspection Planning
 include 'services:quality-service'
+
+// MES-9 — Manufacturing Routing
+include 'services:routing-service'

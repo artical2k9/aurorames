@@ -94,6 +94,18 @@ spring:
             - Path=/api/v1/labour/**
           filters:
             - StripPrefix=0
+        - id: routing-service-routes
+          uri: ${ROUTING_SERVICE_URL:http://routing-service:8100}
+          predicates:
+            - Path=/api/v1/routes/**
+          filters:
+            - StripPrefix=0
+        - id: routing-service-reference
+          uri: ${ROUTING_SERVICE_URL:http://routing-service:8100}
+          predicates:
+            - Path=/api/v1/routing/**
+          filters:
+            - StripPrefix=0
 
 management:
   endpoints:

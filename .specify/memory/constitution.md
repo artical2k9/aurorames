@@ -1,6 +1,26 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.3.0 → 1.4.0 (MINOR — routing-service added to Technology Stack)
+
+Amendment 2026-06-15:
+  - Technology Stack → Microservices: added `routing-service` (Manufacturing
+    Routing, ISA-95 Operations Definition — routes, operations, steps, process
+    segments). Count updated 16→17 domain services.
+  - Functional Domain Coverage: added "Manufacturing Routing" row (AS9100D
+    §8.5.1, AS9145; ISA-95 Operations Definition / Process Segment).
+  - Rationale: MES-9 (Manufacturing Routing) planning. Routing is the ISA-95
+    Operations Definition domain — distinct from Shop Floor Tracking
+    (execution, shopfloor-service) and Work Instructions (engineering-service).
+    Per §XI (one domain per service), routing requires its own service rather
+    than bundling into shopfloor-service (the epic's original wording) or
+    engineering-service. Owner approved the dedicated-service decision during
+    the MES-9 /speckit-plan session (2026-06-15).
+  - Version bumped MINOR (new service added to the stack; no principle changed).
+
+Templates requiring updates: none (no principle or gate change).
+
+---
 Version change: 1.2.1 → 1.3.0 (MINOR — §XI Service Boundary Integrity added)
 
 Amendment 2026-06-04:
@@ -356,6 +376,7 @@ dedicated spec before implementation begins.
 
 | Domain | AS Standards | Notes |
 |---|---|---|
+| Manufacturing Routing | AS9100D §8.5.1, AS9145 | ISA-95 Operations Definition / Process Segment; routes are the prerequisite for Work Orders |
 | Work Orders & Scheduling | AS9100D §8.1 | ISA-95 Production Schedule |
 | Shop Floor Tracking | AS9100D §8.5 | MTConnect / IPC-2591 |
 | Quality & Inspection | AS9100D, AS9102, AS9103, QIF | First Article, FAI |
@@ -444,7 +465,7 @@ The spec "Compliance References" section MUST cite each applicable standard.
 Services communicate synchronously via REST/JSON through the API gateway and
 asynchronously via Apache Kafka domain events.
 
-### Microservices (16 domain services + 2 infrastructure services)
+### Microservices (17 domain services + 2 infrastructure services)
 
 | Service | ISA-95 / Constitution Domain |
 |---|---|
@@ -453,6 +474,7 @@ asynchronously via Apache Kafka domain events.
 | `platform-service` | Multi-organisation framework, system config |
 | `audit-service` | System activity logging (Constitution §V) |
 | `work-order-service` | Work Orders & Scheduling |
+| `routing-service` | Manufacturing Routing (ISA-95 Operations Definition — routes, operations, steps, process segments) |
 | `shopfloor-service` | Shop Floor Tracking (MTConnect / IPC-2591) |
 | `quality-service` | Quality & Inspection (AS9102, AS9103, QIF) |
 | `receiving-service` | Material Receiving & Inbound Inspection |
@@ -598,4 +620,4 @@ Aurora MES/                          ← root Gradle project
   justification in the Complexity Tracking section of the plan.
 - This constitution supersedes all other informal conventions and practices.
 
-**Version**: 1.3.0 | **Ratified**: 2026-05-19 | **Last Amended**: 2026-06-04
+**Version**: 1.4.0 | **Ratified**: 2026-05-19 | **Last Amended**: 2026-06-15
