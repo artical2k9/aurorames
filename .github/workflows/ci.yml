@@ -70,3 +70,9 @@ jobs:
       - name: Build (type-check)
         working-directory: frontend/angular
         run: npm run build
+
+      # Unit tests (Vitest) were previously run only locally, so test regressions
+      # could reach Develop unnoticed. Run them in CI as a merge gate — ERR-MES-089.
+      - name: Unit tests
+        working-directory: frontend/angular
+        run: npm test

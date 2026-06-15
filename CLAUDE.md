@@ -234,8 +234,8 @@ Before raising any PR that includes Angular component files:
 ### Rule — lint is not a type-check; always build the frontend before raising a PR
 
 - For any PR touching `frontend/angular/**`, run **`npm run build`** locally (the Angular compiler's full template type-checker) in addition to `npm run lint` and `npm test`. A clean lint is not sufficient evidence the frontend compiles.
-- The `angular` job in `.github/workflows/ci.yml` includes a `Build (type-check)` step — do not remove it.
-- When adding any new CI build/type-check gate, first run it against `Develop` to confirm it is currently green, so the new gate does not retroactively block unrelated PRs.
+- The `angular` job in `.github/workflows/ci.yml` runs lint, then `Build (type-check)` (`npm run build`), then `Unit tests` (`npm test`) — do not remove these steps.
+- When adding any new CI build/type-check/test gate, first run it against `Develop` to confirm it is currently green, so the new gate does not retroactively block unrelated PRs.
 
 ---
 
