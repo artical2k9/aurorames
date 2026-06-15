@@ -15,7 +15,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -109,5 +112,65 @@ class RouteServiceTest {
         when(routes.findByOrgIdAndId(eq(ORG), eq(id))).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.get(ORG, id)).isInstanceOf(RoutingNotFoundException.class);
+    }
+
+    @Test
+    void get_existing_returnsDto() {
+        Route r = new Route();
+        r.setOrgId(ORG);
+        UUID id = UUID.randomUUID();
+        when(routes.findByOrgIdAndId(ORG, id)).thenReturn(Optional.of(r));
+        assertThat(service.get(ORG, id).status()).isEqualTo("DRAFT");
+    }
+
+    @Test
+    void list_noSearch_usesFindByOrgId() {
+        when(routes.findByOrgId(eq(ORG), any())).thenReturn(new PageImpl<>(List.of(new Route())));
+        assertThat(service.list(ORG, "  ", PageRequest.of(0, 20)).getContent()).hasSize(1);
+        verify(routes, never()).search(any(), any(), any());
+    }
+
+    @Test
+    void list_withSearch_usesSearch() {
+        when(routes.search(eq(ORG), eq("x"), any())).thenReturn(new PageImpl<>(List.of()));
+        service.list(ORG, "x", PageRequest.of(0, 20));
+        verify(routes).search(eq(ORG), eq("x"), any());
+    }
+
+    @Test
+    void patch_draft_updatesFields() {
+        Route r = new Route();
+        r.setOrgId(ORG);
+        UUID id = UUID.randomUUID();
+        when(routes.findByOrgIdAndId(ORG, id)).thenReturn(Optional.of(r));
+        when(routes.save(any(Route.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        RouteDto dto = service.patch(ORG, id,
+                new PatchRouteRequest("updated", UUID.randomUUID(), UUID.randomUUID(),
+                        UUID.randomUUID(), java.util.Map.of("k", "v")));
+
+        assertThat(dto.reasonForRevision()).isEqualTo("updated");
+        assertThat(dto.customFields()).containsEntry("k", "v");
+    }
+
+    @Test
+    void cancelDraft_draft_deletes() {
+        Route r = new Route();
+        r.setOrgId(ORG);
+        UUID id = UUID.randomUUID();
+        when(routes.findByOrgIdAndId(ORG, id)).thenReturn(Optional.of(r));
+        service.cancelDraft(ORG, id);
+        verify(routes).delete(r);
+    }
+
+    @Test
+    void cancelDraft_approved_throwsConflict() {
+        Route r = new Route();
+        r.setOrgId(ORG);
+        r.setStatus(RouteStatus.APPROVED);
+        UUID id = UUID.randomUUID();
+        when(routes.findByOrgIdAndId(ORG, id)).thenReturn(Optional.of(r));
+        assertThatThrownBy(() -> service.cancelDraft(ORG, id)).isInstanceOf(RoutingConflictException.class);
+        verify(routes, never()).delete(any());
     }
 }
