@@ -62,3 +62,11 @@ jobs:
       - name: Lint
         working-directory: frontend/angular
         run: npm run lint
+
+      # Production build runs the Angular compiler's full template type-checker,
+      # which catches type errors that ESLint does not (e.g. a template binding to
+      # a property that does not exist on the bound type). Lint alone let one such
+      # error reach Develop — see ERR-MES-089.
+      - name: Build (type-check)
+        working-directory: frontend/angular
+        run: npm run build
