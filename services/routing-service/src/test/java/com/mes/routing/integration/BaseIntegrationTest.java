@@ -33,7 +33,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
@@ -87,6 +86,7 @@ public abstract class BaseIntegrationTest {
                 case "SYSTEM_ADMIN" -> Set.of(
                         "routing:route:view",     "routing:route:manage",
                         "routing:route:approve",  "routing:operation:approve",
+                        "routing:route:unlock",
                         "routing:settings:view",  "routing:settings:manage");
                 case "ENGINEER" -> Set.of(
                         "routing:route:view", "routing:route:manage", "routing:settings:view");
@@ -129,9 +129,15 @@ public abstract class BaseIntegrationTest {
     }
 
     protected static String buildToken(String orgId, List<String> roles) {
+        // Stable subject so a route created and then edited via the same token kind shares one
+        // lock-holder (FR-031). Tests needing a distinct user pass an explicit subject.
+        return buildToken(orgId, roles, "test-user");
+    }
+
+    protected static String buildToken(String orgId, List<String> roles, String subject) {
         try {
             JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                    .subject("test-user-" + UUID.randomUUID())
+                    .subject(subject)
                     .claim("org_id", orgId)
                     .claim("roles", roles)
                     .expirationTime(new Date(System.currentTimeMillis() + 3_600_000L))

@@ -10,6 +10,7 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.Type;
 import org.hibernate.envers.Audited;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -60,6 +61,13 @@ public class Route extends OrgAuditedEntity {
     @Type(JsonBinaryType.class)
     @Column(name = "custom_fields", columnDefinition = "jsonb")
     private Map<String, Object> customFields;
+
+    /** Edit-lock holder (KC subject) — only this user may edit; null when unlocked (FR-031/032). */
+    @Column(name = "lock_holder", length = 255)
+    private String lockHolder;
+
+    @Column(name = "locked_at")
+    private Instant lockedAt;
 
     public UUID getPartId() {
         return partId;
@@ -155,5 +163,21 @@ public class Route extends OrgAuditedEntity {
 
     public void setCustomFields(Map<String, Object> customFields) {
         this.customFields = customFields;
+    }
+
+    public String getLockHolder() {
+        return lockHolder;
+    }
+
+    public void setLockHolder(String lockHolder) {
+        this.lockHolder = lockHolder;
+    }
+
+    public Instant getLockedAt() {
+        return lockedAt;
+    }
+
+    public void setLockedAt(Instant lockedAt) {
+        this.lockedAt = lockedAt;
     }
 }

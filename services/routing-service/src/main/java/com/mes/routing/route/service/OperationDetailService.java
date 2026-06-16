@@ -63,6 +63,7 @@ public class OperationDetailService {
     private final SkillRequirementRepository skills;
     private final WorkInstructionLinkRepository workInstructions;
     private final StepFileReferenceRepository stepFiles;
+    private final RouteLockGuard lockGuard;
 
     @SuppressWarnings("checkstyle:ParameterNumber")
     public OperationDetailService(RouteRepository routes, RouteOperationRepository operations,
@@ -75,7 +76,8 @@ public class OperationDetailService {
                                   ToolingRequirementRepository tooling,
                                   SkillRequirementRepository skills,
                                   WorkInstructionLinkRepository workInstructions,
-                                  StepFileReferenceRepository stepFiles) {
+                                  StepFileReferenceRepository stepFiles,
+                                  RouteLockGuard lockGuard) {
         this.routes = routes;
         this.operations = operations;
         this.workCentres = workCentres;
@@ -89,6 +91,7 @@ public class OperationDetailService {
         this.skills = skills;
         this.workInstructions = workInstructions;
         this.stepFiles = stepFiles;
+        this.lockGuard = lockGuard;
     }
 
     /** Resolves the operation, asserting the route is in-org and DRAFT; returns the owning org id. */
@@ -99,6 +102,7 @@ public class OperationDetailService {
             throw new RoutingConflictException("Operation detail is editable only while DRAFT (status "
                     + route.getStatus() + ")");
         }
+        lockGuard.requireHeld(route);
         operations.findByRouteIdAndId(routeId, opId)
                 .orElseThrow(() -> new RoutingNotFoundException("Operation not found: " + opId));
         return route.getOrgId();

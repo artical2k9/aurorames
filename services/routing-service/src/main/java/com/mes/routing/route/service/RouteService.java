@@ -28,10 +28,12 @@ public class RouteService {
 
     private final RouteRepository routes;
     private final RouteTypeRepository routeTypes;
+    private final RouteLockGuard lockGuard;
 
-    public RouteService(RouteRepository routes, RouteTypeRepository routeTypes) {
+    public RouteService(RouteRepository routes, RouteTypeRepository routeTypes, RouteLockGuard lockGuard) {
         this.routes = routes;
         this.routeTypes = routeTypes;
+        this.lockGuard = lockGuard;
     }
 
     public RouteDto create(UUID orgId, CreateRouteRequest req) {
@@ -54,6 +56,38 @@ public class RouteService {
         route.setRevision(1);
         route.setStatus(RouteStatus.DRAFT);
         route.setCustomFields(req.customFields());
+        lockGuard.acquireFor(route);   // creator holds the edit lock (FR-031)
+        return toDto(routes.save(route));
+    }
+
+    // ── Edit lock (FR-031/032/033) ───────────────────────────────────────────
+
+    public RouteDto acquireLock(UUID orgId, UUID id) {
+        Route route = require(orgId, id);
+        String me = lockGuard.currentSubject();
+        if (route.getLockHolder() != null && !route.getLockHolder().equals(me)) {
+            throw new RoutingConflictException(
+                    "Route is locked by another user (" + route.getLockHolder() + ")");
+        }
+        lockGuard.acquireFor(route);
+        return toDto(routes.save(route));
+    }
+
+    public RouteDto releaseLock(UUID orgId, UUID id) {
+        Route route = require(orgId, id);
+        String me = lockGuard.currentSubject();
+        if (route.getLockHolder() != null && !route.getLockHolder().equals(me)) {
+            throw new RoutingConflictException(
+                    "Only the lock holder can unlock this route; a privileged user can force-unlock");
+        }
+        lockGuard.release(route);
+        return toDto(routes.save(route));
+    }
+
+    /** Force-unlock regardless of holder; caller privilege (routing:route:unlock) enforced at the API. */
+    public RouteDto forceUnlock(UUID orgId, UUID id) {
+        Route route = require(orgId, id);
+        lockGuard.release(route);
         return toDto(routes.save(route));
     }
 
@@ -73,7 +107,7 @@ public class RouteService {
 
     public RouteDto patch(UUID orgId, UUID id, PatchRouteRequest req) {
         Route route = require(orgId, id);
-        requireDraft(route);
+        requireEditable(route);
         if (req.reasonForRevision() != null) {
             route.setReasonForRevision(req.reasonForRevision());
         }
@@ -94,7 +128,7 @@ public class RouteService {
 
     public void cancelDraft(UUID orgId, UUID id) {
         Route route = require(orgId, id);
-        requireDraft(route);
+        requireEditable(route);
         routes.delete(route);
     }
 
@@ -103,17 +137,20 @@ public class RouteService {
                 .orElseThrow(() -> new RoutingNotFoundException("Route not found: " + id));
     }
 
-    private static void requireDraft(Route route) {
+    /** Editable ⇔ route is DRAFT and the caller holds the edit lock (FR-025 + FR-031/032). */
+    private void requireEditable(Route route) {
         if (route.getStatus() != RouteStatus.DRAFT) {
             throw new RoutingConflictException(
                     "Route is not editable in status " + route.getStatus() + "; start a revision");
         }
+        lockGuard.requireHeld(route);
     }
 
     static RouteDto toDto(Route r) {
         return new RouteDto(r.getId(), r.getPartId(), r.getPartRevision(), r.getRouteTypeId(),
                 r.getBomId(), r.getBomRevisionId(), r.getInspectionPlanRevisionId(), r.getRevision(),
                 r.getStatus().name(), r.getReasonForRevision(), r.isBomRevisionSuperseded(),
-                r.isInspectionPlanRevisionSuperseded(), r.getCustomFields());
+                r.isInspectionPlanRevisionSuperseded(), r.getCustomFields(),
+                r.getLockHolder(), r.getLockedAt());
     }
 }

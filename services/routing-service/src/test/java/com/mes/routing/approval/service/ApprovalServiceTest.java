@@ -50,6 +50,7 @@ class ApprovalServiceTest {
     @Mock ApprovalRecordRepository approvals;
     @Mock KeycloakCredentialVerifier verifier;
     @Mock RouteApprovedPublisher publisher;
+    @Mock com.mes.routing.route.service.RouteLockGuard lockGuard;
 
     @InjectMocks ApprovalService service;
 

@@ -37,6 +37,7 @@ class RouteRevisionServiceTest {
     @Mock SignificantProcessTypeRepository significantProcessTypes;
     @Mock SupplierRepository suppliers;
 
+    @Mock RouteLockGuard lockGuard;
     @InjectMocks RouteRevisionService service;
 
     private Route route(RouteStatus status, int revision) {

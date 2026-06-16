@@ -48,15 +48,17 @@ public class OperationFlowService {
     private final OperationGroupRepository groups;
     private final OperationStepRepository steps;
     private final MutuallyExclusiveSetRepository meSets;
+    private final RouteLockGuard lockGuard;
 
     public OperationFlowService(RouteRepository routes, RouteOperationRepository operations,
                                 OperationGroupRepository groups, OperationStepRepository steps,
-                                MutuallyExclusiveSetRepository meSets) {
+                                MutuallyExclusiveSetRepository meSets, RouteLockGuard lockGuard) {
         this.routes = routes;
         this.operations = operations;
         this.groups = groups;
         this.steps = steps;
         this.meSets = meSets;
+        this.lockGuard = lockGuard;
     }
 
     // ── Groups (US5) ──────────────────────────────────────────────────────────────
@@ -271,6 +273,7 @@ public class OperationFlowService {
             throw new RoutingConflictException("Editable only while the route is DRAFT (status "
                     + route.getStatus() + "); start a revision");
         }
+        lockGuard.requireHeld(route);
         return route;
     }
 

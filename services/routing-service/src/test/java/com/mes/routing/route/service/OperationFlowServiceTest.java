@@ -51,6 +51,7 @@ class OperationFlowServiceTest {
     @Mock OperationStepRepository steps;
     @Mock MutuallyExclusiveSetRepository meSets;
 
+    @Mock RouteLockGuard lockGuard;
     @InjectMocks OperationFlowService service;
 
     private Route route(RouteStatus status) {

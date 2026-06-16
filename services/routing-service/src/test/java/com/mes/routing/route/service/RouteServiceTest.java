@@ -39,6 +39,7 @@ class RouteServiceTest {
 
     @Mock RouteRepository routes;
     @Mock RouteTypeRepository routeTypes;
+    @Mock RouteLockGuard lockGuard;
 
     @InjectMocks RouteService service;
 
