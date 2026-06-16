@@ -155,7 +155,8 @@ interface NavItem {
             @if (item.children) {
               <!-- ── Nav group (expandable) ── -->
               <div class="shell__nav-group"
-                   (mouseenter)="onGroupEnter(item.label, $event)" (mouseleave)="closeFlyout()">
+                   (mouseenter)="onGroupEnter(item.label, $event, item.children?.length ?? 0)"
+                   (mouseleave)="closeFlyout()">
                 <button class="shell__nav-item shell__nav-group-hdr"
                         [class.shell__nav-group-hdr--open]="isGroupExpanded(item.label)"
                         [title]="item.label"
@@ -233,12 +234,42 @@ interface NavItem {
                     <div class="shell__flyout-title">{{ item.label }}</div>
                     @for (child of item.children; track child.label) {
                       @if (child.disabled) {
-                        <span class="shell__flyout-item shell__flyout-item--disabled">{{ child.label }}</span>
+                        <span class="shell__flyout-item shell__flyout-item--disabled">
+                          <span class="shell__flyout-icon">
+                            @switch (child.iconKey) {
+                              @case ('work-orders')  { <svg lucideBlocks            [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('inventory')    { <svg lucideArchive           [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('receiving')    { <svg lucideClipboardCheck    [size]="15" [strokeWidth]="2"></svg> }
+                            }
+                          </span>
+                          <span>{{ child.label }}</span>
+                        </span>
                       } @else {
                         <a class="shell__flyout-item" [routerLink]="child.path"
                            routerLinkActive="shell__flyout-item--active"
                            [routerLinkActiveOptions]="{ exact: false }"
-                           (click)="closeFlyout()">{{ child.label }}</a>
+                           (click)="closeFlyout()">
+                          <span class="shell__flyout-icon">
+                            @switch (child.iconKey) {
+                              @case ('item-master')  { <svg lucidePackage           [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('bom')          { <svg lucideListTree          [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('eco')          { <svg lucidePencilRuler       [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('work-orders')  { <svg lucideBlocks            [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('inventory')    { <svg lucideArchive           [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('receiving')    { <svg lucideClipboardCheck    [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('udf')          { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('employees')    { <svg lucideContact           [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('skills')       { <svg lucideAward             [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('certifications') { <svg lucideBadgeCheck      [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('inspection-plans') { <svg lucideClipboardCheck [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('work-instructions') { <svg lucideFileText     [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('users')        { <svg lucideUsers             [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('uom')          { <svg lucideRuler             [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('settings')     { <svg lucideSettings          [size]="15" [strokeWidth]="2"></svg> }
+                            }
+                          </span>
+                          <span>{{ child.label }}</span>
+                        </a>
                       }
                     }
                   </div>
@@ -297,7 +328,8 @@ interface NavItem {
             @if (item.children) {
               <!-- ── Settings group (expandable) ── -->
               <div class="shell__nav-group"
-                   (mouseenter)="onGroupEnter(item.label, $event)" (mouseleave)="closeFlyout()">
+                   (mouseenter)="onGroupEnter(item.label, $event, item.children?.length ?? 0)"
+                   (mouseleave)="closeFlyout()">
                 <button class="shell__nav-item shell__nav-group-hdr"
                         [class.shell__nav-group-hdr--open]="isGroupExpanded(item.label)"
                         [title]="item.label"
@@ -354,12 +386,42 @@ interface NavItem {
                     <div class="shell__flyout-title">{{ item.label }}</div>
                     @for (child of item.children; track child.label) {
                       @if (child.disabled) {
-                        <span class="shell__flyout-item shell__flyout-item--disabled">{{ child.label }}</span>
+                        <span class="shell__flyout-item shell__flyout-item--disabled">
+                          <span class="shell__flyout-icon">
+                            @switch (child.iconKey) {
+                              @case ('work-orders')  { <svg lucideBlocks            [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('inventory')    { <svg lucideArchive           [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('receiving')    { <svg lucideClipboardCheck    [size]="15" [strokeWidth]="2"></svg> }
+                            }
+                          </span>
+                          <span>{{ child.label }}</span>
+                        </span>
                       } @else {
                         <a class="shell__flyout-item" [routerLink]="child.path"
                            routerLinkActive="shell__flyout-item--active"
                            [routerLinkActiveOptions]="{ exact: false }"
-                           (click)="closeFlyout()">{{ child.label }}</a>
+                           (click)="closeFlyout()">
+                          <span class="shell__flyout-icon">
+                            @switch (child.iconKey) {
+                              @case ('item-master')  { <svg lucidePackage           [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('bom')          { <svg lucideListTree          [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('eco')          { <svg lucidePencilRuler       [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('work-orders')  { <svg lucideBlocks            [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('inventory')    { <svg lucideArchive           [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('receiving')    { <svg lucideClipboardCheck    [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('udf')          { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('employees')    { <svg lucideContact           [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('skills')       { <svg lucideAward             [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('certifications') { <svg lucideBadgeCheck      [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('inspection-plans') { <svg lucideClipboardCheck [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('work-instructions') { <svg lucideFileText     [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('users')        { <svg lucideUsers             [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('uom')          { <svg lucideRuler             [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('settings')     { <svg lucideSettings          [size]="15" [strokeWidth]="2"></svg> }
+                            }
+                          </span>
+                          <span>{{ child.label }}</span>
+                        </a>
                       }
                     }
                   </div>
@@ -411,10 +473,14 @@ export class AppShellComponent implements OnInit {
   flyoutLeft = 0;
 
   /** Open the hover-flyout for a group, anchored to the hovered icon, while collapsed. */
-  onGroupEnter(label: string, ev: MouseEvent): void {
+  onGroupEnter(label: string, ev: MouseEvent, childCount: number): void {
     if (!this.collapsed) return;
     const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
-    this.flyoutTop = rect.top;
+    // Estimate flyout height (title + items + padding) and clamp into the viewport so groups
+    // near the bottom (e.g. Settings) open upward instead of running off-screen.
+    const estHeight = 30 + childCount * 32 + 12;
+    const maxTop = window.innerHeight - estHeight - 8;
+    this.flyoutTop = Math.max(8, Math.min(rect.top, maxTop));
     this.flyoutLeft = rect.right;
     this.flyoutGroup = label;
   }
