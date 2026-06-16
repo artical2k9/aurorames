@@ -11,19 +11,58 @@
     @switch (active) {
 
       @case ('Overview') {
-        <dl class="odp__fields">
-          <div><dt>Operation #</dt><dd>{{ operation.operationNumber }}</dd></div>
-          <div><dt>Sequence #</dt><dd>{{ operation.sequenceNumber }}</dd></div>
-          <div><dt>Type</dt><dd>{{ operation.derivedType === 'PARALLEL' ? 'Parallel' : 'Normal' }}</dd></div>
-          <div><dt>Status</dt><dd>{{ operation.operationStatus }}</dd></div>
-          <div class="odp__wide"><dt>Description</dt><dd>{{ operation.description ?? '—' }}</dd></div>
-          <div class="odp__wide"><dt>Work Centre(s)</dt>
-            <dd>{{ resources.length ? '' : '—' }}
-              @for (r of resources; track r.id) { <span class="odp__chip">{{ workCentreName(r.workCentreId) }}</span> }
-            </dd>
+        <div class="odp__ovgrid">
+          <label class="odp__ovfield">
+            <span class="odp__ovlbl">Operation #</span>
+            @if (editable) {
+              <input pInputText type="number" [(ngModel)]="overviewDraft.operationNumber"
+                     (blur)="saveOverview('operationNumber')" />
+            } @else { <span>{{ operation.operationNumber }}</span> }
+          </label>
+          <label class="odp__ovfield">
+            <span class="odp__ovlbl">Sequence #</span>
+            @if (editable) {
+              <input pInputText type="number" [(ngModel)]="overviewDraft.sequenceNumber"
+                     (blur)="saveOverview('sequenceNumber')" />
+            } @else { <span>{{ operation.sequenceNumber }}</span> }
+          </label>
+          <div class="odp__ovfield">
+            <span class="odp__ovlbl">Type</span>
+            <span>{{ operation.derivedType === 'PARALLEL' ? 'Parallel' : 'Normal' }}</span>
           </div>
-        </dl>
-        <p class="odp__hint">Edit sequence, number and grouping in the operations grid; edit content in the tabs.</p>
+          <div class="odp__ovfield">
+            <span class="odp__ovlbl">Status</span>
+            <span>{{ operation.operationStatus }}</span>
+          </div>
+          <label class="odp__ovfield odp__wide">
+            <span class="odp__ovlbl">Description</span>
+            @if (editable) {
+              <input pInputText [(ngModel)]="overviewDraft.description" (blur)="saveOverview('description')" />
+            } @else { <span>{{ operation.description ?? '—' }}</span> }
+          </label>
+          <div class="odp__ovfield odp__wide">
+            <span class="odp__ovlbl">Work Centre / Equipment</span>
+            <div class="odp__wcs">
+              @for (r of resources; track r.id) {
+                <span class="odp__chip">{{ workCentreName(r.workCentreId) }}
+                  @if (editable) { <button type="button" class="odp__chip-x" (click)="deleteResource(r.id)">✕</button> }
+                </span>
+              }
+              @if (!resources.length) { <span class="odp__muted">— none —</span> }
+            </div>
+            @if (editable) {
+              <div class="odp__add">
+                <select [(ngModel)]="resourceDraft.workCentreId">
+                  <option [ngValue]="undefined">Add work centre…</option>
+                  @for (w of workCentres; track w.id) { <option [ngValue]="w.id">{{ w.name }}</option> }
+                </select>
+                <p-button label="Add" size="small" [disabled]="!resourceDraft.workCentreId" (onClick)="addResource()" />
+              </div>
+            }
+          </div>
+        </div>
+        <p class="odp__hint">Type (Normal/Parallel) is derived from the sequence number. Optional/OSP &
+          significant process are on the Attributes tab; grouping & steps are managed from the operations sidebar.</p>
       }
 
       @case ('Attributes') {

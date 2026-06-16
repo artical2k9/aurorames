@@ -67,6 +67,7 @@ export class OperationDetailPanelComponent implements OnChanges {
   stepFiles: StepFileReferenceDto[] = [];
 
   // drafts
+  overviewDraft: { operationNumber?: number; sequenceNumber?: number; description?: string } = {};
   resourceDraft: { workCentreId?: string } = {};
   labourDraft: Partial<LabourPlanLineDto> = { labourActivityType: 'RUN', basis: 'PER_LOT' };
   materialDraft: { bomLineId?: string; mandatory?: boolean } = {};
@@ -83,8 +84,26 @@ export class OperationDetailPanelComponent implements OnChanges {
     if (!this.workCentres.length) this.loadReferenceData();
     if (this.operation && this.operation.id !== this.loadedFor) {
       this.loadedFor = this.operation.id;
+      this.syncOverview();
       this.reload();
     }
+  }
+
+  private syncOverview(): void {
+    this.overviewDraft = {
+      operationNumber: this.operation.operationNumber,
+      sequenceNumber: this.operation.sequenceNumber,
+      description: this.operation.description,
+    };
+  }
+
+  /** Save one Overview field (op number / sequence / description) if it changed. */
+  saveOverview(field: 'operationNumber' | 'sequenceNumber' | 'description'): void {
+    const value = this.overviewDraft[field];
+    if (value === this.operation[field]) return;
+    if (field === 'operationNumber') this.patchOp({ operationNumber: value as number });
+    else if (field === 'sequenceNumber') this.patchOp({ sequenceNumber: value as number });
+    else this.patchOp({ description: value as string });
   }
 
   select(tab: Tab): void {
@@ -159,8 +178,12 @@ export class OperationDetailPanelComponent implements OnChanges {
   patchOp(patch: Partial<OperationDto>): void {
     this.api.patchOperation(this.routeId, this.operation.id, patch)
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-        next: op => { this.operation = op; this.changed.emit(); this.cdr.detectChanges(); },
-        error: err => { this.error = err?.error?.error ?? 'Update failed'; this.reload(); this.cdr.detectChanges(); },
+        next: op => { this.operation = op; this.syncOverview(); this.changed.emit(); this.cdr.detectChanges(); },
+        error: err => {
+          this.error = err?.error?.error ?? 'Update failed';
+          this.syncOverview();   // revert the edited field to the persisted value
+          this.cdr.detectChanges();
+        },
       });
   }
 
