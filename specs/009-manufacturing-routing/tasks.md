@@ -347,3 +347,36 @@ Tests written and FAILING first → entities → repositories → services → e
 - Tests MUST fail before implementation (§II). Test failures during dev → tracked defects, resolved within the feature.
 - Backend on Windows: `DOCKER_HOST='npipe:////./pipe/docker_engine'` for Testcontainers (api.version 1.41).
 - Per-PR: pre-PR checklist (sonar sources/tests, deployment steps, usage cost, retrospective spot-check).
+
+---
+
+## Phase 16: Post-MVP gap-closure & design refinements [PR 7+]
+
+Captured from the design review (wireframes in Penpot, Aurora MES / Shell page). Sequenced after the dark+light wireframes are signed off. The route editor is being reworked to a **left operations sidebar + tabbed operation-detail** layout (Overview · Attributes · Resources · BOM · Documents · Properties · Variables · Tools · Skills).
+
+### Route locking & concurrency (FR-031/032/033)
+- [ ] T095 [P] Unit + IT: acquire/release lock, holder-only edit, force-unlock privilege, read-only for non-holders
+- [ ] T096 `RouteLock` state on route (lockHolder, lockedAt) + acquire/release/force-unlock service; gate every mutating route/operation endpoint on lock ownership
+- [ ] T097 Register `routing:route:unlock` privilege (auto-grant SYSTEM_ADMIN, ERR-MES-075) + audit force-unlock
+- [ ] T098 Frontend: header lock toggle wired (acquire/release), read-only rendering for non-holders, force-unlock action for privileged users
+
+### Operation detail in the tabbed editor (gaps 1–5, 7)
+- [ ] T099 Rework `route-detail` into sidebar (add/duplicate/delete/search ops) + tabbed detail editor matching the wireframes
+- [ ] T100 Overview tab = inline-editable Seq · Op# · Description · Work Centre row (replace modal with in-grid add)
+- [ ] T101 Attributes tab: behaviour, **Labour Type Direct/Indirect (FR-013a)**, Optional/OSP/Mutual-Excl. toggle switches, significant-process select
+- [ ] T102 Resources tab: labour-plan editor (Labour Plan Type × Setup/Run/Inspection/Transport + basis) + work centres — closes the OSP dead-end (gap 2)
+- [ ] T103 BOM / Documents / Tools / Skills tabs: material consumption, WI+STEP, tooling, skill requirements editors
+- [ ] T104 Variables tab: quality variables editor incl. per-characteristic **Req. Skill(s)** column
+- [ ] T105 Operation-revision UI (start / content-edit / submit / approve) + approval-history view (gaps 3, 4); group/step-level ME in the ME dialog (gap 5)
+- [ ] T106 Route View fixes: part-number column (resolve partId→partNumber), create-revision action icon; Save Draft button + header edit
+
+### Skills at three levels (data model)
+- [ ] T107 Extend `SkillRequirement` to be linkable to operation **and** quality variable (`QualityVariableRequirement`) **and** tooling (`ToolingRequirement`); endpoints + ITs
+
+### Cross-service validation (gap 6)
+- [ ] T108 Validate external refs (`bomLineId`, `inspectionCharacteristicId`, `skillId`, `workInstructionId`) against inventory/quality/labour/engineering read APIs (outbound clients + WireMock) — scope to available read endpoints
+
+### Custom properties consumer (FR-034)
+- [ ] T109 Routing Properties tab consumes **scoped custom properties** (route type / part type) from the Custom Properties engine; degrade gracefully when none scoped. **Depends on the separate Custom Properties epic (below).**
+
+> **Custom Properties engine = separate epic (wider product).** A UDF is global (every screen); a custom property is scoped to a route type, a part type, or variables within a specific inspection plan. This definition+scoping engine spans routing, item-master and inspection-plans and MUST be tracked as its own Jira epic + spec-kit spec — not inside MES-9. Action: raise the epic and run `/speckit-from-jira` for it; MES-9 only consumes it (T109).
