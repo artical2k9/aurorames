@@ -155,7 +155,7 @@ interface NavItem {
             @if (item.children) {
               <!-- ── Nav group (expandable) ── -->
               <div class="shell__nav-group"
-                   (mouseenter)="onGroupEnter(item.label)" (mouseleave)="closeFlyout()">
+                   (mouseenter)="onGroupEnter(item.label, $event)" (mouseleave)="closeFlyout()">
                 <button class="shell__nav-item shell__nav-group-hdr"
                         [class.shell__nav-group-hdr--open]="isGroupExpanded(item.label)"
                         [title]="item.label"
@@ -229,7 +229,7 @@ interface NavItem {
                   </div>
                 }
                 @if (collapsed && flyoutGroup === item.label && item.children?.length) {
-                  <div class="shell__flyout">
+                  <div class="shell__flyout" [style.top.px]="flyoutTop" [style.left.px]="flyoutLeft">
                     <div class="shell__flyout-title">{{ item.label }}</div>
                     @for (child of item.children; track child.label) {
                       @if (child.disabled) {
@@ -297,7 +297,7 @@ interface NavItem {
             @if (item.children) {
               <!-- ── Settings group (expandable) ── -->
               <div class="shell__nav-group"
-                   (mouseenter)="onGroupEnter(item.label)" (mouseleave)="closeFlyout()">
+                   (mouseenter)="onGroupEnter(item.label, $event)" (mouseleave)="closeFlyout()">
                 <button class="shell__nav-item shell__nav-group-hdr"
                         [class.shell__nav-group-hdr--open]="isGroupExpanded(item.label)"
                         [title]="item.label"
@@ -350,7 +350,7 @@ interface NavItem {
                   </div>
                 }
                 @if (collapsed && flyoutGroup === item.label && item.children?.length) {
-                  <div class="shell__flyout">
+                  <div class="shell__flyout" [style.top.px]="flyoutTop" [style.left.px]="flyoutLeft">
                     <div class="shell__flyout-title">{{ item.label }}</div>
                     @for (child of item.children; track child.label) {
                       @if (child.disabled) {
@@ -406,10 +406,17 @@ export class AppShellComponent implements OnInit {
 
   /** Label of the group whose hover-flyout is open while the rail is collapsed. */
   flyoutGroup: string | null = null;
+  /** Viewport coordinates for the fixed-positioned flyout (escapes the rail's overflow clip). */
+  flyoutTop = 0;
+  flyoutLeft = 0;
 
-  /** Open the hover-flyout for a group, but only while the rail is collapsed. */
-  onGroupEnter(label: string): void {
-    if (this.collapsed) this.flyoutGroup = label;
+  /** Open the hover-flyout for a group, anchored to the hovered icon, while collapsed. */
+  onGroupEnter(label: string, ev: MouseEvent): void {
+    if (!this.collapsed) return;
+    const rect = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+    this.flyoutTop = rect.top;
+    this.flyoutLeft = rect.right;
+    this.flyoutGroup = label;
   }
 
   closeFlyout(): void {
