@@ -1,22 +1,29 @@
 package com.mes.routing.route.service;
 
+import com.mes.routing.referencedata.repository.LabourPlanTypeRepository;
 import com.mes.routing.referencedata.repository.SignificantProcessTypeRepository;
 import com.mes.routing.referencedata.repository.SupplierRepository;
 import com.mes.routing.route.api.dto.RouteDtos.CreateOperationRequest;
 import com.mes.routing.route.api.dto.RouteDtos.OperationDto;
 import com.mes.routing.route.api.dto.RouteDtos.PatchOperationRequest;
+import com.mes.routing.route.domain.LabourPlanLine;
 import com.mes.routing.route.domain.Route;
 import com.mes.routing.route.domain.RouteOperation;
 import com.mes.routing.route.domain.RouteStatus;
+import com.mes.routing.route.repository.LabourPlanLineRepository;
 import com.mes.routing.route.repository.RouteOperationRepository;
 import com.mes.routing.route.repository.RouteRepository;
 import com.mes.routing.service.RoutingConflictException;
 import com.mes.routing.service.RoutingNotFoundException;
+import com.mes.routing.service.RoutingValidationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Route operation authoring (US2). Operations are editable only while the route is DRAFT.
@@ -31,15 +38,21 @@ public class RouteOperationService {
     private final RouteOperationRepository operations;
     private final SignificantProcessTypeRepository significantProcessTypes;
     private final SupplierRepository suppliers;
+    private final LabourPlanLineRepository labourPlanLines;
+    private final LabourPlanTypeRepository labourPlanTypes;
 
     public RouteOperationService(RouteRepository routes,
                                  RouteOperationRepository operations,
                                  SignificantProcessTypeRepository significantProcessTypes,
-                                 SupplierRepository suppliers) {
+                                 SupplierRepository suppliers,
+                                 LabourPlanLineRepository labourPlanLines,
+                                 LabourPlanTypeRepository labourPlanTypes) {
         this.routes = routes;
         this.operations = operations;
         this.significantProcessTypes = significantProcessTypes;
         this.suppliers = suppliers;
+        this.labourPlanLines = labourPlanLines;
+        this.labourPlanTypes = labourPlanTypes;
     }
 
     @Transactional(readOnly = true)
@@ -68,7 +81,9 @@ public class RouteOperationService {
         op.setSignificantProcessTypeId(req.significantProcessTypeId());
         op.setSupplierId(req.supplierId());
         op.setClocking(req.clocking() == null || req.clocking());
-        return toDto(operations.save(op), routeId);
+        RouteOperation saved = operations.save(op);
+        requireOspLabourResource(saved);
+        return toDto(saved, routeId);
     }
 
     public OperationDto patch(UUID orgId, UUID routeId, UUID opId, PatchOperationRequest req) {
@@ -105,7 +120,29 @@ public class RouteOperationService {
         if (req.clocking() != null) {
             op.setClocking(req.clocking());
         }
-        return toDto(operations.save(op), routeId);
+        RouteOperation saved = operations.save(op);
+        requireOspLabourResource(saved);
+        return toDto(saved, routeId);
+    }
+
+    /**
+     * An OSP operation must carry an OSP-type labour resource (FR-009a edge case): the OSP labour
+     * plan line is what triggers the ERP requisition. Add the OSP labour line before flagging the
+     * operation OSP. Filters in Java to avoid the Hibernate 6.5 parameterised-join pitfall.
+     */
+    private void requireOspLabourResource(RouteOperation op) {
+        if (!op.isOsp()) {
+            return;
+        }
+        Set<UUID> planTypeIds = labourPlanLines.findByOperationIdOrderByCreatedAt(op.getId()).stream()
+                .map(LabourPlanLine::getLabourPlanTypeId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        boolean hasOspResource = !planTypeIds.isEmpty() && labourPlanTypes.findAllById(planTypeIds).stream()
+                .anyMatch(t -> "OSP".equalsIgnoreCase(t.getCode()));
+        if (!hasOspResource) {
+            throw new RoutingValidationException("OSP operation requires an OSP-type labour resource; "
+                    + "add an OSP labour plan line before flagging the operation OSP");
+        }
     }
 
     public void delete(UUID orgId, UUID routeId, UUID opId) {
