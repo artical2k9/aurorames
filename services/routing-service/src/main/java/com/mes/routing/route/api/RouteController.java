@@ -92,6 +92,26 @@ public class RouteController {
         return ResponseEntity.noContent().build();
     }
 
+    // ── Edit lock (FR-031/032/033) ───────────────────────────────────────────
+
+    @PostMapping("/{id}/lock")
+    @RequiresPrivilege("routing:route:manage")
+    public RouteDto acquireLock(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return routeService.acquireLock(org(jwt), id);
+    }
+
+    @PostMapping("/{id}/unlock")
+    @RequiresPrivilege("routing:route:manage")
+    public RouteDto releaseLock(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return routeService.releaseLock(org(jwt), id);
+    }
+
+    @PostMapping("/{id}/force-unlock")
+    @RequiresPrivilege("routing:route:unlock")
+    public RouteDto forceUnlock(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID id) {
+        return routeService.forceUnlock(org(jwt), id);
+    }
+
     // ── Operations ───────────────────────────────────────────────────────────
 
     @GetMapping("/{id}/operations")

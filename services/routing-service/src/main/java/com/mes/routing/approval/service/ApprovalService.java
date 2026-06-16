@@ -54,17 +54,20 @@ public class ApprovalService {
     private final ApprovalRecordRepository approvals;
     private final KeycloakCredentialVerifier verifier;
     private final RouteApprovedPublisher publisher;
+    private final com.mes.routing.route.service.RouteLockGuard lockGuard;
 
     public ApprovalService(RouteRepository routes, RouteOperationRepository operations,
                            SignificantProcessTypeRepository significantProcessTypes,
                            ApprovalRecordRepository approvals, KeycloakCredentialVerifier verifier,
-                           RouteApprovedPublisher publisher) {
+                           RouteApprovedPublisher publisher,
+                           com.mes.routing.route.service.RouteLockGuard lockGuard) {
         this.routes = routes;
         this.operations = operations;
         this.significantProcessTypes = significantProcessTypes;
         this.approvals = approvals;
         this.verifier = verifier;
         this.publisher = publisher;
+        this.lockGuard = lockGuard;
     }
 
     // ── Route approval lifecycle (US7) ──────────────────────────────────────────────
@@ -224,6 +227,7 @@ public class ApprovalService {
 
     private void markRouteApproved(UUID routeId, Route route, Jwt jwt) {
         route.setStatus(RouteStatus.APPROVED);
+        lockGuard.release(route);   // approval/publish releases the edit lock (FR-032)
         routes.save(route);
         operations.findByRouteIdOrderBySequenceNumberAscOperationNumberAsc(routeId).forEach(op -> {
             op.setOperationStatus(OperationStatus.APPROVED);

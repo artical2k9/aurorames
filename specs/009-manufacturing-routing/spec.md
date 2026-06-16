@@ -18,6 +18,12 @@
 - Q: Canonical names for the two labour-type concepts (to remove the "Labour Planning Type" vs "Labour Plan Type" collision)? → A: The fixed set Setup/Run/Inspection/Transport is the **Labour Activity Type**; the extensible set Machine/People/OSP is the **Labour Plan Type**. (Terminology normalised across the spec.)
 - Q: Canonical name for the basic/default operation, group and step flow-control type, given "Standard" already names the default Route Type? → A: Use **Normal** for the operation/group/step basic type; reserve **Standard** exclusively for the Route Type. The type indicator shows Normal / Optional / Parallel / Mutually Exclusive. (Terminology normalised across the spec.)
 
+### Session 2026-06-16
+
+- Q: What does the route "lock" control? → A: A route is edited under an exclusive **edit lock**. To edit a draft the user must hold the lock; while held, only the lock-holder can edit and all other users see it read-only. The lock is released when the holder unlocks, or when the route is approved/published. A user with a dedicated **force-unlock privilege** can release a lock held by another user (e.g. the holder is on leave). (New FR-031/032/033.)
+- Q: What does the operation "Labour Type" (Direct/Indirect) on the Attributes tab mean? → A: It classifies how the operation's labour is **charged** — **Direct** labour is allocated to the labour code defined on the operation's Resources tab; **Indirect** labour is charged to a central cost centre rather than the labour code. (New FR-013a.)
+- Q: Are the Properties-tab "custom properties" the same as UDFs? → A: No. A **UDF** is global — added once, it appears on every screen. **Custom properties** are **scoped** — defined against a specific route type, a specific part type, or against variables within a specific inspection plan. This scoped custom-property engine is a **wider-product capability** beyond MES-9 and is tracked as its own epic; routing's Properties tab is one consumer of it. (New FR-034; separate epic.)
+
 ## User Scenarios & Testing *(mandatory)*
 
 A **route** describes how a part is made: a **route header** (what it applies to), an ordered set of **route operations** (the logical manufacturing steps), and optional **operation steps** (the breakdown of a complex operation). A process engineer authors a route, attaches resources and standards to each operation, takes it through approval, and revises it over time. Approved routes are consumed downstream by Work Orders and Shop Floor execution.
@@ -270,6 +276,7 @@ The route creation/edit screen for adding operations, steps and grouping offers 
 
 - **FR-012**: System MUST allow assigning one or more eligible machines/workstations (from the Settings-maintained work-centre list, FR-004e) to an operation and marking the operation clocking or non-clocking.
 - **FR-013**: System MUST allow a labour code (from the Settings-maintained labour-code list) per labour plan type (default plan types Machine, People, OSP; plan types are user-extensible via FR-004e).
+- **FR-013a**: System MUST allow classifying an operation's **Labour Type** as **Direct** or **Indirect** (an operation attribute). Direct labour MUST be charged to the operation's assigned labour code (FR-013); Indirect labour MUST be charged to a central cost centre rather than the labour code. The classification is carried as routing metadata; the actual cost posting is performed by downstream costing/execution.
 - **FR-014**: System MUST allow standard times per labour activity type — Setup, Run, Inspection, Transport (fixed, not user-extensible) — each with a per-item or per-lot basis. (These four are the *Labour Activity Types*, distinct from the extensible *Labour Plan Types* Machine/People/OSP in FR-013.)
 - **FR-015**: System MUST allow specifying which BOM material lines are consumed at an operation and whether consumption is mandatory.
 - **FR-016**: System MUST allow associating quality variables (from the linked inspection-plan revision) to be collected at an operation.
@@ -290,6 +297,12 @@ The route creation/edit screen for adding operations, steps and grouping offers 
 - **FR-022c**: Both views MUST operate on the same underlying route model so that a change in one view is consistently reflected in the other and in the persisted route (no divergence between representations).
 - **FR-022d**: The graphical view MUST render sequence, parallel branches, mutually-exclusive sets, groups, OSP and significant-process operations consistently with their type indicators (FR-009b).
 
+**Route locking & concurrency**
+
+- **FR-031**: System MUST require a user to hold an exclusive **edit lock** on a route before making any edit to it or its draft. Acquiring the lock records the lock-holder (user + timestamp); a route can be locked by at most one user at a time.
+- **FR-032**: While a route is locked, the system MUST permit edits only by the lock-holder and MUST present the route as **read-only** to all other users. The lock MUST be released when the holder explicitly unlocks, or automatically when the route is approved/published. The route header MUST surface the lock state and the lock-holder.
+- **FR-033**: System MUST allow a user with a dedicated **force-unlock privilege** (`routing:route:unlock`) to release a lock held by another user (e.g. the holder is unavailable), recording who force-unlocked and when in the audit trail (§V). Users without this privilege MUST NOT be able to take or break another user's lock.
+
 **Approval**
 
 - **FR-023**: System MUST require a draft route to be submitted and approved via e-signature before it can be consumed by Work Orders.
@@ -306,6 +319,10 @@ The route creation/edit screen for adding operations, steps and grouping offers 
 **Labour planning export**
 
 - **FR-030**: System MUST be able to export an approved route's labour plan (per-operation Labour Activity Type times — Setup/Run/Inspection/Transport — with basis and Labour Plan Type) in a format consumable by external schedulers/ERPs. Execution MUST NOT depend on labour plans being exported.
+
+**Custom properties**
+
+- **FR-034**: System MUST surface, on the route/operation Properties tab, any **custom properties** scoped to the route's route type (and applicable part type), allowing the engineer to record their values. Custom properties are **distinct from global UDFs**: a UDF appears on every screen, whereas a custom property is defined against a specific scope (route type, part type, or variables within a specific inspection plan). The scoped custom-property **definition engine** (defining properties and their scopes, and surfacing them across route type / part type / inspection-plan-variable consumers) is a **wider-product capability tracked as a separate epic** (see "Custom Properties" epic); MES-9 consumes it on the routing Properties tab and MUST degrade gracefully (show none) when no custom properties are scoped to the route.
 
 ### Key Entities *(include if feature involves data)*
 

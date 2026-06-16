@@ -382,6 +382,8 @@ export class AppShellComponent implements OnInit {
         { label: 'BOM', iconKey: 'bom', path: '/bom' },
         { label: 'ECO', iconKey: 'eco', path: '/ecos' },
         { label: 'Work Instructions', iconKey: 'work-instructions', path: '/engineering/work-instructions' },
+        { label: 'Routes', iconKey: 'work-instructions', path: '/routing' },
+        { label: 'Routing Settings', iconKey: 'settings', path: '/routing/settings' },
       ],
     },
     {

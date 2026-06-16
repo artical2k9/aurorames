@@ -40,19 +40,22 @@ public class RouteOperationService {
     private final SupplierRepository suppliers;
     private final LabourPlanLineRepository labourPlanLines;
     private final LabourPlanTypeRepository labourPlanTypes;
+    private final RouteLockGuard lockGuard;
 
     public RouteOperationService(RouteRepository routes,
                                  RouteOperationRepository operations,
                                  SignificantProcessTypeRepository significantProcessTypes,
                                  SupplierRepository suppliers,
                                  LabourPlanLineRepository labourPlanLines,
-                                 LabourPlanTypeRepository labourPlanTypes) {
+                                 LabourPlanTypeRepository labourPlanTypes,
+                                 RouteLockGuard lockGuard) {
         this.routes = routes;
         this.operations = operations;
         this.significantProcessTypes = significantProcessTypes;
         this.suppliers = suppliers;
         this.labourPlanLines = labourPlanLines;
         this.labourPlanTypes = labourPlanTypes;
+        this.lockGuard = lockGuard;
     }
 
     @Transactional(readOnly = true)
@@ -182,6 +185,7 @@ public class RouteOperationService {
                     "Operations are editable only while the route is DRAFT (status "
                             + route.getStatus() + "); start a revision");
         }
+        lockGuard.requireHeld(route);
         return route;
     }
 

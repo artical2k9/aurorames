@@ -68,6 +68,7 @@ class OperationDetailServiceTest {
     @Mock WorkInstructionLinkRepository workInstructions;
     @Mock StepFileReferenceRepository stepFiles;
 
+    @Mock RouteLockGuard lockGuard;
     @InjectMocks OperationDetailService service;
 
     private void draftOperationExists() {

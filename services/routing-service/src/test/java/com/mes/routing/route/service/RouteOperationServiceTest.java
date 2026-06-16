@@ -50,6 +50,7 @@ class RouteOperationServiceTest {
     @Mock LabourPlanLineRepository labourPlanLines;
     @Mock LabourPlanTypeRepository labourPlanTypes;
 
+    @Mock RouteLockGuard lockGuard;
     @InjectMocks RouteOperationService service;
 
     /** Make the operation under test carry an OSP-type labour resource so osp=true validates. */

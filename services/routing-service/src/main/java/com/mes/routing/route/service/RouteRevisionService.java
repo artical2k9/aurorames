@@ -37,17 +37,19 @@ public class RouteRevisionService {
     private final RouteOperationService operationService;
     private final SignificantProcessTypeRepository significantProcessTypes;
     private final SupplierRepository suppliers;
+    private final RouteLockGuard lockGuard;
 
     public RouteRevisionService(RouteRepository routes, RouteOperationRepository operations,
                                 RouteService routeService, RouteOperationService operationService,
                                 SignificantProcessTypeRepository significantProcessTypes,
-                                SupplierRepository suppliers) {
+                                SupplierRepository suppliers, RouteLockGuard lockGuard) {
         this.routes = routes;
         this.operations = operations;
         this.routeService = routeService;
         this.operationService = operationService;
         this.significantProcessTypes = significantProcessTypes;
         this.suppliers = suppliers;
+        this.lockGuard = lockGuard;
     }
 
     /** Start a route revision: APPROVED → DRAFT, revision + 1. Structural edits then require approval. */
@@ -62,6 +64,7 @@ public class RouteRevisionService {
         if (reasonForRevision != null && !reasonForRevision.isBlank()) {
             route.setReasonForRevision(reasonForRevision);
         }
+        lockGuard.acquireFor(route);   // reviser holds the edit lock for the new revision
         routes.save(route);
         return routeService.get(orgId, routeId);
     }
@@ -78,13 +81,15 @@ public class RouteRevisionService {
         op.setOperationRevision(op.getOperationRevision() + 1);
         op.setGoverningRouteRevision(route.getRevision());
         operations.save(op);
+        lockGuard.acquireFor(route);   // reviser holds the lock while editing the operation revision
+        routes.save(route);
         return operationService.get(orgId, routeId, opId);
     }
 
     /** Content-only edits during an operation revision; sequence and grouping are locked. */
     public OperationDto patchOperationContent(UUID orgId, UUID routeId, UUID opId,
                                               PatchOperationContentRequest req) {
-        requireRoute(orgId, routeId);
+        lockGuard.requireHeld(requireRoute(orgId, routeId));
         RouteOperation op = requireOperation(routeId, opId);
         if (op.getOperationStatus() != OperationStatus.DRAFT) {
             throw new RoutingConflictException(

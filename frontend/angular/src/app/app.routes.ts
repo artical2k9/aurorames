@@ -138,6 +138,24 @@ export const routes: Routes = [
             .then(m => m.InspectionPlanDetailComponent),
       },
       {
+        path: 'routing',
+        loadComponent: () =>
+          import('./features/routing/pages/route-list/route-list.component')
+            .then(m => m.RouteListComponent),
+      },
+      {
+        path: 'routing/settings',
+        loadComponent: () =>
+          import('./features/routing/pages/settings/routing-settings.component')
+            .then(m => m.RoutingSettingsComponent),
+      },
+      {
+        path: 'routing/:id',
+        loadComponent: () =>
+          import('./features/routing/pages/route-detail/route-detail.component')
+            .then(m => m.RouteDetailComponent),
+      },
+      {
         path: 'engineering/work-instructions',
         loadComponent: () =>
           import('./features/work-instructions/pages/work-instruction-list/work-instruction-list.component')
