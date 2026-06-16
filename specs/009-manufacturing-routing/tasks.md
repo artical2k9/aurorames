@@ -361,8 +361,8 @@ Captured from the design review (wireframes in Penpot, Aurora MES / Shell page).
 - [x] T098 Frontend: header lock toggle wired (acquire/release), read-only rendering for non-holders, force-unlock action for privileged users
 
 ### Operation detail in the tabbed editor (gaps 1–5, 7)
-- [ ] T099 Rework `route-detail` into sidebar (add/duplicate/delete/search ops) + tabbed detail editor matching the wireframes
-- [ ] T100 Overview tab = inline-editable Seq · Op# · Description · Work Centre row (replace modal with in-grid add)
+- [x] T099 Rework `route-detail` into sidebar (add/duplicate/delete/search ops) + tabbed detail editor matching the wireframes
+- [x] T100 Overview tab = inline-editable Seq · Op# · Description · Work Centre row (replace modal with in-grid add)
 - [ ] T101 Attributes tab: behaviour, **Labour Type Direct/Indirect (FR-013a)**, Optional/OSP/Mutual-Excl. toggle switches, significant-process select
 - [x] T102 Resources tab: labour-plan editor (Labour Plan Type × Setup/Run/Inspection/Transport + basis) + work centres — closes the OSP dead-end (gap 2)
 - [x] T103 BOM / Documents / Tools / Skills tabs: material consumption, WI+STEP, tooling, skill requirements editors

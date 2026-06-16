@@ -25,6 +25,7 @@ describe('OperationGridEditorComponent', () => {
     listMutuallyExclusiveSets: vi.fn().mockReturnValue(of([])),
     listSteps: vi.fn().mockReturnValue(of([])),
     putMutuallyExclusiveSets: vi.fn().mockReturnValue(of([])),
+    addOperation: vi.fn().mockReturnValue(of({})),
   };
   const mockRefApi = {
     listSignificantProcessTypes: vi.fn().mockReturnValue(of([])),
@@ -109,5 +110,39 @@ describe('OperationGridEditorComponent', () => {
     expect(draft.operationIds).toEqual(['op-1']);
     component.toggleGroupOp(draft, 'op-1', false);
     expect(draft.operationIds).toEqual([]);
+  });
+
+  it('filteredOps sorts by sequence then operation number and filters by query', () => {
+    component.operations = [
+      op({ id: 'b', operationNumber: 20, sequenceNumber: 20, description: 'Weld' }),
+      op({ id: 'a', operationNumber: 10, sequenceNumber: 10, description: 'Mill' }),
+    ];
+    expect(component.filteredOps().map(o => o.id)).toEqual(['a', 'b']);
+    component.opSearch = 'weld';
+    expect(component.filteredOps().map(o => o.id)).toEqual(['b']);
+  });
+
+  it('startAdd opens the inline row with the next op and sequence numbers', () => {
+    component.operations = [op({ id: 'a', operationNumber: 10, sequenceNumber: 10 })];
+    component.startAdd();
+    expect(component.addingOp).toBe(true);
+    expect(component.opDraft.operationNumber).toBe(20);
+    expect(component.opDraft.sequenceNumber).toBe(20);
+  });
+
+  it('duplicate copies the operation header onto a new operation number', () => {
+    component.operations = [op({ id: 'a', operationNumber: 10, sequenceNumber: 10, optional: true })];
+    component.duplicate(component.operations[0]);
+    expect(mockApi.addOperation).toHaveBeenCalledWith('route-1', expect.objectContaining({
+      operationNumber: 20, sequenceNumber: 10, optional: true,
+    }));
+  });
+
+  it('selectOp toggles the selected operation', () => {
+    const o = op({ id: 'a' });
+    component.selectOp(o);
+    expect(component.selectedOp?.id).toBe('a');
+    component.selectOp(o);
+    expect(component.selectedOp).toBeNull();
   });
 });
