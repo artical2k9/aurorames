@@ -13,6 +13,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { CheckboxModule } from 'primeng/checkbox';
 import { RoutingApiService } from '../../services/routing-api.service';
 import { ReferenceDataApiService } from '../../services/reference-data-api.service';
+import { OperationDetailPanelComponent } from '../operation-detail-panel/operation-detail-panel.component';
 import {
   GroupDto, MutuallyExclusiveSetDto, OperationDto, SignificantProcessTypeDto, StepDto, SupplierDto,
   WorkCentreDto,
@@ -32,6 +33,7 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
   imports: [
     CommonModule, FormsModule,
     TableModule, ButtonModule, DialogModule, TagModule, InputTextModule, CheckboxModule,
+    OperationDetailPanelComponent,
   ],
   template: `
     <div class="oge">
@@ -113,6 +115,8 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
             <td>
               <p-button [label]="'Steps (' + (stepCount(op.id)) + ')'" size="small"
                         severity="secondary" [text]="true" (onClick)="openSteps(op)" />
+              <p-button [label]="selectedOp?.id === op.id ? 'Hide detail' : 'Detail'" size="small"
+                        severity="secondary" [text]="true" (onClick)="selectOp(op)" />
             </td>
             @if (editable) {
               <td>
@@ -139,6 +143,12 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
             </li>
           }
         </ul>
+      }
+
+      @if (selectedOp) {
+        <div class="oge__detailhdr">Operation {{ selectedOp.operationNumber }} — detail</div>
+        <app-operation-detail-panel [routeId]="routeId" [operation]="selectedOp" [editable]="editable"
+                                    (changed)="reload()" />
       }
     </div>
 
@@ -253,6 +263,7 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
     .oge__bar-actions { display: flex; gap: 0.5rem; }
     .oge__title { margin: 0; font-size: 1.05rem; font-weight: 700; }
     .oge__subtitle { margin: 1rem 0 0.25rem; font-size: 0.95rem; }
+    .oge__detailhdr { margin: 1rem 0 0; font-size: 0.9rem; font-weight: 700; color: var(--p-primary-color); }
     .oge__badges { display: flex; flex-wrap: wrap; gap: 0.25rem; }
     .oge__toggles { display: flex; gap: 0.75rem; margin-top: 0.35rem; font-size: 0.75rem; }
     .oge__toggles label { display: inline-flex; align-items: center; gap: 0.25rem; }
@@ -280,6 +291,7 @@ export class OperationGridEditorComponent implements OnInit {
   @Output() readonly changed = new EventEmitter<void>();
 
   operations: OperationDto[] = [];
+  selectedOp: OperationDto | null = null;
   groups: GroupDto[] = [];
   meSets: MutuallyExclusiveSetDto[] = [];
   significantProcessTypes: SignificantProcessTypeDto[] = [];
@@ -330,9 +342,16 @@ export class OperationGridEditorComponent implements OnInit {
       this.groups = groups;
       this.meSets = meSets;
       this.meOperationIds = new Set(meSets.filter(s => s.level === 'OPERATION').flatMap(s => s.memberIds));
+      if (this.selectedOp) {
+        this.selectedOp = operations.find(o => o.id === this.selectedOp!.id) ?? null;
+      }
       this.loadStepCounts();
       this.cdr.detectChanges();
     });
+  }
+
+  selectOp(op: OperationDto): void {
+    this.selectedOp = this.selectedOp?.id === op.id ? null : op;
   }
 
   private loadStepCounts(): void {

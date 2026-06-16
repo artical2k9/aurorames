@@ -17,7 +17,7 @@ import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideColumnsSettings, LucideView } from '@lucide/angular';
+import { LucideColumnsSettings, LucideView, LucideGitBranch } from '@lucide/angular';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { BreadcrumbService } from '../../../../shared/ui';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
@@ -35,7 +35,7 @@ import { RouteDto, RouteStatus, RouteTypeDto } from '../../models/routing.model'
     CommonModule, AsyncPipe, FormsModule,
     TableModule, InputTextModule, AutoCompleteModule, ButtonModule,
     PopoverModule, TagModule, DialogModule, ToastModule,
-    ColumnPickerComponent, LucideColumnsSettings, LucideView,
+    ColumnPickerComponent, LucideColumnsSettings, LucideView, LucideGitBranch,
   ],
   providers: [
     MessageService,
@@ -119,6 +119,13 @@ import { RouteDto, RouteStatus, RouteTypeDto } from '../../models/routing.model'
                         (onClick)="navigateToDetail(route.id)">
                 <svg lucideView [size]="16" [strokeWidth]="1.75"></svg>
               </p-button>
+              @if (route.status === 'APPROVED' || route.status === 'REJECTED') {
+                <p-button [rounded]="true" [text]="true" size="small"
+                          title="Create revision" aria-label="Create revision"
+                          [disabled]="working" (onClick)="createRevision(route)">
+                  <svg lucideGitBranch [size]="16" [strokeWidth]="1.75"></svg>
+                </p-button>
+              }
             </td>
           </tr>
         </ng-template>
@@ -224,6 +231,8 @@ export class RouteListComponent implements OnInit, AfterViewInit {
 
   routeTypes: RouteTypeDto[] = [];
   private routeTypeCodeById = new Map<string, string>();
+  private partNumberById = new Map<string, string>();
+  working = false;
 
   itemSuggestions: ItemMasterDto[] = [];
   partNumberModel: ItemMasterDto | string = '';
@@ -306,6 +315,7 @@ export class RouteListComponent implements OnInit, AfterViewInit {
   }
 
   getCellValue(route: RouteDto, col: ColumnDef): unknown {
+    if (col.key === 'partNumber') return this.partNumberById.get(route.partId) ?? '…';
     if (col.key === 'routeTypeCode') return this.routeTypeCodeById.get(route.routeTypeId) ?? '—';
     if (!col.udf) return (route as unknown as Record<string, unknown>)[col.key];
     const direct = (route as unknown as Record<string, unknown>)[col.key];
@@ -401,11 +411,40 @@ export class RouteListComponent implements OnInit, AfterViewInit {
         this.rows = page.content;
         this.totalRecords = page.totalElements;
         this.loading = false;
+        this.resolvePartNumbers(page.content);
         this.cdr.detectChanges();
       },
       error: () => {
         this.rows = [];
         this.loading = false;
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  /** Resolve partId → partNumber for the current page (routing-service stores only partId). */
+  private resolvePartNumbers(rows: RouteDto[]): void {
+    const ids = [...new Set(rows.map(r => r.partId).filter(id => !this.partNumberById.has(id)))];
+    ids.forEach(id => this.itemApi.getById(id).pipe(
+      catchError(() => of(null)), takeUntilDestroyed(this.destroyRef),
+    ).subscribe(item => {
+      this.partNumberById.set(id, item?.partNumber ?? id);
+      this.cdr.detectChanges();
+    }));
+  }
+
+  createRevision(route: RouteDto): void {
+    this.working = true;
+    this.api.startRouteRevision(route.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.working = false;
+        this.messageService.add({ severity: 'success', summary: 'New revision started' });
+        this.cdr.detectChanges();
+        this.navigateToDetail(route.id);
+      },
+      error: err => {
+        this.working = false;
+        this.messageService.add({ severity: 'error', summary: err?.error?.error ?? 'Failed to start revision' });
         this.cdr.detectChanges();
       },
     });

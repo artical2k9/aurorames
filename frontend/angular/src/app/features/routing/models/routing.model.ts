@@ -26,6 +26,8 @@ export interface RouteDto {
   bomRevisionSuperseded: boolean;
   inspectionPlanRevisionSuperseded: boolean;
   customFields?: Record<string, unknown>;
+  lockHolder?: string;
+  lockedAt?: string;
 }
 
 export interface CreateRouteRequest {
@@ -138,6 +140,48 @@ export interface LabourPlanLineDto {
   labourCodeId?: string;
   timeValue: number;
   basis: Basis;
+}
+
+export interface MaterialConsumptionDto {
+  id?: string;
+  bomLineId: string;
+  mandatory: boolean;
+}
+
+export interface QualityVariableDto {
+  id?: string;
+  inspectionCharacteristicId: string;
+}
+
+export interface ToolingRequirementDto {
+  id?: string;
+  gageOrToolRef: string;
+  description?: string;
+}
+
+export interface SkillRequirementDto {
+  id?: string;
+  skillId: string;
+}
+
+export interface WorkInstructionLinkDto {
+  id?: string;
+  workInstructionId: string;
+}
+
+export interface StepFileReferenceDto {
+  id?: string;
+  reference: string;
+}
+
+/** Content-only edits during an operation revision (sequence/grouping locked). */
+export interface PatchOperationContentRequest {
+  description?: string;
+  optional?: boolean;
+  osp?: boolean;
+  significantProcessTypeId?: string;
+  supplierId?: string;
+  clocking?: boolean;
 }
 
 // ── Approval (US7/US8) ───────────────────────────────────────────────────────
