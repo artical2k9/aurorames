@@ -41,7 +41,7 @@ import { RouteDto, RouteStatus, RouteTypeDto } from '../../models/routing.model'
     MessageService,
     {
       provide: GridPreferenceService,
-      useFactory: () => new GridPreferenceService('ROUTE', DEFAULT_ROUTE_COLUMNS),
+      useFactory: () => new GridPreferenceService('ROUTING', DEFAULT_ROUTE_COLUMNS),
     },
   ],
   template: `
@@ -252,7 +252,7 @@ export class RouteListComponent implements OnInit, AfterViewInit {
       this.cdr.detectChanges();
     });
 
-    this.udfApi.listFields('ROUTE').pipe(
+    this.udfApi.listFields('ROUTING').pipe(
       map(udfs => udfs.map((u, i): ColumnDef => ({
         key: u.fieldKey,
         label: u.label,

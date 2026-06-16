@@ -68,7 +68,7 @@ describe('RouteListComponent', () => {
   });
 
   it('loads UDF columns for the ROUTE module and active route types on init', () => {
-    expect(mockUdfApi.listFields).toHaveBeenCalledWith('ROUTE');
+    expect(mockUdfApi.listFields).toHaveBeenCalledWith('ROUTING');
     expect(mockRefApi.listRouteTypes).toHaveBeenCalled();
     expect(component.routeTypes).toHaveLength(1);
   });
