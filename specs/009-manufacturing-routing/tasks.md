@@ -203,14 +203,14 @@ Single feature branch `009-manufacturing-routing`; PRs target `Develop`. Backend
 **Independent Test**: Standard route approves with standard approver; significant-process route blocked until SME approver signs; editing approved route rejected.
 
 ### Tests (write first)
-- [ ] T051 [P] [US7] IT `RouteApprovalIT` — submit→approve happy path, significant-process gate (each distinct significant-process-type's requiredApproverRole satisfied once), edit-approved-rejected, `routing.route.approved` emitted (EmbeddedKafka)
-- [ ] T052 [P] [US7] Unit tests approval state machine + significant-process approver resolution (distinct types → required roles)
+- [x] T051 [P] [US7] IT `RouteApprovalIT` — submit→approve happy path, significant-process gate (each distinct significant-process-type's requiredApproverRole satisfied once), edit-approved-rejected, `routing.route.approved` emitted (EmbeddedKafka)
+- [x] T052 [P] [US7] Unit tests approval state machine + significant-process approver resolution (distinct types → required roles)
 
 ### Implementation
-- [ ] T053 [P] [US7] `ApprovalRecord` entity (subjectType, actor, actorRole, meaning, isSignificantProcessApprover, significantProcessTypeId?, immutable) in `approval/domain/`
-- [ ] T054 [P] [US7] KC e-signature verify client (pattern from engineering-service) in `approval/client/`
-- [ ] T055 [US7] `ApprovalService` (submit/approve/reject; significant-process resolution = distinct SignificantProcessTypes on route → each requiredApproverRole satisfied once by an e-signed approval from a role holder, plus standard approval) in `approval/service/`
-- [ ] T056 [US7] Approval endpoints (`/submit`, `/approve`, `/reject`) + `routing.route.approved` Kafka producer (JsonSerializer per ERR-MES-063) in `approval/api/` + `kafka/`
+- [x] T053 [P] [US7] `ApprovalRecord` entity (subjectType, actor, actorRole, meaning, isSignificantProcessApprover, significantProcessTypeId?, immutable) in `approval/domain/`
+- [x] T054 [P] [US7] KC e-signature verify client (pattern from engineering-service) in `approval/client/`
+- [x] T055 [US7] `ApprovalService` (submit/approve/reject; significant-process resolution = distinct SignificantProcessTypes on route → each requiredApproverRole satisfied once by an e-signed approval from a role holder, plus standard approval) in `approval/service/`
+- [x] T056 [US7] Approval endpoints (`/submit`, `/approve`, `/reject`) + `routing.route.approved` Kafka producer (JsonSerializer per ERR-MES-063) in `approval/api/` + `kafka/`
 
 **Checkpoint**: Routes gated by e-signature.
 
@@ -222,13 +222,13 @@ Single feature branch `009-manufacturing-routing`; PRs target `Develop`. Backend
 **Independent Test**: Route revision allows structural edits + route approval; operation revision locks sequence/grouping + operation approval; audit view re-anchors on next route approval.
 
 ### Tests (write first)
-- [ ] T057 [P] [US8] IT `RouteRevisionIT` — route revision structural edits + approval
-- [ ] T058 [P] [US8] IT `OperationRevisionIT` — content-only operation revision + operation-level approval + audit grouping/re-anchor
+- [x] T057 [P] [US8] IT `RouteRevisionIT` — route revision structural edits + approval
+- [x] T058 [P] [US8] IT `OperationRevisionIT` — content-only operation revision + operation-level approval + audit grouping/re-anchor
 
 ### Implementation
-- [ ] T059 [US8] Route-revision flow (`POST /routes/{id}/revisions`, governingRouteRevision pinning) in `route/service/`
-- [ ] T060 [US8] Operation-revision flow (`POST /operations/{opId}/revision`, `POST /operations/{opId}/approve`, lock sequence/grouping) in `route/service/` + `approval/service/`
-- [ ] T061 [US8] Audit-history endpoint grouping operation revisions under governing route revision (Envers query) in `route/api/`
+- [x] T059 [US8] Route-revision flow (`POST /routes/{id}/revisions`, governingRouteRevision pinning) in `route/service/`
+- [x] T060 [US8] Operation-revision flow (`POST /operations/{opId}/revision`, `POST /operations/{opId}/approve`, lock sequence/grouping) in `route/service/` + `approval/service/`
+- [x] T061 [US8] Audit-history endpoint grouping operation revisions under governing route revision (Envers query) in `route/api/`
 
 **Checkpoint**: Two-tier revisioning with audit.
 

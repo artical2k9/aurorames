@@ -84,6 +84,14 @@ mes:
     # to authenticate privilege-resolution calls to iam-service (must match MES_SECURITY_WEBHOOK_TOKEN
     # across services), even though routing-service exposes no inbound webhook endpoints.
     webhook-token: ${MES_SECURITY_WEBHOOK_TOKEN:}
+  # Route approval e-signature: password re-authentication against Keycloak via the
+  # mes-signature-verify confidential client (Direct Access Grant), reusing the same client
+  # as engineering-service. No local password storage (US7).
+  signature:
+    keycloak:
+      token-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/mes}/protocol/openid-connect/token
+      client-id: ${MES_SIGNATURE_VERIFY_CLIENT_ID:mes-signature-verify}
+      client-secret: ${MES_SIGNATURE_VERIFY_SECRET:}
 
 routing:
   events:

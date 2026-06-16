@@ -1,5 +1,7 @@
 package com.mes.routing.config;
 
+import com.mes.routing.approval.service.SignatureProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.AuditorAware;
@@ -12,8 +14,10 @@ import java.util.Optional;
  * Supplies the {@link AuditorAware} bean that fills {@code @CreatedBy}/{@code @LastModifiedBy}
  * on every routing entity (ERR-MES-062). Resolves a human-readable actor from the JWT,
  * falling back to {@code "system"} for unauthenticated contexts (e.g. Flyway/migrations).
+ * Also binds the e-signature ({@link SignatureProperties}) config for route approval (US7).
  */
 @Configuration
+@EnableConfigurationProperties(SignatureProperties.class)
 public class AppConfig {
 
     @Bean
