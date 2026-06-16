@@ -69,6 +69,11 @@ import { PlatformApiService } from '../../../../shared/platform';
             </div>
 
             <div class="imcr__field">
+              <label class="imcr__label">Revision <span class="imcr__req">*</span></label>
+              <input pInputText formControlName="revision" placeholder="e.g. A" />
+            </div>
+
+            <div class="imcr__field">
               <label class="imcr__label">Description <span class="imcr__req">*</span></label>
               <textarea pTextarea formControlName="description" rows="3"
                         placeholder="Brief item description" style="width:100%"></textarea>
@@ -255,6 +260,7 @@ export class ItemMasterCreateComponent implements OnInit {
 
   form = this.fb.group({
     partNumber:           ['', Validators.required],
+    revision:             ['A', Validators.required],
     description:          ['', Validators.required],
     unitOfMeasure:        ['EA', Validators.required],
     classification:       [null as Classification | null, Validators.required],
@@ -451,6 +457,7 @@ export class ItemMasterCreateComponent implements OnInit {
 
     this.api.create({
       partNumber:           v.partNumber!,
+      revision:             v.revision!,
       description:          v.description!,
       unitOfMeasure:        v.unitOfMeasure!,
       classification:       v.classification as Classification,

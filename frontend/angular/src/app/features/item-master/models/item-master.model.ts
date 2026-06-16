@@ -62,6 +62,7 @@ export interface Page<T> {
 
 export interface CreateItemMasterRequest {
   partNumber: string;
+  revision: string;
   description: string;
   unitOfMeasure: string;
   classification: Classification;
