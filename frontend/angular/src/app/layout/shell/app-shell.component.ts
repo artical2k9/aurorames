@@ -154,7 +154,8 @@ interface NavItem {
 
             @if (item.children) {
               <!-- ── Nav group (expandable) ── -->
-              <div class="shell__nav-group">
+              <div class="shell__nav-group"
+                   (mouseenter)="onGroupEnter(item.label)" (mouseleave)="closeFlyout()">
                 <button class="shell__nav-item shell__nav-group-hdr"
                         [class.shell__nav-group-hdr--open]="isGroupExpanded(item.label)"
                         [title]="item.label"
@@ -227,6 +228,21 @@ interface NavItem {
                     }
                   </div>
                 }
+                @if (collapsed && flyoutGroup === item.label && item.children?.length) {
+                  <div class="shell__flyout">
+                    <div class="shell__flyout-title">{{ item.label }}</div>
+                    @for (child of item.children; track child.label) {
+                      @if (child.disabled) {
+                        <span class="shell__flyout-item shell__flyout-item--disabled">{{ child.label }}</span>
+                      } @else {
+                        <a class="shell__flyout-item" [routerLink]="child.path"
+                           routerLinkActive="shell__flyout-item--active"
+                           [routerLinkActiveOptions]="{ exact: false }"
+                           (click)="closeFlyout()">{{ child.label }}</a>
+                      }
+                    }
+                  </div>
+                }
               </div>
 
             } @else if (item.disabled) {
@@ -280,7 +296,8 @@ interface NavItem {
           @for (item of navItemsBottom; track item.label) {
             @if (item.children) {
               <!-- ── Settings group (expandable) ── -->
-              <div class="shell__nav-group">
+              <div class="shell__nav-group"
+                   (mouseenter)="onGroupEnter(item.label)" (mouseleave)="closeFlyout()">
                 <button class="shell__nav-item shell__nav-group-hdr"
                         [class.shell__nav-group-hdr--open]="isGroupExpanded(item.label)"
                         [title]="item.label"
@@ -307,6 +324,7 @@ interface NavItem {
                               @case ('users') { <svg lucideUsers              [size]="15" [strokeWidth]="2"></svg> }
                               @case ('udf')   { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
                               @case ('uom')   { <svg lucideRuler              [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('settings') { <svg lucideSettings        [size]="15" [strokeWidth]="2"></svg> }
                             }
                           </span>
                           <span class="shell__nav-label">{{ child.label }}</span>
@@ -322,10 +340,26 @@ interface NavItem {
                               @case ('users') { <svg lucideUsers              [size]="15" [strokeWidth]="2"></svg> }
                               @case ('udf')   { <svg lucideSlidersHorizontal [size]="15" [strokeWidth]="2"></svg> }
                               @case ('uom')   { <svg lucideRuler              [size]="15" [strokeWidth]="2"></svg> }
+                              @case ('settings') { <svg lucideSettings        [size]="15" [strokeWidth]="2"></svg> }
                             }
                           </span>
                           <span class="shell__nav-label">{{ child.label }}</span>
                         </a>
+                      }
+                    }
+                  </div>
+                }
+                @if (collapsed && flyoutGroup === item.label && item.children?.length) {
+                  <div class="shell__flyout">
+                    <div class="shell__flyout-title">{{ item.label }}</div>
+                    @for (child of item.children; track child.label) {
+                      @if (child.disabled) {
+                        <span class="shell__flyout-item shell__flyout-item--disabled">{{ child.label }}</span>
+                      } @else {
+                        <a class="shell__flyout-item" [routerLink]="child.path"
+                           routerLinkActive="shell__flyout-item--active"
+                           [routerLinkActiveOptions]="{ exact: false }"
+                           (click)="closeFlyout()">{{ child.label }}</a>
                       }
                     }
                   </div>
@@ -369,6 +403,18 @@ export class AppShellComponent implements OnInit {
   readonly breadcrumbSvc = inject(BreadcrumbService);
 
   collapsed = true;
+
+  /** Label of the group whose hover-flyout is open while the rail is collapsed. */
+  flyoutGroup: string | null = null;
+
+  /** Open the hover-flyout for a group, but only while the rail is collapsed. */
+  onGroupEnter(label: string): void {
+    if (this.collapsed) this.flyoutGroup = label;
+  }
+
+  closeFlyout(): void {
+    this.flyoutGroup = null;
+  }
   viewMode: 'grid' | 'list' = 'list';
   notificationCount = 0;
 
@@ -383,7 +429,6 @@ export class AppShellComponent implements OnInit {
         { label: 'ECO', iconKey: 'eco', path: '/ecos' },
         { label: 'Work Instructions', iconKey: 'work-instructions', path: '/engineering/work-instructions' },
         { label: 'Routes', iconKey: 'work-instructions', path: '/routing' },
-        { label: 'Routing Settings', iconKey: 'settings', path: '/routing/settings' },
       ],
     },
     {
@@ -455,6 +500,7 @@ export class AppShellComponent implements OnInit {
         { label: 'User Management',   iconKey: 'users', path: '/settings/users' },
         { label: 'User-Defined Fields', iconKey: 'udf', path: '/master-data/udf' },
         { label: 'Units of Measure',  iconKey: 'uom',  path: '/settings/uom' },
+        { label: 'Routing Settings',  iconKey: 'settings', path: '/routing/settings' },
       ],
     },
   ];
