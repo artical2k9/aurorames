@@ -17,7 +17,10 @@ import { TagModule } from 'primeng/tag';
 import { DialogModule } from 'primeng/dialog';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
-import { LucideColumnsSettings, LucideView, LucideGitBranch } from '@lucide/angular';
+import {
+  LucideColumnsSettings, LucideView, LucideGitBranch, LucideLock, LucideLockOpen,
+} from '@lucide/angular';
+import { revisionLabel } from '../../constants/revision-label';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { BreadcrumbService } from '../../../../shared/ui';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
@@ -36,6 +39,7 @@ import { RouteDto, RouteStatus, RouteTypeDto } from '../../models/routing.model'
     TableModule, InputTextModule, AutoCompleteModule, ButtonModule,
     PopoverModule, TagModule, DialogModule, ToastModule,
     ColumnPickerComponent, LucideColumnsSettings, LucideView, LucideGitBranch,
+    LucideLock, LucideLockOpen,
   ],
   providers: [
     MessageService,
@@ -104,8 +108,26 @@ import { RouteDto, RouteStatus, RouteTypeDto } from '../../models/routing.model'
               <td>
                 @switch (col.key) {
                   @case ('status') {
-                    <p-tag [value]="statusLabel(route.status)"
-                           [severity]="statusSeverity(route.status)" />
+                    <span class="rl__statuscell">
+                      <p-tag [value]="statusLabel(route.status)"
+                             [severity]="statusSeverity(route.status)" />
+                      @if (route.lockHolder) {
+                        <svg lucideLock [size]="14" [strokeWidth]="2" class="rl__lockicon"
+                             [attr.title]="'Locked by ' + (isLockedByMe(route) ? 'you' : route.lockHolder)"></svg>
+                      }
+                    </span>
+                  }
+                  @case ('lockHolder') {
+                    @if (route.lockHolder) {
+                      <span class="rl__lockedby">
+                        <svg lucideLock [size]="14" [strokeWidth]="2"></svg>
+                        {{ isLockedByMe(route) ? 'You' : route.lockHolder }}
+                      </span>
+                    } @else {
+                      <span class="rl__unlocked">
+                        <svg lucideLockOpen [size]="14" [strokeWidth]="2"></svg> —
+                      </span>
+                    }
                   }
                   @default {
                     {{ getCellValue(route, col) ?? '—' }}
@@ -119,13 +141,12 @@ import { RouteDto, RouteStatus, RouteTypeDto } from '../../models/routing.model'
                         (onClick)="navigateToDetail(route.id)">
                 <svg lucideView [size]="16" [strokeWidth]="1.75"></svg>
               </p-button>
-              @if (route.status === 'APPROVED' || route.status === 'REJECTED') {
-                <p-button [rounded]="true" [text]="true" size="small"
-                          title="Create revision" aria-label="Create revision"
-                          [disabled]="working" (onClick)="createRevision(route)">
-                  <svg lucideGitBranch [size]="16" [strokeWidth]="1.75"></svg>
-                </p-button>
-              }
+              <p-button [rounded]="true" [text]="true" size="small"
+                        [title]="canRevise(route) ? 'Create revision' : 'Create revision (available once approved/rejected)'"
+                        aria-label="Create revision"
+                        [disabled]="working || !canRevise(route)" (onClick)="createRevision(route)">
+                <svg lucideGitBranch [size]="16" [strokeWidth]="1.75"></svg>
+              </p-button>
             </td>
           </tr>
         </ng-template>
@@ -196,6 +217,10 @@ import { RouteDto, RouteStatus, RouteTypeDto } from '../../models/routing.model'
     .rl__form label { font-size: 0.8125rem; font-weight: 600; margin-top: 0.375rem; }
     .rl__select { padding: 0.4rem 0.5rem; border: 1px solid var(--p-inputtext-border-color); border-radius: 4px; }
     .rl__error { color: var(--p-red-500); }
+    .rl__statuscell { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .rl__lockicon { color: var(--p-orange-500); }
+    .rl__lockedby { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--p-orange-500); }
+    .rl__unlocked { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--p-text-muted-color); }
     .rl__suggestion { display: flex; align-items: baseline; gap: 0.5rem; }
     .rl__suggestion-pn { font-weight: 600; }
     .rl__suggestion-rev { font-size: 0.75rem; color: var(--p-text-muted-color); }
@@ -317,6 +342,7 @@ export class RouteListComponent implements OnInit, AfterViewInit {
   getCellValue(route: RouteDto, col: ColumnDef): unknown {
     if (col.key === 'partNumber') return this.partNumberById.get(route.partId) ?? '…';
     if (col.key === 'routeTypeCode') return this.routeTypeCodeById.get(route.routeTypeId) ?? '—';
+    if (col.key === 'revision') return revisionLabel(route.revision);
     if (!col.udf) return (route as unknown as Record<string, unknown>)[col.key];
     const direct = (route as unknown as Record<string, unknown>)[col.key];
     return direct !== undefined ? direct : route.customFields?.[col.key];
@@ -350,6 +376,27 @@ export class RouteListComponent implements OnInit, AfterViewInit {
 
   navigateToDetail(id: string): void {
     this.router.navigate(['/routing', id]);
+  }
+
+  /** A revision can only be started from a fully-actioned route (matches the route-detail rule). */
+  canRevise(route: RouteDto): boolean {
+    return route.status === 'APPROVED' || route.status === 'REJECTED';
+  }
+
+  /** Current user's KC subject, decoded from the access token (matches RouteLockGuard). */
+  private currentSubject(): string | null {
+    const token = localStorage.getItem('access_token');
+    if (!token) return null;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      return (payload.sub as string) ?? (payload.preferred_username as string) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  isLockedByMe(route: RouteDto): boolean {
+    return !!route.lockHolder && route.lockHolder === this.currentSubject();
   }
 
   openCreate(): void {

@@ -67,11 +67,11 @@
 
       @case ('Attributes') {
         <div class="odp__toggles">
-          <label><p-checkbox [binary]="true" [ngModel]="operation.optional" [disabled]="!editable"
+          <label><p-toggleswitch [ngModel]="operation.optional" [disabled]="!editable"
                   (ngModelChange)="patchOp({ optional: $event })" /> Optional</label>
-          <label><p-checkbox [binary]="true" [ngModel]="operation.osp" [disabled]="!editable"
+          <label><p-toggleswitch [ngModel]="operation.osp" [disabled]="!editable"
                   (ngModelChange)="patchOp({ osp: $event })" /> OSP (outside processing)</label>
-          <label><p-checkbox [binary]="true" [ngModel]="operation.clocking" [disabled]="!editable"
+          <label><p-toggleswitch [ngModel]="operation.clocking" [disabled]="!editable"
                   (ngModelChange)="patchOp({ clocking: $event })" /> Clocking</label>
         </div>
         <div class="odp__row2">

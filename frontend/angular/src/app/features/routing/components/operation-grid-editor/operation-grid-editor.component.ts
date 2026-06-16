@@ -11,6 +11,7 @@ import { DialogModule } from 'primeng/dialog';
 import { TagModule } from 'primeng/tag';
 import { InputTextModule } from 'primeng/inputtext';
 import { CheckboxModule } from 'primeng/checkbox';
+import { LucideCopy, LucideTrash2, LucidePencil } from '@lucide/angular';
 import { RoutingApiService } from '../../services/routing-api.service';
 import { ReferenceDataApiService } from '../../services/reference-data-api.service';
 import { OperationDetailPanelComponent } from '../operation-detail-panel/operation-detail-panel.component';
@@ -33,6 +34,7 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
   imports: [
     CommonModule, FormsModule,
     TableModule, ButtonModule, DialogModule, TagModule, InputTextModule, CheckboxModule,
+    LucideCopy, LucideTrash2, LucidePencil,
     OperationDetailPanelComponent,
   ],
   template: `
@@ -63,6 +65,10 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
               <div class="oge__card-body">
                 <div class="oge__card-line">
                   <span class="oge__card-num">Op {{ op.operationNumber }}</span>
+                  <span class="oge__type"
+                        [class.oge__type--parallel]="op.derivedType === 'PARALLEL'">
+                    {{ op.derivedType === 'PARALLEL' ? 'Parallel' : 'Normal' }}
+                  </span>
                   @for (b of typeBadges(op); track b.label) {
                     <p-tag [value]="b.label" [severity]="b.severity" />
                   }
@@ -71,10 +77,18 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
               </div>
               @if (editable) {
                 <div class="oge__card-actions">
+                  <button type="button" title="Edit operation"
+                          (click)="selectOp(op); $event.stopPropagation()">
+                    <svg lucidePencil [size]="15" [strokeWidth]="1.75"></svg>
+                  </button>
                   <button type="button" title="Duplicate"
-                          (click)="duplicate(op); $event.stopPropagation()">⧉</button>
+                          (click)="duplicate(op); $event.stopPropagation()">
+                    <svg lucideCopy [size]="15" [strokeWidth]="1.75"></svg>
+                  </button>
                   <button type="button" title="Delete" class="oge__card-del"
-                          (click)="deleteOperation(op); $event.stopPropagation()">✕</button>
+                          (click)="deleteOperation(op); $event.stopPropagation()">
+                    <svg lucideTrash2 [size]="15" [strokeWidth]="1.75"></svg>
+                  </button>
                 </div>
               }
             </div>
@@ -239,9 +253,16 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
     .oge__card-line { display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
     .oge__card-num { font-size: 0.72rem; font-weight: 700; color: var(--p-text-muted-color); }
     .oge__card-desc { font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .oge__type { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+      padding: 0.05rem 0.4rem; border-radius: 10px; background: var(--p-content-hover-background);
+      color: var(--p-text-color); border: 1px solid var(--p-content-border-color); }
+    .oge__type--parallel { background: color-mix(in srgb, var(--p-primary-color) 18%, transparent);
+      color: var(--p-primary-color); border-color: transparent; }
     .oge__card-actions { display: flex; gap: 0.25rem; align-items: flex-start; }
-    .oge__card-actions button { border: none; background: transparent; cursor: pointer; color: var(--p-text-muted-color); }
-    .oge__card-del { color: var(--p-red-500) !important; }
+    .oge__card-actions button { border: none; background: transparent; cursor: pointer;
+      color: var(--p-text-muted-color); display: inline-flex; padding: 0.1rem; line-height: 0; }
+    .oge__card-actions button:hover { color: var(--p-primary-color); }
+    .oge__card-del:hover { color: var(--p-red-500) !important; }
     .oge__sb-empty { padding: 0.75rem; color: var(--p-text-muted-color); font-size: 0.8rem; }
     .oge__addrow { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.6rem 0.75rem; border-top: 1px solid var(--p-content-border-color); }
     .oge__addrow-btns { display: flex; gap: 0.5rem; }
@@ -351,12 +372,9 @@ export class OperationGridEditorComponent implements OnInit {
     return this.stepCounts.get(opId) ?? 0;
   }
 
+  /** Attribute badges only — the Normal/Parallel type is rendered as its own always-visible chip. */
   typeBadges(op: OperationDto): { label: string; severity: 'info' | 'warn' | 'danger' | 'secondary' }[] {
-    const badges: { label: string; severity: 'info' | 'warn' | 'danger' | 'secondary' }[] = [
-      op.derivedType === 'PARALLEL'
-        ? { label: 'Parallel', severity: 'info' }
-        : { label: 'Normal', severity: 'secondary' },
-    ];
+    const badges: { label: string; severity: 'info' | 'warn' | 'danger' | 'secondary' }[] = [];
     if (op.optional) badges.push({ label: 'Optional', severity: 'warn' });
     if (op.osp) badges.push({ label: 'OSP', severity: 'warn' });
     if (this.meOperationIds.has(op.id)) badges.push({ label: 'Mutually Exclusive', severity: 'danger' });

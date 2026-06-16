@@ -9,7 +9,7 @@ import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { InputTextModule } from 'primeng/inputtext';
-import { CheckboxModule } from 'primeng/checkbox';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { RoutingApiService } from '../../services/routing-api.service';
 import { ReferenceDataApiService } from '../../services/reference-data-api.service';
 import {
@@ -29,7 +29,8 @@ type Tab = 'Overview' | 'Attributes' | 'Resources' | 'BOM' | 'Documents' | 'Tool
   selector: 'app-operation-detail-panel',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, TableModule, ButtonModule, TagModule, InputTextModule, CheckboxModule,
+    CommonModule, FormsModule, TableModule, ButtonModule, TagModule, InputTextModule,
+    ToggleSwitchModule,
   ],
   templateUrl: './operation-detail-panel.component.html',
   styleUrls: ['./operation-detail-panel.component.scss'],

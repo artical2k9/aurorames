@@ -6,5 +6,6 @@ export const DEFAULT_ROUTE_COLUMNS: ColumnDef[] = [
   { key: 'routeTypeCode', label: 'Route Type', visible: true, order: 2 },
   { key: 'revision',      label: 'Revision',  visible: true,  order: 3 },
   { key: 'status',        label: 'Status',    visible: true,  order: 4 },
-  { key: 'reasonForRevision', label: 'Reason', visible: false, order: 5 },
+  { key: 'lockHolder',    label: 'Locked By', visible: true,  order: 5 },
+  { key: 'reasonForRevision', label: 'Reason', visible: false, order: 6 },
 ];

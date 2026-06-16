@@ -50,17 +50,17 @@ describe('OperationGridEditorComponent', () => {
     fixture.detectChanges();
   });
 
-  it('derives Normal/Parallel and overlays Optional/OSP/ME badges', () => {
+  it('overlays Optional/OSP/ME attribute badges (type shown as its own chip)', () => {
     component['meOperationIds'] = new Set(['op-me']);
     const normal = component.typeBadges(op({ id: 'op-n' })).map(b => b.label);
-    expect(normal).toEqual(['Normal']);
+    expect(normal).toEqual([]);
 
     const parallelOptional = component.typeBadges(
       op({ id: 'op-p', derivedType: 'PARALLEL', optional: true })).map(b => b.label);
-    expect(parallelOptional).toEqual(['Parallel', 'Optional']);
+    expect(parallelOptional).toEqual(['Optional']);
 
     const me = component.typeBadges(op({ id: 'op-me', osp: true })).map(b => b.label);
-    expect(me).toEqual(['Normal', 'OSP', 'Mutually Exclusive']);
+    expect(me).toEqual(['OSP', 'Mutually Exclusive']);
   });
 
   it('parallelSequences returns only sequence numbers shared by 2+ operations', () => {
