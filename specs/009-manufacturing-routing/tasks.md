@@ -242,19 +242,19 @@ Single feature branch `009-manufacturing-routing`; PRs target `Develop`. Backend
 **Independent Test**: Author a route end-to-end in the grid (header, ops, groups, steps, types) and approve; manage reference data in Settings; build+test green.
 
 ### Tests (write first — Vitest; ERR-MES-082 keep specs in sync)
-- [ ] T062 [P] [US1] Spec for `route-list` + `routing-api.service` (list/create/part-search) in `features/routing/...spec.ts`
-- [ ] T063 [P] [US3] Spec for grid editor type-indicator + ME-subset dialog logic
-- [ ] T064 [P] [US10] Spec for reference-data Settings service/components
+- [x] T062 [P] [US1] Spec for `route-list` + `routing-api.service` (list/create/part-search) in `features/routing/...spec.ts`
+- [x] T063 [P] [US3] Spec for grid editor type-indicator + ME-subset dialog logic
+- [x] T064 [P] [US10] Spec for reference-data Settings service/components
 
 ### Implementation
-- [ ] T065 [P] [US1] `routing.model.ts` (Route, Operation, Group, Step, ME-set, reference-data DTOs incl. `customFields`) in `features/routing/models/`
-- [ ] T066 [P] [US1] `routing-api.service.ts` + `reference-data-api.service.ts` in `features/routing/services/`
-- [ ] T067 [US1] `route-list` page (column picker + UDF load per ERR-MES-078; cdr.detectChanges per ERR-MES-059) in `features/routing/pages/route-list/`
-- [ ] T068 [US1] `route-detail` page: header form with route-type select + part-number autocomplete (pattern from inspection-plan/BOM) in `pages/route-detail/`
-- [ ] T069 [US3] `operation-grid-editor` component: add/edit/delete/group ops & steps; type indicator (derived **Normal**/Parallel + Optional/ME/OSP toggles); significant-process-type select; OSP supplier select; ME-subset selection dialog in `components/operation-grid-editor/`
-- [ ] T070 [US7] Approval actions (submit/approve/reject, significant-process approver UI) in route-detail
-- [ ] T071 [US10] Settings reference-data UI (work centres, labour codes, labour plan types, route types, significant-process types w/ approver role, suppliers) in `pages/settings/`
-- [ ] T072 [US1] Register routing routes + Settings submodule nav entry in app routes/shell
+- [x] T065 [P] [US1] `routing.model.ts` (Route, Operation, Group, Step, ME-set, reference-data DTOs incl. `customFields`) in `features/routing/models/`
+- [x] T066 [P] [US1] `routing-api.service.ts` + `reference-data-api.service.ts` in `features/routing/services/`
+- [x] T067 [US1] `route-list` page (column picker + UDF load per ERR-MES-078; cdr.detectChanges per ERR-MES-059) in `features/routing/pages/route-list/`
+- [x] T068 [US1] `route-detail` page: header form with route-type select + part-number autocomplete (pattern from inspection-plan/BOM) in `pages/route-detail/`
+- [x] T069 [US3] `operation-grid-editor` component: add/edit/delete/group ops & steps; type indicator (derived **Normal**/Parallel + Optional/ME/OSP toggles); significant-process-type select; OSP supplier select; ME-subset selection dialog in `components/operation-grid-editor/`
+- [x] T070 [US7] Approval actions (submit/approve/reject, significant-process approver UI) in route-detail
+- [x] T071 [US10] Settings reference-data UI (work centres, labour codes, labour plan types, route types, significant-process types w/ approver role, suppliers) in `pages/settings/`
+- [x] T072 [US1] Register routing routes + Settings submodule nav entry in app routes/shell
 
 **Checkpoint**: Full routing authorable via grid + Settings.
 
