@@ -1,19 +1,24 @@
 package com.mes.routing.route.service;
 
+import com.mes.routing.referencedata.repository.LabourPlanTypeRepository;
 import com.mes.routing.referencedata.repository.SignificantProcessTypeRepository;
 import com.mes.routing.referencedata.repository.SupplierRepository;
+import com.mes.routing.referencedata.domain.LabourPlanType;
 import com.mes.routing.referencedata.domain.SignificantProcessType;
 import com.mes.routing.referencedata.domain.Supplier;
 import com.mes.routing.route.api.dto.RouteDtos.CreateOperationRequest;
 import com.mes.routing.route.api.dto.RouteDtos.OperationDto;
 import com.mes.routing.route.api.dto.RouteDtos.PatchOperationRequest;
+import com.mes.routing.route.domain.LabourPlanLine;
 import com.mes.routing.route.domain.Route;
 import com.mes.routing.route.domain.RouteOperation;
 import com.mes.routing.route.domain.RouteStatus;
+import com.mes.routing.route.repository.LabourPlanLineRepository;
 import com.mes.routing.route.repository.RouteOperationRepository;
 import com.mes.routing.route.repository.RouteRepository;
 import com.mes.routing.service.RoutingConflictException;
 import com.mes.routing.service.RoutingNotFoundException;
+import com.mes.routing.service.RoutingValidationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,6 +32,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,8 +47,21 @@ class RouteOperationServiceTest {
     @Mock RouteOperationRepository operations;
     @Mock SignificantProcessTypeRepository significantProcessTypes;
     @Mock SupplierRepository suppliers;
+    @Mock LabourPlanLineRepository labourPlanLines;
+    @Mock LabourPlanTypeRepository labourPlanTypes;
 
     @InjectMocks RouteOperationService service;
+
+    /** Make the operation under test carry an OSP-type labour resource so osp=true validates. */
+    private void operationHasOspResource() {
+        LabourPlanLine line = new LabourPlanLine();
+        UUID planTypeId = UUID.randomUUID();
+        line.setLabourPlanTypeId(planTypeId);
+        LabourPlanType ospType = new LabourPlanType();
+        ospType.setCode("OSP");
+        lenient().when(labourPlanLines.findByOperationIdOrderByCreatedAt(any())).thenReturn(List.of(line));
+        lenient().when(labourPlanTypes.findAllById(any())).thenReturn(List.of(ospType));
+    }
 
     private Route route(RouteStatus status) {
         Route r = new Route();
@@ -131,11 +150,43 @@ class RouteOperationServiceTest {
         when(suppliers.findByOrgIdAndId(ORG, supId)).thenReturn(Optional.of(new Supplier()));
         when(operations.save(any(RouteOperation.class))).thenAnswer(inv -> inv.getArgument(0));
         when(operations.countByRouteIdAndSequenceNumber(ROUTE, 10)).thenReturn(1);
+        operationHasOspResource();
 
         OperationDto dto = service.add(ORG, ROUTE,
                 new CreateOperationRequest(10, 10, "Op", true, true, sptId, supId, false));
 
         assertThat(dto.optional()).isTrue();
+        assertThat(dto.osp()).isTrue();
+    }
+
+    @Test
+    void add_ospWithoutLabourResource_throwsValidation() {
+        when(routes.findByOrgIdAndId(ORG, ROUTE)).thenReturn(Optional.of(route(RouteStatus.DRAFT)));
+        when(operations.existsByRouteIdAndOperationNumber(ROUTE, 10)).thenReturn(false);
+        when(operations.save(any(RouteOperation.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertThatThrownBy(() -> service.add(ORG, ROUTE,
+                new CreateOperationRequest(10, 10, "Op", false, true, null, null, null)))
+                .isInstanceOf(RoutingValidationException.class);
+    }
+
+    @Test
+    void patch_toOspWithLabourResource_persists() {
+        RouteOperation o = new RouteOperation();
+        o.setOrgId(ORG);
+        o.setRouteId(ROUTE);
+        o.setOperationNumber(10);
+        o.setSequenceNumber(10);
+        UUID opId = UUID.randomUUID();
+        when(routes.findByOrgIdAndId(ORG, ROUTE)).thenReturn(Optional.of(route(RouteStatus.DRAFT)));
+        when(operations.findByRouteIdAndId(ROUTE, opId)).thenReturn(Optional.of(o));
+        when(operations.save(any(RouteOperation.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(operations.countByRouteIdAndSequenceNumber(ROUTE, 10)).thenReturn(1);
+        operationHasOspResource();
+
+        OperationDto dto = service.patch(ORG, ROUTE, opId,
+                new PatchOperationRequest(null, null, null, null, true, null, null, null));
+
         assertThat(dto.osp()).isTrue();
     }
 

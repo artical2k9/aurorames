@@ -150,13 +150,13 @@ Single feature branch `009-manufacturing-routing`; PRs target `Develop`. Backend
 **Independent Test**: Parallel derived from shared sequence; ME toggle only within parallel; subset {30,40} of {20,30,40} stored, 20 stays parallel; ME on unique sequence rejected.
 
 ### Tests (write first)
-- [ ] T039 [P] [US4] IT `OperationTypeIT` — derived parallel, ME-subset, ME-on-non-parallel 422, OSP requires an OSP labour resource (422 if missing), optional OSP supplier persisted
-- [ ] T040 [P] [US4] Unit tests `MutuallyExclusiveSet` membership rules
+- [x] T039 [P] [US4] IT `OperationTypeIT` — derived parallel, ME-subset, ME-on-non-parallel 422, OSP requires an OSP labour resource (422 if missing), optional OSP supplier persisted
+- [x] T040 [P] [US4] Unit tests `MutuallyExclusiveSet` membership rules
 
 ### Implementation
-- [ ] T041 [P] [US4] `MutuallyExclusiveSet` entity (level=OPERATION, sequenceNumber, memberIds) in `route/domain/`
-- [ ] T042 [US4] Extend `RouteOperationService`: ME subset validation (⊆ parallel set, ≥2 members); OSP requires an OSP-type labour resource, optional `supplierId` persisted (no ospSource; PO/event are MES-15, FR-009c) in `route/service/`
-- [ ] T043 [US4] `PUT /api/v1/routes/{id}/mutually-exclusive-sets` + OSP/optional toggle handling in `route/api/`
+- [x] T041 [P] [US4] `MutuallyExclusiveSet` entity (level=OPERATION, sequenceNumber, memberIds) in `route/domain/`
+- [x] T042 [US4] Extend `RouteOperationService`: ME subset validation (⊆ parallel set, ≥2 members); OSP requires an OSP-type labour resource, optional `supplierId` persisted (no ospSource; PO/event are MES-15, FR-009c) in `route/service/`
+- [x] T043 [US4] `PUT /api/v1/routes/{id}/mutually-exclusive-sets` + OSP/optional toggle handling in `route/api/`
 
 **Checkpoint**: Advanced operation flow control enforced.
 
@@ -168,12 +168,12 @@ Single feature branch `009-manufacturing-routing`; PRs target `Develop`. Backend
 **Independent Test**: Group resequences as a unit; parallel group set derived; group-level ME subset; optional group skippable.
 
 ### Tests (write first)
-- [ ] T044 [P] [US5] IT `OperationGroupIT` — grouping, group resequence, parallel group set, group-level ME subset
+- [x] T044 [P] [US5] IT `OperationGroupIT` — grouping, group resequence, parallel group set, group-level ME subset
 
 ### Implementation
-- [ ] T045 [P] [US5] `OperationGroup` entity (groupSequenceNumber, optional toggle) in `route/domain/`
-- [ ] T046 [US5] Group logic in `RouteOperationService` (group derive/types, MutuallyExclusiveSet level=GROUP) in `route/service/`
-- [ ] T047 [US5] `PUT /api/v1/routes/{id}/groups` in `route/api/`
+- [x] T045 [P] [US5] `OperationGroup` entity (groupSequenceNumber, optional toggle) in `route/domain/`
+- [x] T046 [US5] Group logic in `RouteOperationService` (group derive/types, MutuallyExclusiveSet level=GROUP) in `route/service/`
+- [x] T047 [US5] `PUT /api/v1/routes/{id}/groups` in `route/api/`
 
 **Checkpoint**: Groups behave as typed blocks.
 
@@ -185,11 +185,11 @@ Single feature branch `009-manufacturing-routing`; PRs target `Develop`. Backend
 **Independent Test**: Steps ordered by step sequence; parallel step set; step-level ME subset.
 
 ### Tests (write first)
-- [ ] T048 [P] [US6] IT `OperationStepIT` — step CRUD, derived parallel step set, step-level ME
+- [x] T048 [P] [US6] IT `OperationStepIT` — step CRUD, derived parallel step set, step-level ME
 
 ### Implementation
-- [ ] T049 [P] [US6] `OperationStep` entity (stepNumber, stepSequenceNumber, optional) in `route/domain/`
-- [ ] T050 [US6] Step logic in service (derive/types, MutuallyExclusiveSet level=STEP) + `/operations/{opId}/steps` endpoints
+- [x] T049 [P] [US6] `OperationStep` entity (stepNumber, stepSequenceNumber, optional) in `route/domain/`
+- [x] T050 [US6] Step logic in service (derive/types, MutuallyExclusiveSet level=STEP) + `/operations/{opId}/steps` endpoints
 
 **Checkpoint**: Steps mirror operation flow control.
 
