@@ -1,6 +1,8 @@
 package com.mes.routing.integration;
 
 import com.mes.common.security.privilege.PrivilegeCache;
+import com.mes.routing.approval.client.KeycloakCredentialVerifier;
+import com.mes.routing.approval.service.SignatureProperties;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
@@ -36,7 +38,8 @@ import java.util.UUID;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers(disabledWithoutDocker = true)
 @EmbeddedKafka(partitions = 1, bootstrapServersProperty = "spring.kafka.bootstrap-servers",
-        topics = {"inventory.bom.revision.superseded", "quality.inspection-plan.revision.superseded"})
+        topics = {"inventory.bom.revision.superseded", "quality.inspection-plan.revision.superseded",
+                "routing.route.approved"})
 @Import(BaseIntegrationTest.TestSecurityConfig.class)
 public abstract class BaseIntegrationTest {
 
@@ -63,6 +66,18 @@ public abstract class BaseIntegrationTest {
             } catch (Exception e) {
                 throw new RuntimeException("Failed to build test JwtDecoder", e);
             }
+        }
+
+        /** Stub e-signature verifier: the password "goodpass" succeeds; anything else fails. */
+        @Bean
+        @Primary
+        KeycloakCredentialVerifier testCredentialVerifier() {
+            return new KeycloakCredentialVerifier(new SignatureProperties()) {
+                @Override
+                public boolean verify(String username, String password) {
+                    return "goodpass".equals(password);
+                }
+            };
         }
 
         @Bean

@@ -62,6 +62,13 @@ public class RouteOperationService {
                 .stream().map(op -> toDto(op, routeId)).toList();
     }
 
+    @Transactional(readOnly = true)
+    public OperationDto get(UUID orgId, UUID routeId, UUID opId) {
+        requireRoute(orgId, routeId);
+        return toDto(operations.findByRouteIdAndId(routeId, opId)
+                .orElseThrow(() -> new RoutingNotFoundException("Operation not found: " + opId)), routeId);
+    }
+
     public OperationDto add(UUID orgId, UUID routeId, CreateOperationRequest req) {
         Route route = requireDraftRoute(orgId, routeId);
         if (operations.existsByRouteIdAndOperationNumber(routeId, req.operationNumber())) {
