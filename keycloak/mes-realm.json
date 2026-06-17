@@ -409,7 +409,7 @@
     {
       "clientId": "mes-signature-verify",
       "name": "Work Instruction E-Signature Verifier",
-      "description": "Confidential client used by engineering-service to verify an approver's password at e-signature time via Direct Access Grant (21 CFR Part 11). The returned token is discarded. Secret set via MES_SIGNATURE_VERIFY_SECRET env var (post-import).",
+      "description": "Confidential client used by engineering-service to verify an approver's password at e-signature time via Direct Access Grant (21 CFR Part 11). The returned token is discarded. Secret set post-import from MES_SIGNATURE_VERIFY_SECRET by scripts/set-keycloak-client-secrets.ps1 (see docs/dev/keycloak-post-import.md).",
       "enabled": true,
       "publicClient": false,
       "standardFlowEnabled": false,
