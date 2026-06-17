@@ -4,6 +4,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of } from 'rxjs';
 import { RoutingSettingsComponent } from './routing-settings.component';
 import { ReferenceDataApiService } from '../../services/reference-data-api.service';
+import { IamApiService } from '../../../settings/services/iam-api.service';
 
 describe('RoutingSettingsComponent', () => {
   let fixture: ComponentFixture<RoutingSettingsComponent>;
@@ -16,10 +17,13 @@ describe('RoutingSettingsComponent', () => {
     listSuppliers: vi.fn().mockReturnValue(of([])),
     listRouteTypes: vi.fn().mockReturnValue(of([])),
     listSignificantProcessTypes: vi.fn().mockReturnValue(of([])),
-    createWorkCentre: vi.fn().mockReturnValue(of({ id: 'wc-1', code: 'WC', name: 'Cell', active: true })),
-    createRouteType: vi.fn().mockReturnValue(of({ id: 'rt', code: 'NPI', name: 'NPI', isStandard: false, active: true })),
-    createSignificantProcessType: vi.fn().mockReturnValue(
-      of({ id: 'sp', code: 'WELD', name: 'Weld', requiredApproverRole: 'WELD_SME', active: true })),
+    createRef: vi.fn().mockReturnValue(of({})),
+    updateRef: vi.fn().mockReturnValue(of({})),
+    deleteRef: vi.fn().mockReturnValue(of(undefined)),
+  };
+
+  const mockIamApi = {
+    listRoles: vi.fn().mockReturnValue(of([{ id: 'r1', name: 'WELD_SME' }, { id: 'r2', name: 'QA_LEAD' }])),
   };
 
   beforeEach(async () => {
@@ -29,6 +33,7 @@ describe('RoutingSettingsComponent', () => {
       providers: [
         provideNoopAnimations(),
         { provide: ReferenceDataApiService, useValue: mockRefApi },
+        { provide: IamApiService, useValue: mockIamApi },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(RoutingSettingsComponent);
@@ -45,25 +50,19 @@ describe('RoutingSettingsComponent', () => {
     expect(mockRefApi.listSignificantProcessTypes).toHaveBeenCalled();
   });
 
-  it('adds a work centre via the simple section with active=true', () => {
-    const section = component.simpleSections.find(s => s.key === 'work-centres')!;
-    section.draft.code = 'WC-1';
-    section.draft.name = 'Mill';
-    section.add();
-    expect(mockRefApi.createWorkCentre).toHaveBeenCalledWith({ code: 'WC-1', name: 'Mill', active: true });
+  it('binds the required-approver-role options to the IAM role catalogue', () => {
+    expect(mockIamApi.listRoles).toHaveBeenCalled();
+    const roleField = component.sigFields.find(f => f.key === 'requiredApproverRole')!;
+    expect(roleField.type).toBe('select');
+    expect(roleField.options).toEqual([
+      { label: 'WELD_SME', value: 'WELD_SME' },
+      { label: 'QA_LEAD', value: 'QA_LEAD' },
+    ]);
   });
 
-  it('adds a route type with the isStandard flag', () => {
-    component.routeTypeDraft = { code: 'NPI', name: 'NPI Route', isStandard: true };
-    component.addRouteType();
-    expect(mockRefApi.createRouteType).toHaveBeenCalledWith(
-      { code: 'NPI', name: 'NPI Route', isStandard: true, active: true });
-  });
-
-  it('adds a significant-process type with the required approver role', () => {
-    component.sigDraft = { code: 'WELD', name: 'Welding', requiredApproverRole: 'WELD_SME' };
-    component.addSignificantProcessType();
-    expect(mockRefApi.createSignificantProcessType).toHaveBeenCalledWith(
-      { code: 'WELD', name: 'Welding', requiredApproverRole: 'WELD_SME', active: true });
+  it('reload(resource) refetches only that list', () => {
+    mockRefApi.listRouteTypes.mockClear();
+    component.reload('route-types');
+    expect(mockRefApi.listRouteTypes).toHaveBeenCalledTimes(1);
   });
 });
