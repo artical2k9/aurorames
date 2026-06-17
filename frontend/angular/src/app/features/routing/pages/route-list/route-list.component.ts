@@ -20,7 +20,6 @@ import { MessageService } from 'primeng/api';
 import {
   LucideColumnsSettings, LucideView, LucideGitBranch, LucideLock, LucideLockOpen,
 } from '@lucide/angular';
-import { revisionLabel } from '../../constants/revision-label';
 import { GridPreferenceService, ColumnPickerComponent, ColumnDef } from '../../../../shared/grid';
 import { BreadcrumbService } from '../../../../shared/ui';
 import { UdfApiService } from '../../../../shared/udf/udf-api.service';
@@ -342,7 +341,6 @@ export class RouteListComponent implements OnInit, AfterViewInit {
   getCellValue(route: RouteDto, col: ColumnDef): unknown {
     if (col.key === 'partNumber') return this.partNumberById.get(route.partId) ?? '…';
     if (col.key === 'routeTypeCode') return this.routeTypeCodeById.get(route.routeTypeId) ?? '—';
-    if (col.key === 'revision') return revisionLabel(route.revision);
     if (!col.udf) return (route as unknown as Record<string, unknown>)[col.key];
     const direct = (route as unknown as Record<string, unknown>)[col.key];
     return direct !== undefined ? direct : route.customFields?.[col.key];

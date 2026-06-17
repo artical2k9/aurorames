@@ -16,9 +16,6 @@ public class CreateItemMasterRequest {
     @NotBlank @Size(max = 100)
     private String partNumber;
 
-    @NotBlank @Size(max = 20)
-    private String revision;
-
     @NotBlank @Size(max = 500)
     private String description;
 
@@ -59,12 +56,6 @@ public class CreateItemMasterRequest {
     }
     public void setPartNumber(String partNumber) {
         this.partNumber = partNumber;
-    }
-    public String getRevision() {
-        return revision;
-    }
-    public void setRevision(String revision) {
-        this.revision = revision;
     }
     public String getDescription() {
         return description;

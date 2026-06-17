@@ -36,7 +36,7 @@ class RouteHeaderIT extends BaseIntegrationTest {
     }
 
     @Test
-    void createStandardRoute_returnsDraftRevision1() {
+    void createStandardRoute_returnsDraftRevision0() {
         Map<String, Object> body = Map.of("partId", UUID.randomUUID().toString(),
                 "partRevision", "A", "routeTypeId", standardRouteTypeId(),
                 "reasonForRevision", "Initial release");
@@ -44,7 +44,7 @@ class RouteHeaderIT extends BaseIntegrationTest {
                 "/api/v1/routes", HttpMethod.POST, jsonRequest(admin(), body), Map.class);
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(resp.getBody().get("status")).isEqualTo("DRAFT");
-        assertThat(resp.getBody().get("revision")).isEqualTo(1);
+        assertThat(resp.getBody().get("revision")).isEqualTo(0);
     }
 
     @Test

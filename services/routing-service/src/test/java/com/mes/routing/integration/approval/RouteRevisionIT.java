@@ -51,7 +51,7 @@ class RouteRevisionIT extends BaseIntegrationTest {
                 Map.of("reasonForRevision", "Add finishing op"));
         assertThat(rev.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(rev.getBody().get("status")).isEqualTo("DRAFT");
-        assertThat(rev.getBody().get("revision")).isEqualTo(2);
+        assertThat(rev.getBody().get("revision")).isEqualTo(1);
 
         // Structural edit (add operation) is now allowed again.
         ResponseEntity<Map> added = post("/api/v1/routes/" + routeId + "/operations",
@@ -61,9 +61,9 @@ class RouteRevisionIT extends BaseIntegrationTest {
         // Re-approval of the new revision.
         post("/api/v1/routes/" + routeId + "/submit", Map.of());
         ResponseEntity<Map> approved = post("/api/v1/routes/" + routeId + "/approve",
-                Map.of("password", "goodpass", "meaning", "Approved rev 2"));
+                Map.of("password", "goodpass", "meaning", "Approved rev 1"));
         assertThat(approved.getBody().get("status")).isEqualTo("APPROVED");
-        assertThat(approved.getBody().get("revision")).isEqualTo(2);
+        assertThat(approved.getBody().get("revision")).isEqualTo(1);
     }
 
     @Test

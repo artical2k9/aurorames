@@ -53,7 +53,7 @@ public class RouteService {
         route.setBomRevisionId(req.bomRevisionId());
         route.setInspectionPlanRevisionId(req.inspectionPlanRevisionId());
         route.setReasonForRevision(req.reasonForRevision());
-        route.setRevision(1);
+        route.setRevision(0);
         route.setStatus(RouteStatus.DRAFT);
         route.setCustomFields(req.customFields());
         lockGuard.acquireFor(route);   // creator holds the edit lock (FR-031)

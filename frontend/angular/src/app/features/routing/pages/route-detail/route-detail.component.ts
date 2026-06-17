@@ -15,7 +15,6 @@ import { BreadcrumbService } from '../../../../shared/ui';
 import { RoutingApiService } from '../../services/routing-api.service';
 import { ReferenceDataApiService } from '../../services/reference-data-api.service';
 import { OperationGridEditorComponent } from '../../components/operation-grid-editor/operation-grid-editor.component';
-import { revisionLabel } from '../../constants/revision-label';
 import {
   RouteApprovalStatusDto, RouteDto, RouteStatus, RouteTypeDto, SignificantProcessTypeDto,
 } from '../../models/routing.model';
@@ -38,7 +37,7 @@ import {
             <h2 class="rd__title">Route — Part Rev {{ route.partRevision }}</h2>
             <div class="rd__meta">
               <span>{{ routeTypeName(route.routeTypeId) }}</span>
-              <span>· Revision {{ revLabel(route.revision) }}</span>
+              <span>· Revision {{ route.revision }}</span>
               <p-tag [value]="statusLabel(route.status)" [severity]="statusSeverity(route.status)" />
               @if (route.lockHolder) {
                 <span class="rd__lock">🔒 Locked by {{ lockedByMe() ? 'you' : route.lockHolder }}</span>
@@ -235,10 +234,6 @@ export class RouteDetailComponent implements OnInit {
 
   canEdit(): boolean {
     return this.route?.status === 'DRAFT' && this.lockedByMe();
-  }
-
-  revLabel(revision: number): string {
-    return revisionLabel(revision);
   }
 
   /**

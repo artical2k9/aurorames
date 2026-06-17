@@ -51,7 +51,7 @@ public class RouteOperation extends OrgAuditedEntity {
     private boolean clocking = true;
 
     @Column(name = "operation_revision", nullable = false)
-    private int operationRevision = 1;
+    private int operationRevision = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "operation_status", nullable = false, length = 20)

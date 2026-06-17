@@ -43,7 +43,7 @@ public class Route extends OrgAuditedEntity {
     private UUID inspectionPlanRevisionId;
 
     @Column(name = "revision", nullable = false)
-    private int revision = 1;
+    private int revision = 0;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)

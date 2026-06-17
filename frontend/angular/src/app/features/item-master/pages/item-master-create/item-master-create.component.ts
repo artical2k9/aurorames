@@ -69,8 +69,8 @@ import { PlatformApiService } from '../../../../shared/platform';
             </div>
 
             <div class="imcr__field">
-              <label class="imcr__label">Revision <span class="imcr__req">*</span></label>
-              <input pInputText formControlName="revision" placeholder="e.g. A" />
+              <label class="imcr__label">Revision</label>
+              <span class="imcr__readonly">Auto-assigned (0)</span>
             </div>
 
             <div class="imcr__field">
@@ -214,6 +214,7 @@ import { PlatformApiService } from '../../../../shared/platform';
     .imcr__field { display: flex; flex-direction: column; gap: 0.3rem; }
     .imcr__label { font-size: 0.8125rem; font-weight: 500; color: var(--p-text-muted-color); }
     .imcr__req { color: #EF4444; }
+    .imcr__readonly { font-size: 0.875rem; color: var(--p-text-muted-color); padding: 0.4rem 0; }
     .imcr__error-text { font-size: 0.75rem; color: #EF4444; margin-top: 0.25rem; }
     .imcr__hint-text { font-size: 0.75rem; color: var(--p-text-muted-color); margin-top: 0.2rem; }
 
@@ -260,7 +261,6 @@ export class ItemMasterCreateComponent implements OnInit {
 
   form = this.fb.group({
     partNumber:           ['', Validators.required],
-    revision:             ['A', Validators.required],
     description:          ['', Validators.required],
     unitOfMeasure:        ['EA', Validators.required],
     classification:       [null as Classification | null, Validators.required],
@@ -457,7 +457,6 @@ export class ItemMasterCreateComponent implements OnInit {
 
     this.api.create({
       partNumber:           v.partNumber!,
-      revision:             v.revision!,
       description:          v.description!,
       unitOfMeasure:        v.unitOfMeasure!,
       classification:       v.classification as Classification,
