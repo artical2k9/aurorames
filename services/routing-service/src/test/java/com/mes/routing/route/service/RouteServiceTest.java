@@ -65,7 +65,7 @@ class RouteServiceTest {
     }
 
     @Test
-    void create_firstStandard_savesDraftRevision1() {
+    void create_firstStandard_savesDraftRevision0() {
         when(routeTypes.findByOrgIdAndId(ORG, TYPE)).thenReturn(Optional.of(type(true)));
         when(routes.existsStandardRouteForPart(ORG, PART, "A")).thenReturn(false);
         when(routes.save(any(Route.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -73,7 +73,7 @@ class RouteServiceTest {
         RouteDto dto = service.create(ORG, req());
 
         assertThat(dto.status()).isEqualTo("DRAFT");
-        assertThat(dto.revision()).isEqualTo(1);
+        assertThat(dto.revision()).isEqualTo(0);
     }
 
     @Test

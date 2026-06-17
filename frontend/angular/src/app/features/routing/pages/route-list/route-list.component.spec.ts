@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 import { RouteListComponent } from './route-list.component';
@@ -31,6 +31,7 @@ describe('RouteListComponent', () => {
   const mockApi = {
     list: vi.fn().mockReturnValue(of({ content: [MOCK_ROUTE], totalElements: 1 })),
     create: vi.fn().mockReturnValue(of({ ...MOCK_ROUTE } as unknown)),
+    startRouteRevision: vi.fn().mockReturnValue(of({ ...MOCK_ROUTE })),
   };
   const mockRefApi = {
     listRouteTypes: vi.fn().mockReturnValue(of([
@@ -45,6 +46,7 @@ describe('RouteListComponent', () => {
   } as unknown as ItemMasterDto;
   const mockItemApi = {
     list: vi.fn().mockReturnValue(of({ content: [MOCK_ITEM], totalElements: 1 })),
+    getById: vi.fn().mockReturnValue(of({ ...MOCK_ITEM, partNumber: 'PN-001' })),
   };
 
   beforeEach(async () => {
@@ -66,7 +68,7 @@ describe('RouteListComponent', () => {
   });
 
   it('loads UDF columns for the ROUTE module and active route types on init', () => {
-    expect(mockUdfApi.listFields).toHaveBeenCalledWith('ROUTE');
+    expect(mockUdfApi.listFields).toHaveBeenCalledWith('ROUTING');
     expect(mockRefApi.listRouteTypes).toHaveBeenCalled();
     expect(component.routeTypes).toHaveLength(1);
   });
@@ -120,5 +122,22 @@ describe('RouteListComponent', () => {
     component['fetchRows']();
     expect(component.rows).toHaveLength(0);
     expect(component.loading).toBe(false);
+  });
+
+  it('resolves partId to partNumber for the part-number column', async () => {
+    await fixture.whenStable();
+    await new Promise(resolve => setTimeout(resolve));
+    expect(mockItemApi.getById).toHaveBeenCalledWith('item-1');
+    const value = component.getCellValue(MOCK_ROUTE, {
+      key: 'partNumber', label: 'Part Number', visible: true, order: 0,
+    });
+    expect(value).toBe('PN-001');
+  });
+
+  it('createRevision starts a revision and navigates to detail', () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const approved = { ...MOCK_ROUTE, status: 'APPROVED' } as RouteDto;
+    component.createRevision(approved);
+    expect(mockApi.startRouteRevision).toHaveBeenCalledWith('route-1');
   });
 });

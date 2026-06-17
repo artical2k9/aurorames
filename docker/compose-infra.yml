@@ -75,8 +75,10 @@ services:
 
   # ── Keycloak 25.0.6 ──────────────────────────────────────────────────────────
   # Dev mode (H2 embedded). Import mes-realm.json on first startup.
-  # After import, set client secrets via the admin console or the post-import
-  # script (see docs/keycloak-post-import.md).
+  # After import, set confidential-client secrets to match the MES_*_SECRET env
+  # vars by running scripts/set-keycloak-client-secrets.ps1 (or via the admin
+  # console). Required for the e-signature flow (mes-signature-verify); without it
+  # Work Instruction / route approval returns 422. See docs/dev/keycloak-post-import.md.
   #
   # The http-sender webhook secret (KEYCLOAK_WEBHOOK_SECRET) must be set
   # in Keycloak after first import:

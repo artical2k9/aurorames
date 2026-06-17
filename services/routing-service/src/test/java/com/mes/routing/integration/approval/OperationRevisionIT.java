@@ -57,11 +57,11 @@ class OperationRevisionIT extends BaseIntegrationTest {
         String opId = ro[1];
         String opBase = "/api/v1/routes/" + routeId + "/operations/" + opId;
 
-        // Start operation revision: operation reopens to DRAFT, revision bumps, governed by route rev 1.
+        // Start operation revision: operation reopens to DRAFT, revision bumps, governed by route rev 0.
         ResponseEntity<Map> started = post(opBase + "/revision", Map.of());
         assertThat(started.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(started.getBody().get("operationStatus")).isEqualTo("DRAFT");
-        assertThat(started.getBody().get("operationRevision")).isEqualTo(2);
+        assertThat(started.getBody().get("operationRevision")).isEqualTo(1);
 
         // Content-only edit, then submit and approve at the operation level.
         ResponseEntity<Map> edited = patch(opBase + "/content", Map.of("description", "Updated method"));
@@ -74,15 +74,15 @@ class OperationRevisionIT extends BaseIntegrationTest {
         assertThat(approvedOp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(approvedOp.getBody().get("subjectType")).isEqualTo("OPERATION_REVISION");
 
-        // Audit history groups the operation approval under the governing route revision (1).
+        // Audit history groups the operation approval under the governing route revision (0).
         Map<String, Object> history = restTemplate.exchange(
                 "/api/v1/routes/" + routeId + "/approval-history", HttpMethod.GET,
                 bearerRequest(admin()), MAP).getBody();
         List<Map<String, Object>> revisions = (List<Map<String, Object>>) history.get("revisions");
-        Map<String, Object> rev1 = revisions.stream()
-                .filter(r -> Integer.valueOf(1).equals(r.get("routeRevision"))).findFirst().orElseThrow();
-        assertThat((List<?>) rev1.get("routeApprovals")).hasSize(1);
-        assertThat((List<?>) rev1.get("operationApprovals")).hasSize(1);
+        Map<String, Object> rev0 = revisions.stream()
+                .filter(r -> Integer.valueOf(0).equals(r.get("routeRevision"))).findFirst().orElseThrow();
+        assertThat((List<?>) rev0.get("routeApprovals")).hasSize(1);
+        assertThat((List<?>) rev0.get("operationApprovals")).hasSize(1);
     }
 
     @Test

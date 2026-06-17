@@ -11,8 +11,10 @@ import { DialogModule } from 'primeng/dialog';
 import { TagModule } from 'primeng/tag';
 import { InputTextModule } from 'primeng/inputtext';
 import { CheckboxModule } from 'primeng/checkbox';
+import { LucideCopy, LucideTrash2, LucidePencil } from '@lucide/angular';
 import { RoutingApiService } from '../../services/routing-api.service';
 import { ReferenceDataApiService } from '../../services/reference-data-api.service';
+import { OperationDetailPanelComponent } from '../operation-detail-panel/operation-detail-panel.component';
 import {
   GroupDto, MutuallyExclusiveSetDto, OperationDto, SignificantProcessTypeDto, StepDto, SupplierDto,
   WorkCentreDto,
@@ -32,100 +34,97 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
   imports: [
     CommonModule, FormsModule,
     TableModule, ButtonModule, DialogModule, TagModule, InputTextModule, CheckboxModule,
+    LucideCopy, LucideTrash2, LucidePencil,
+    OperationDetailPanelComponent,
   ],
   template: `
     <div class="oge">
-      <div class="oge__bar">
-        <h3 class="oge__title">Operations</h3>
-        @if (editable) {
-          <div class="oge__bar-actions">
-            <p-button label="Add Operation" icon="pi pi-plus" size="small"
-                      severity="primary" (onClick)="openAddOperation()" />
-            <p-button label="Manage Groups" size="small" severity="secondary"
-                      (onClick)="openGroups()" />
-            <p-button label="Mutually Exclusive" size="small" severity="secondary"
-                      (onClick)="openMutuallyExclusive()" />
-          </div>
-        }
-      </div>
+      @if (editable) {
+        <div class="oge__bar">
+          <p-button label="Manage Groups" size="small" severity="secondary" (onClick)="openGroups()" />
+          <p-button label="Mutually Exclusive" size="small" severity="secondary"
+                    (onClick)="openMutuallyExclusive()" />
+        </div>
+      }
 
-      <p-table [value]="operations" dataKey="id" styleClass="p-datatable-sm p-datatable-gridlines">
-        <ng-template pTemplate="header">
-          <tr>
-            <th style="width:4rem">Op #</th>
-            <th style="width:4rem">Seq</th>
-            <th>Description</th>
-            <th style="width:14rem">Type</th>
-            <th style="width:12rem">Significant Process</th>
-            <th style="width:12rem">OSP Supplier</th>
-            <th style="width:9rem">Steps</th>
-            @if (editable) { <th style="width:5rem">Actions</th> }
-          </tr>
-        </ng-template>
-        <ng-template pTemplate="body" let-op>
-          <tr>
-            <td>{{ op.operationNumber }}</td>
-            <td>{{ op.sequenceNumber }}</td>
-            <td>{{ op.description ?? '—' }}</td>
-            <td>
-              <div class="oge__badges">
-                @for (badge of typeBadges(op); track badge) {
-                  <p-tag [value]="badge.label" [severity]="badge.severity" />
-                }
+      <div class="oge__layout">
+        <aside class="oge__sidebar">
+          <div class="oge__sb-head">
+            <span class="oge__sb-count">Operations: {{ operations.length }}</span>
+            @if (editable) {
+              <button type="button" class="oge__sb-add" title="Add operation" (click)="startAdd()">+</button>
+            }
+          </div>
+          <input pInputText class="oge__sb-search" placeholder="Search operations…"
+                 [(ngModel)]="opSearch" />
+          <div class="oge__sb-allhdr">All Operations</div>
+
+          @for (op of filteredOps(); track op.id) {
+            <div class="oge__card" [class.oge__card--sel]="selectedOp?.id === op.id" (click)="selectOp(op)">
+              <div class="oge__card-seq">{{ op.sequenceNumber }}</div>
+              <div class="oge__card-body">
+                <div class="oge__card-line">
+                  <span class="oge__card-num">Op {{ op.operationNumber }}</span>
+                  <span class="oge__type"
+                        [class.oge__type--parallel]="op.derivedType === 'PARALLEL'">
+                    {{ op.derivedType === 'PARALLEL' ? 'Parallel' : 'Normal' }}
+                  </span>
+                  @for (b of typeBadges(op); track b.label) {
+                    <p-tag [value]="b.label" [severity]="b.severity" />
+                  }
+                </div>
+                <div class="oge__card-desc">{{ op.description || '—' }}</div>
               </div>
               @if (editable) {
-                <div class="oge__toggles">
-                  <label><p-checkbox [binary]="true" [ngModel]="op.optional"
-                          (ngModelChange)="toggleFlag(op, 'optional', $event)" /> Optional</label>
-                  <label><p-checkbox [binary]="true" [ngModel]="op.osp"
-                          (ngModelChange)="toggleFlag(op, 'osp', $event)" /> OSP</label>
+                <div class="oge__card-actions">
+                  <button type="button" title="Edit operation"
+                          (click)="selectOp(op); $event.stopPropagation()">
+                    <svg lucidePencil [size]="15" [strokeWidth]="1.75"></svg>
+                  </button>
+                  <button type="button" title="Duplicate"
+                          (click)="duplicate(op); $event.stopPropagation()">
+                    <svg lucideCopy [size]="15" [strokeWidth]="1.75"></svg>
+                  </button>
+                  <button type="button" title="Delete" class="oge__card-del"
+                          (click)="deleteOperation(op); $event.stopPropagation()">
+                    <svg lucideTrash2 [size]="15" [strokeWidth]="1.75"></svg>
+                  </button>
                 </div>
               }
-            </td>
-            <td>
+            </div>
+          }
+          @if (!operations.length && !addingOp) { <div class="oge__sb-empty">No operations yet.</div> }
+
+          @if (addingOp) {
+            <div class="oge__addrow">
+              <input pInputText type="number" placeholder="Op #" [(ngModel)]="opDraft.operationNumber" />
+              <input pInputText type="number" placeholder="Seq" [(ngModel)]="opDraft.sequenceNumber" />
+              <input pInputText placeholder="Description" [(ngModel)]="opDraft.description" />
+              @if (error) { <small class="oge__error">{{ error }}</small> }
+              <div class="oge__addrow-btns">
+                <p-button label="Add" size="small" [disabled]="!canAddOp()" (onClick)="addOperation()" />
+                <p-button label="Cancel" size="small" severity="secondary" [text]="true" (onClick)="cancelAdd()" />
+              </div>
+            </div>
+          }
+        </aside>
+
+        <main class="oge__main">
+          @if (selectedOp) {
+            <div class="oge__main-head">
+              <span>Operation {{ selectedOp.operationNumber }} · Seq {{ selectedOp.sequenceNumber }}</span>
               @if (editable) {
-                <select class="oge__select" [ngModel]="op.significantProcessTypeId ?? ''"
-                        (ngModelChange)="setSignificantProcess(op, $event)">
-                  <option value="">— None —</option>
-                  @for (sp of significantProcessTypes; track sp.id) {
-                    <option [value]="sp.id">{{ sp.name }}</option>
-                  }
-                </select>
-              } @else {
-                {{ significantProcessName(op.significantProcessTypeId) }}
+                <p-button [label]="'Steps (' + stepCount(selectedOp.id) + ')'" size="small"
+                          severity="secondary" [text]="true" (onClick)="openSteps(selectedOp)" />
               }
-            </td>
-            <td>
-              @if (op.osp) {
-                @if (editable) {
-                  <select class="oge__select" [ngModel]="op.supplierId ?? ''"
-                          (ngModelChange)="setSupplier(op, $event)">
-                    <option value="">— Unassigned —</option>
-                    @for (s of suppliers; track s.id) {
-                      <option [value]="s.id">{{ s.name }}</option>
-                    }
-                  </select>
-                } @else {
-                  {{ supplierName(op.supplierId) }}
-                }
-              } @else { <span class="oge__muted">—</span> }
-            </td>
-            <td>
-              <p-button [label]="'Steps (' + (stepCount(op.id)) + ')'" size="small"
-                        severity="secondary" [text]="true" (onClick)="openSteps(op)" />
-            </td>
-            @if (editable) {
-              <td>
-                <p-button icon="pi pi-trash" size="small" severity="danger" [text]="true"
-                          [rounded]="true" title="Delete" (onClick)="deleteOperation(op)" />
-              </td>
-            }
-          </tr>
-        </ng-template>
-        <ng-template pTemplate="emptymessage">
-          <tr><td [attr.colspan]="editable ? 8 : 7">No operations yet.</td></tr>
-        </ng-template>
-      </p-table>
+            </div>
+            <app-operation-detail-panel [routeId]="routeId" [operation]="selectedOp" [editable]="editable"
+                                        (changed)="reload()" />
+          } @else {
+            <div class="oge__placeholder">Select an operation from the list to view and edit its detail.</div>
+          }
+        </main>
+      </div>
 
       @if (groups.length) {
         <h4 class="oge__subtitle">Groups</h4>
@@ -141,25 +140,6 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
         </ul>
       }
     </div>
-
-    <!-- Add operation -->
-    <p-dialog header="Add Operation" [(visible)]="showAddOp" [modal]="true" [style]="{ width: '420px' }">
-      <div class="oge__form">
-        <label>Operation Number *</label>
-        <input pInputText type="number" [(ngModel)]="opDraft.operationNumber" />
-        <label>Sequence Number *</label>
-        <input pInputText type="number" [(ngModel)]="opDraft.sequenceNumber" />
-        <small class="oge__hint">Operations sharing a sequence number are derived Parallel.</small>
-        <label>Description</label>
-        <input pInputText [(ngModel)]="opDraft.description" />
-        @if (error) { <small class="oge__error">{{ error }}</small> }
-      </div>
-      <ng-template pTemplate="footer">
-        <p-button label="Cancel" severity="secondary" size="small" (onClick)="showAddOp = false" />
-        <p-button label="Add" severity="primary" size="small"
-                  [disabled]="!canAddOp()" (onClick)="addOperation()" />
-      </ng-template>
-    </p-dialog>
 
     <!-- Steps -->
     <p-dialog [header]="'Steps — Operation ' + (activeOp?.operationNumber ?? '')"
@@ -253,11 +233,42 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
     .oge__bar-actions { display: flex; gap: 0.5rem; }
     .oge__title { margin: 0; font-size: 1.05rem; font-weight: 700; }
     .oge__subtitle { margin: 1rem 0 0.25rem; font-size: 0.95rem; }
+    .oge__detailhdr { margin: 1rem 0 0; font-size: 0.9rem; font-weight: 700; color: var(--p-primary-color); }
     .oge__badges { display: flex; flex-wrap: wrap; gap: 0.25rem; }
     .oge__toggles { display: flex; gap: 0.75rem; margin-top: 0.35rem; font-size: 0.75rem; }
     .oge__toggles label { display: inline-flex; align-items: center; gap: 0.25rem; }
     .oge__select { width: 100%; padding: 0.3rem 0.4rem; border: 1px solid var(--p-inputtext-border-color); border-radius: 4px; }
     .oge__muted { color: var(--p-text-muted-color); }
+    .oge__layout { display: flex; gap: 1rem; align-items: flex-start; }
+    .oge__sidebar { width: 300px; flex: 0 0 300px; border: 1px solid var(--p-content-border-color); border-radius: 6px; overflow: hidden; }
+    .oge__sb-head { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.75rem; font-weight: 700; font-size: 0.9rem; }
+    .oge__sb-add { border: 1px solid var(--p-content-border-color); background: transparent; width: 24px; height: 24px; border-radius: 6px; cursor: pointer; color: var(--p-primary-color); font-size: 1.1rem; line-height: 1; }
+    .oge__sb-search { width: calc(100% - 1.5rem); margin: 0 0.75rem 0.5rem; }
+    .oge__sb-allhdr { padding: 0.35rem 0.75rem; background: var(--p-content-hover-background); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--p-text-muted-color); }
+    .oge__card { display: flex; gap: 0.6rem; padding: 0.6rem 0.75rem; border-top: 1px solid var(--p-content-border-color); cursor: pointer; }
+    .oge__card:hover { background: var(--p-content-hover-background); }
+    .oge__card--sel { background: color-mix(in srgb, var(--p-primary-color) 12%, transparent); border-left: 3px solid var(--p-primary-color); padding-left: calc(0.75rem - 3px); }
+    .oge__card-seq { font-size: 1.1rem; font-weight: 700; min-width: 1.6rem; }
+    .oge__card-body { flex: 1; min-width: 0; }
+    .oge__card-line { display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
+    .oge__card-num { font-size: 0.72rem; font-weight: 700; color: var(--p-text-muted-color); }
+    .oge__card-desc { font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .oge__type { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;
+      padding: 0.05rem 0.4rem; border-radius: 10px; background: var(--p-content-hover-background);
+      color: var(--p-text-color); border: 1px solid var(--p-content-border-color); }
+    .oge__type--parallel { background: color-mix(in srgb, var(--p-primary-color) 18%, transparent);
+      color: var(--p-primary-color); border-color: transparent; }
+    .oge__card-actions { display: flex; gap: 0.25rem; align-items: flex-start; }
+    .oge__card-actions button { border: none; background: transparent; cursor: pointer;
+      color: var(--p-text-muted-color); display: inline-flex; padding: 0.1rem; line-height: 0; }
+    .oge__card-actions button:hover { color: var(--p-primary-color); }
+    .oge__card-del:hover { color: var(--p-red-500) !important; }
+    .oge__sb-empty { padding: 0.75rem; color: var(--p-text-muted-color); font-size: 0.8rem; }
+    .oge__addrow { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.6rem 0.75rem; border-top: 1px solid var(--p-content-border-color); }
+    .oge__addrow-btns { display: flex; gap: 0.5rem; }
+    .oge__main { flex: 1; min-width: 0; }
+    .oge__main-head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 0.9rem; }
+    .oge__placeholder { padding: 2rem; text-align: center; color: var(--p-text-muted-color); border: 1px dashed var(--p-content-border-color); border-radius: 6px; }
     .oge__form, .oge__stepform { display: flex; flex-direction: column; gap: 0.4rem; }
     .oge__stepform { flex-direction: row; align-items: center; margin-top: 0.6rem; flex-wrap: wrap; }
     .oge__form label, .oge__label { font-size: 0.8125rem; font-weight: 600; margin-top: 0.25rem; }
@@ -280,6 +291,7 @@ export class OperationGridEditorComponent implements OnInit {
   @Output() readonly changed = new EventEmitter<void>();
 
   operations: OperationDto[] = [];
+  selectedOp: OperationDto | null = null;
   groups: GroupDto[] = [];
   meSets: MutuallyExclusiveSetDto[] = [];
   significantProcessTypes: SignificantProcessTypeDto[] = [];
@@ -289,7 +301,8 @@ export class OperationGridEditorComponent implements OnInit {
   private meOperationIds = new Set<string>();
   private stepCounts = new Map<string, number>();
 
-  showAddOp = false;
+  addingOp = false;
+  opSearch = '';
   opDraft: { operationNumber?: number; sequenceNumber?: number; description?: string } = {};
   error = '';
 
@@ -330,9 +343,16 @@ export class OperationGridEditorComponent implements OnInit {
       this.groups = groups;
       this.meSets = meSets;
       this.meOperationIds = new Set(meSets.filter(s => s.level === 'OPERATION').flatMap(s => s.memberIds));
+      if (this.selectedOp) {
+        this.selectedOp = operations.find(o => o.id === this.selectedOp!.id) ?? null;
+      }
       this.loadStepCounts();
       this.cdr.detectChanges();
     });
+  }
+
+  selectOp(op: OperationDto): void {
+    this.selectedOp = this.selectedOp?.id === op.id ? null : op;
   }
 
   private loadStepCounts(): void {
@@ -352,12 +372,9 @@ export class OperationGridEditorComponent implements OnInit {
     return this.stepCounts.get(opId) ?? 0;
   }
 
+  /** Attribute badges only — the Normal/Parallel type is rendered as its own always-visible chip. */
   typeBadges(op: OperationDto): { label: string; severity: 'info' | 'warn' | 'danger' | 'secondary' }[] {
-    const badges: { label: string; severity: 'info' | 'warn' | 'danger' | 'secondary' }[] = [
-      op.derivedType === 'PARALLEL'
-        ? { label: 'Parallel', severity: 'info' }
-        : { label: 'Normal', severity: 'secondary' },
-    ];
+    const badges: { label: string; severity: 'info' | 'warn' | 'danger' | 'secondary' }[] = [];
     if (op.optional) badges.push({ label: 'Optional', severity: 'warn' });
     if (op.osp) badges.push({ label: 'OSP', severity: 'warn' });
     if (this.meOperationIds.has(op.id)) badges.push({ label: 'Mutually Exclusive', severity: 'danger' });
@@ -374,10 +391,28 @@ export class OperationGridEditorComponent implements OnInit {
 
   // ── Operation mutations ──────────────────────────────────────────────────────
 
-  openAddOperation(): void {
+  filteredOps(): OperationDto[] {
+    const q = this.opSearch.trim().toLowerCase();
+    const ops = [...this.operations].sort((a, b) =>
+      a.sequenceNumber - b.sequenceNumber || a.operationNumber - b.operationNumber);
+    if (!q) return ops;
+    return ops.filter(op =>
+      String(op.operationNumber).includes(q) || String(op.sequenceNumber).includes(q)
+      || (op.description ?? '').toLowerCase().includes(q));
+  }
+
+  startAdd(): void {
+    const nextSeq = this.operations.length
+      ? Math.max(...this.operations.map(o => o.sequenceNumber)) + 10 : 10;
+    this.opDraft = { operationNumber: this.nextOpNumber(), sequenceNumber: nextSeq };
+    this.error = '';
+    this.addingOp = true;
+  }
+
+  cancelAdd(): void {
+    this.addingOp = false;
     this.opDraft = {};
     this.error = '';
-    this.showAddOp = true;
   }
 
   canAddOp(): boolean {
@@ -390,9 +425,29 @@ export class OperationGridEditorComponent implements OnInit {
       sequenceNumber: this.opDraft.sequenceNumber as number,
       description: this.opDraft.description,
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => { this.showAddOp = false; this.afterChange(); },
+      next: () => { this.addingOp = false; this.opDraft = {}; this.afterChange(); },
       error: err => { this.error = err?.error?.error ?? 'Failed to add operation'; this.cdr.detectChanges(); },
     });
+  }
+
+  /** Client-side duplicate: copies the operation header onto a new operation number. */
+  duplicate(op: OperationDto): void {
+    this.api.addOperation(this.routeId, {
+      operationNumber: this.nextOpNumber(),
+      sequenceNumber: op.sequenceNumber,
+      description: op.description,
+      optional: op.optional,
+      significantProcessTypeId: op.significantProcessTypeId,
+      clocking: op.clocking,
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => this.afterChange(),
+      error: err => { this.error = err?.error?.error ?? 'Failed to duplicate operation'; this.cdr.detectChanges(); },
+    });
+  }
+
+  private nextOpNumber(): number {
+    return this.operations.length
+      ? Math.max(...this.operations.map(o => o.operationNumber)) + 10 : 10;
   }
 
   toggleFlag(op: OperationDto, flag: 'optional' | 'osp', value: boolean): void {

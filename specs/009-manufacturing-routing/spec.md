@@ -38,7 +38,7 @@ A process engineer creates a new route and records what it applies to: the part 
 
 **Acceptance Scenarios**:
 
-1. **Given** an approved item, BOM revision and inspection-plan revision exist, **When** the engineer creates a route header referencing them with route type Standard and an initial reason for revision, **Then** the route is saved in DRAFT, scoped to the caller's organisation, with revision 1.
+1. **Given** an approved item, BOM revision and inspection-plan revision exist, **When** the engineer creates a route header referencing them with route type Standard and an initial reason for revision, **Then** the route is saved in DRAFT, scoped to the caller's organisation, with revision 0 (revisions are 0-based, consistent with item-master and BOM).
 2. **Given** a Standard route already exists for a part/revision, **When** the engineer creates a second route for the same part/revision with type Standard, **Then** the system rejects it (only one Standard route per part/revision).
 3. **Given** a Standard route exists for a part/revision, **When** the engineer creates an additional route for the same part/revision with an alternate type (e.g. NPI), **Then** it is accepted as a separate route.
 4. **Given** a route header, **When** another user in a different organisation lists routes, **Then** the route is not visible to them (org isolation).

@@ -358,17 +358,17 @@ Captured from the design review (wireframes in Penpot, Aurora MES / Shell page).
 - [ ] T095 [P] Unit + IT: acquire/release lock, holder-only edit, force-unlock privilege, read-only for non-holders
 - [ ] T096 `RouteLock` state on route (lockHolder, lockedAt) + acquire/release/force-unlock service; gate every mutating route/operation endpoint on lock ownership
 - [ ] T097 Register `routing:route:unlock` privilege (auto-grant SYSTEM_ADMIN, ERR-MES-075) + audit force-unlock
-- [ ] T098 Frontend: header lock toggle wired (acquire/release), read-only rendering for non-holders, force-unlock action for privileged users
+- [x] T098 Frontend: header lock toggle wired (acquire/release), read-only rendering for non-holders, force-unlock action for privileged users
 
 ### Operation detail in the tabbed editor (gaps 1–5, 7)
-- [ ] T099 Rework `route-detail` into sidebar (add/duplicate/delete/search ops) + tabbed detail editor matching the wireframes
-- [ ] T100 Overview tab = inline-editable Seq · Op# · Description · Work Centre row (replace modal with in-grid add)
+- [x] T099 Rework `route-detail` into sidebar (add/duplicate/delete/search ops) + tabbed detail editor matching the wireframes
+- [x] T100 Overview tab = inline-editable Seq · Op# · Description · Work Centre row (replace modal with in-grid add)
 - [ ] T101 Attributes tab: behaviour, **Labour Type Direct/Indirect (FR-013a)**, Optional/OSP/Mutual-Excl. toggle switches, significant-process select
-- [ ] T102 Resources tab: labour-plan editor (Labour Plan Type × Setup/Run/Inspection/Transport + basis) + work centres — closes the OSP dead-end (gap 2)
-- [ ] T103 BOM / Documents / Tools / Skills tabs: material consumption, WI+STEP, tooling, skill requirements editors
-- [ ] T104 Variables tab: quality variables editor incl. per-characteristic **Req. Skill(s)** column
+- [x] T102 Resources tab: labour-plan editor (Labour Plan Type × Setup/Run/Inspection/Transport + basis) + work centres — closes the OSP dead-end (gap 2)
+- [x] T103 BOM / Documents / Tools / Skills tabs: material consumption, WI+STEP, tooling, skill requirements editors
+- [x] T104 Variables tab: quality variables editor incl. per-characteristic **Req. Skill(s)** column
 - [ ] T105 Operation-revision UI (start / content-edit / submit / approve) + approval-history view (gaps 3, 4); group/step-level ME in the ME dialog (gap 5)
-- [ ] T106 Route View fixes: part-number column (resolve partId→partNumber), create-revision action icon; Save Draft button + header edit
+- [x] T106 Route View fixes: part-number column (resolve partId→partNumber), create-revision action icon; Save Draft button + header edit
 
 ### Skills at three levels (data model)
 - [ ] T107 Extend `SkillRequirement` to be linkable to operation **and** quality variable (`QualityVariableRequirement`) **and** tooling (`ToolingRequirement`); endpoints + ITs

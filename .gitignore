@@ -43,3 +43,11 @@ npm-debug.log*
 # ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+
+# ── Reference standards (copyrighted — local-only) ────────────────────────────
+# Licensed copies of IAQG/SAE standards (AS9100D, AS9102C, AS9131D, AS9145, …) are
+# kept locally for development reference but MUST NOT be committed: this repo is
+# public and these are commercial, copyrighted documents. Only the index/citation
+# map (docs/Standards/README.md) is tracked. See that file for how to obtain them.
+docs/Standards/*.pdf
+docs/Standards/*.PDF

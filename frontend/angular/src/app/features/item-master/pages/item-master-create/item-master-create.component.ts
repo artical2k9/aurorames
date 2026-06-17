@@ -69,6 +69,11 @@ import { PlatformApiService } from '../../../../shared/platform';
             </div>
 
             <div class="imcr__field">
+              <label class="imcr__label">Revision</label>
+              <span class="imcr__readonly">Auto-assigned (0)</span>
+            </div>
+
+            <div class="imcr__field">
               <label class="imcr__label">Description <span class="imcr__req">*</span></label>
               <textarea pTextarea formControlName="description" rows="3"
                         placeholder="Brief item description" style="width:100%"></textarea>
@@ -209,6 +214,7 @@ import { PlatformApiService } from '../../../../shared/platform';
     .imcr__field { display: flex; flex-direction: column; gap: 0.3rem; }
     .imcr__label { font-size: 0.8125rem; font-weight: 500; color: var(--p-text-muted-color); }
     .imcr__req { color: #EF4444; }
+    .imcr__readonly { font-size: 0.875rem; color: var(--p-text-muted-color); padding: 0.4rem 0; }
     .imcr__error-text { font-size: 0.75rem; color: #EF4444; margin-top: 0.25rem; }
     .imcr__hint-text { font-size: 0.75rem; color: var(--p-text-muted-color); margin-top: 0.2rem; }
 

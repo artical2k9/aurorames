@@ -58,6 +58,14 @@ import { ItemMasterDto, Classification, MakeBuyCode, TraceabilityMethod, Counter
                 <input pInputText formControlName="partNumber" placeholder="e.g. PN-001" />
               }
             </div>
+            <div class="imf__field">
+              <label>Revision</label>
+              @if (editMode) {
+                <span class="imf__readonly">{{ loadedItem?.revision }}</span>
+              } @else {
+                <span class="imf__readonly">Auto-assigned (0)</span>
+              }
+            </div>
             <div class="imf__field imf__field--full">
               <label>Description <span class="imf__req">*</span></label>
               <input pInputText formControlName="description" placeholder="Brief item description" />

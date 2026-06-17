@@ -39,9 +39,28 @@ import {
               <span>{{ routeTypeName(route.routeTypeId) }}</span>
               <span>· Revision {{ route.revision }}</span>
               <p-tag [value]="statusLabel(route.status)" [severity]="statusSeverity(route.status)" />
+              @if (route.lockHolder) {
+                <span class="rd__lock">🔒 Locked by {{ lockedByMe() ? 'you' : route.lockHolder }}</span>
+              } @else {
+                <span class="rd__lock rd__lock--open">Unlocked</span>
+              }
             </div>
           </div>
           <div class="rd__actions">
+            @if (route.status === 'DRAFT' && !route.lockHolder) {
+              <p-button label="Lock to edit" size="small" severity="secondary"
+                        [disabled]="working" (onClick)="acquireLock()" />
+            }
+            @if (route.status === 'DRAFT' && lockedByMe()) {
+              <p-button label="Save Draft" size="small" severity="secondary"
+                        [disabled]="working" (onClick)="saveDraft()" />
+              <p-button label="Unlock" size="small" severity="secondary" [text]="true"
+                        [disabled]="working" (onClick)="releaseLock()" />
+            }
+            @if (route.lockHolder && !lockedByMe()) {
+              <p-button label="Force unlock" size="small" severity="danger" [text]="true"
+                        [disabled]="working" (onClick)="forceUnlock()" />
+            }
             @if (route.status === 'DRAFT') {
               <p-button label="Submit for Approval" size="small" severity="primary"
                         [disabled]="working" (onClick)="submit()" />
@@ -74,8 +93,13 @@ import {
           </div>
         }
 
+        @if (route.status === 'DRAFT' && !lockedByMe()) {
+          <p-message severity="info"
+            [text]="route.lockHolder ? 'This route is locked by ' + route.lockHolder + ' — read-only. Force-unlock to take over.' : 'Lock this route to edit it.'" />
+        }
+
         <app-operation-grid-editor [routeId]="route.id"
-                                   [editable]="route.status === 'DRAFT'"
+                                   [editable]="canEdit()"
                                    (changed)="refreshStatus()" />
       </div>
 
@@ -129,7 +153,9 @@ import {
     .rd__title { margin: 0; font-size: 1.375rem; font-weight: 700; }
     .rd__meta { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;
       font-size: 0.875rem; color: var(--p-text-muted-color); }
-    .rd__actions { display: flex; gap: 0.5rem; }
+    .rd__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .rd__lock { font-size: 0.8125rem; color: var(--p-orange-500); }
+    .rd__lock--open { color: var(--p-text-muted-color); }
     .rd__approval { margin: 0.75rem 0; font-size: 0.875rem; }
     .rd__form { display: flex; flex-direction: column; gap: 0.4rem; }
     .rd__form label { font-size: 0.8125rem; font-weight: 600; margin-top: 0.25rem; }
@@ -186,6 +212,62 @@ export class RouteDetailComponent implements OnInit {
     this.api.approvalStatus(this.route.id).pipe(
       catchError(() => of(null)), takeUntilDestroyed(this.destroyRef),
     ).subscribe(s => { this.approvalStatus = s; this.cdr.detectChanges(); });
+  }
+
+  // ── Edit lock (FR-031/032/033) ───────────────────────────────────────────
+
+  /** Current user's KC subject, decoded from the access token (matches RouteLockGuard). */
+  private currentSubject(): string | null {
+    const token = localStorage.getItem('access_token');
+    if (!token) return null;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      return (payload.sub as string) ?? (payload.preferred_username as string) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  lockedByMe(): boolean {
+    return !!this.route?.lockHolder && this.route.lockHolder === this.currentSubject();
+  }
+
+  canEdit(): boolean {
+    return this.route?.status === 'DRAFT' && this.lockedByMe();
+  }
+
+  /**
+   * Operation/detail edits persist immediately (auto-save on blur), so this re-loads the
+   * route to confirm the persisted state and gives the user explicit "saved" feedback while
+   * keeping the lock so they can keep editing.
+   */
+  saveDraft(): void {
+    if (!this.route) return;
+    this.working = true;
+    this.api.get(this.route.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: r => { this.working = false; this.route = r; this.refreshStatus(); this.toast('Draft saved'); this.cdr.detectChanges(); },
+      error: err => { this.working = false; this.toastError(err); },
+    });
+  }
+
+  acquireLock(): void {
+    this.lockAction(this.api.acquireLock(this.route!.id), 'Route locked for editing');
+  }
+
+  releaseLock(): void {
+    this.lockAction(this.api.releaseLock(this.route!.id), 'Route unlocked');
+  }
+
+  forceUnlock(): void {
+    this.lockAction(this.api.forceUnlock(this.route!.id), 'Lock released');
+  }
+
+  private lockAction(call: ReturnType<RoutingApiService['acquireLock']>, ok: string): void {
+    this.working = true;
+    call.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: r => { this.working = false; this.route = r; this.toast(ok); this.cdr.detectChanges(); },
+      error: err => { this.working = false; this.toastError(err); },
+    });
   }
 
   routeTypeName(id: string): string {

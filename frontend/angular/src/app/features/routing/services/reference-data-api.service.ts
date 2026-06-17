@@ -58,4 +58,19 @@ export class ReferenceDataApiService {
   createSupplier(req: SupplierDto): Observable<SupplierDto> {
     return this.http.post<SupplierDto>(`${this.base}/suppliers`, req);
   }
+
+  // ── Generic CRUD by resource segment (used by the settings reference grids) ──
+  // `resource` is the path segment, e.g. 'work-centres', 'route-types',
+  // 'significant-process-types'. All endpoints are org-scoped server-side.
+  createRef<T>(resource: string, body: T): Observable<T> {
+    return this.http.post<T>(`${this.base}/${resource}`, body);
+  }
+
+  updateRef<T>(resource: string, id: string, body: T): Observable<T> {
+    return this.http.patch<T>(`${this.base}/${resource}/${id}`, body);
+  }
+
+  deleteRef(resource: string, id: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/${resource}/${id}`);
+  }
 }
