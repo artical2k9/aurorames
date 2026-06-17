@@ -4,6 +4,14 @@ shell commands, and other important information, read the current plan at:
 specs/009-manufacturing-routing/plan.md
 <!-- SPECKIT END -->
 
+## Service Ownership
+
+Services are bounded by ISA-95 functional domain — one service can own several feature modules (e.g. `engineering-service` owns both ECO and Work Instructions). Before rebuilding a service for a fix, confirm which service owns the feature in [`docs/dev/service-ownership-map.md`](docs/dev/service-ownership-map.md). The decision not to split per-feature is recorded in [`docs/architecture/ADR-0001-service-granularity.md`](docs/architecture/ADR-0001-service-granularity.md) (see also Constitution §XI).
+
+## Compliance Standards
+
+Aurora MES is built to satisfy external aerospace standards (Constitution §IV *Compliance by Design*). The authoritative reference material — AS9100D, AS9102C, AS9131D, AS9145 — is indexed in [`docs/Standards/README.md`](docs/Standards/README.md). Consult it whenever a feature touches a quality record, traceability, inspection, nonconformance, or configuration/document control, and when filling a spec's *Compliance References* section. The PDFs themselves are copyrighted and **git-ignored** (local-only, never committed — this repo is public); cite clauses, never paste standard text into the repo.
+
 ## Branching Strategy
 
 These rules are **mandatory** for all work in this repository. Enforce them before taking any action that touches git.
