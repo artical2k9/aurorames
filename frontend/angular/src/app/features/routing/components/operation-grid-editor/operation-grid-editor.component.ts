@@ -16,8 +16,8 @@ import { RoutingApiService } from '../../services/routing-api.service';
 import { ReferenceDataApiService } from '../../services/reference-data-api.service';
 import { OperationDetailPanelComponent } from '../operation-detail-panel/operation-detail-panel.component';
 import {
-  GroupDto, MutuallyExclusiveSetDto, OperationDto, SignificantProcessTypeDto, StepDto, SupplierDto,
-  WorkCentreDto,
+  ApproveRequest, GroupDto, MutuallyExclusiveSetDto, OperationDto, RouteStatus,
+  SignificantProcessTypeDto, StepDto, SupplierDto, WorkCentreDto,
 } from '../../models/routing.model';
 
 interface StepDraft { stepNumber?: number; stepSequenceNumber?: number; description?: string; }
@@ -112,13 +112,38 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
         <main class="oge__main">
           @if (selectedOp) {
             <div class="oge__main-head">
-              <span>Operation {{ selectedOp.operationNumber }} · Seq {{ selectedOp.sequenceNumber }}</span>
-              @if (editable) {
-                <p-button [label]="'Steps (' + stepCount(selectedOp.id) + ')'" size="small"
-                          severity="secondary" [text]="true" (onClick)="openSteps(selectedOp)" />
-              }
+              <span>Operation {{ selectedOp.operationNumber }} · Seq {{ selectedOp.sequenceNumber }}
+                @if (routeApproved) {
+                  <p-tag styleClass="oge__rev-tag" [value]="opRevLabel(selectedOp)"
+                         [severity]="selectedOp.operationStatus === 'APPROVED' ? 'secondary' : 'warn'" />
+                }
+              </span>
+              <span class="oge__main-actions">
+                @if (editable) {
+                  <p-button [label]="'Steps (' + stepCount(selectedOp.id) + ')'" size="small"
+                            severity="secondary" [text]="true" (onClick)="openSteps(selectedOp)" />
+                }
+                @if (routeApproved) {
+                  @switch (selectedOp.operationStatus) {
+                    @case ('APPROVED') {
+                      <p-button label="Revise operation" size="small" severity="secondary"
+                                [disabled]="working" (onClick)="reviseOp(selectedOp)" />
+                    }
+                    @case ('DRAFT') {
+                      <p-button label="Submit for approval" size="small" severity="primary"
+                                [disabled]="working" (onClick)="submitOp(selectedOp)" />
+                    }
+                    @case ('PENDING_APPROVAL') {
+                      <p-button label="Approve (e-sign)" size="small" severity="success"
+                                (onClick)="openApproveOp(selectedOp)" />
+                    }
+                  }
+                }
+              </span>
             </div>
+            @if (opError) { <div class="oge__operr">{{ opError }}</div> }
             <app-operation-detail-panel [routeId]="routeId" [operation]="selectedOp" [editable]="editable"
+                                        [contentEditable]="contentEditableFor(selectedOp)"
                                         (changed)="reload()" />
           } @else {
             <div class="oge__placeholder">Select an operation from the list to view and edit its detail.</div>
@@ -226,6 +251,23 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
                   [disabled]="meMembers.length < 2" (onClick)="saveMutuallyExclusive()" />
       </ng-template>
     </p-dialog>
+
+    <!-- Operation approval (e-signature) -->
+    <p-dialog [header]="'Approve Operation ' + (approveOpTarget?.operationNumber ?? '') + ' (e-signature)'"
+              [(visible)]="showApproveOp" [modal]="true" [style]="{ width: '440px' }">
+      <div class="oge__form">
+        <label>Meaning *</label>
+        <input pInputText [(ngModel)]="opMeaning" placeholder="e.g. Operation content approved" />
+        <label>Password *</label>
+        <input pInputText type="password" [(ngModel)]="opPassword" />
+        @if (opError) { <small class="oge__error">{{ opError }}</small> }
+      </div>
+      <ng-template pTemplate="footer">
+        <p-button label="Cancel" severity="secondary" size="small" (onClick)="showApproveOp = false" />
+        <p-button label="Sign & Approve" severity="success" size="small"
+                  [disabled]="!opPassword || !opMeaning || working" (onClick)="approveOp()" />
+      </ng-template>
+    </p-dialog>
   `,
   styles: [`
     .oge { margin-top: 1rem; }
@@ -267,7 +309,10 @@ interface GroupDraft { name?: string; groupSequenceNumber?: number; operationIds
     .oge__addrow { display: flex; flex-direction: column; gap: 0.4rem; padding: 0.6rem 0.75rem; border-top: 1px solid var(--p-content-border-color); }
     .oge__addrow-btns { display: flex; gap: 0.5rem; }
     .oge__main { flex: 1; min-width: 0; }
-    .oge__main-head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 0.9rem; }
+    .oge__main-head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 0.9rem; gap: 0.5rem; }
+    .oge__main-actions { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .oge__operr { color: var(--p-red-500); font-size: 0.8125rem; margin: 0.4rem 0; }
+    :host ::ng-deep .oge__rev-tag { margin-left: 0.4rem; }
     .oge__placeholder { padding: 2rem; text-align: center; color: var(--p-text-muted-color); border: 1px dashed var(--p-content-border-color); border-radius: 6px; }
     .oge__form, .oge__stepform { display: flex; flex-direction: column; gap: 0.4rem; }
     .oge__stepform { flex-direction: row; align-items: center; margin-top: 0.6rem; flex-wrap: wrap; }
@@ -288,7 +333,17 @@ export class OperationGridEditorComponent implements OnInit {
 
   @Input({ required: true }) routeId!: string;
   @Input() editable = false;
+  /** Owning route status — enables per-operation revision on an APPROVED route (US8). */
+  @Input() routeStatus: RouteStatus = 'DRAFT';
   @Output() readonly changed = new EventEmitter<void>();
+
+  // operation revision (on an APPROVED route)
+  working = false;
+  opError = '';
+  showApproveOp = false;
+  approveOpTarget: OperationDto | null = null;
+  opPassword = '';
+  opMeaning = '';
 
   operations: OperationDto[] = [];
   selectedOp: OperationDto | null = null;
@@ -353,6 +408,70 @@ export class OperationGridEditorComponent implements OnInit {
 
   selectOp(op: OperationDto): void {
     this.selectedOp = this.selectedOp?.id === op.id ? null : op;
+  }
+
+  // ── Operation revision (US8 — on an APPROVED route) ───────────────────────────
+  get routeApproved(): boolean {
+    return this.routeStatus === 'APPROVED';
+  }
+
+  /** Content-edit mode for the panel: route APPROVED and this operation's revision is open (DRAFT). */
+  contentEditableFor(op: OperationDto): boolean {
+    return this.routeApproved && op.operationStatus === 'DRAFT';
+  }
+
+  opRevLabel(op: OperationDto): string {
+    switch (op.operationStatus) {
+      case 'DRAFT': return 'Revision draft (rev ' + op.operationRevision + ')';
+      case 'PENDING_APPROVAL': return 'Pending approval (rev ' + op.operationRevision + ')';
+      default: return 'Rev ' + op.operationRevision;
+    }
+  }
+
+  reviseOp(op: OperationDto): void {
+    this.runOp(this.api.startOperationRevision(this.routeId, op.id));
+  }
+
+  submitOp(op: OperationDto): void {
+    this.runOp(this.api.submitOperation(this.routeId, op.id));
+  }
+
+  openApproveOp(op: OperationDto): void {
+    this.approveOpTarget = op;
+    this.opPassword = '';
+    this.opMeaning = '';
+    this.opError = '';
+    this.showApproveOp = true;
+  }
+
+  approveOp(): void {
+    if (!this.approveOpTarget) return;
+    const req: ApproveRequest = { password: this.opPassword, meaning: this.opMeaning };
+    this.working = true;
+    this.opError = '';
+    this.api.approveOperation(this.routeId, this.approveOpTarget.id, req)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: () => {
+          this.working = false;
+          this.showApproveOp = false;
+          this.afterChange();
+          this.cdr.detectChanges();
+        },
+        error: err => {
+          this.working = false;
+          this.opError = err?.error?.error ?? 'Approval failed';
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
+  private runOp(call: ReturnType<RoutingApiService['startOperationRevision']>): void {
+    this.working = true;
+    this.opError = '';
+    call.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => { this.working = false; this.afterChange(); this.cdr.detectChanges(); },
+      error: err => { this.working = false; this.opError = err?.error?.error ?? 'Action failed'; this.cdr.detectChanges(); },
+    });
   }
 
   private loadStepCounts(): void {

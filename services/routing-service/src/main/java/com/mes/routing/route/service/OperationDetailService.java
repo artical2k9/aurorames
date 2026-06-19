@@ -14,8 +14,10 @@ import com.mes.routing.route.api.dto.OperationDetailDtos.WorkInstructionLinkDto;
 import com.mes.routing.route.domain.LabourPlanLine;
 import com.mes.routing.route.domain.MaterialConsumption;
 import com.mes.routing.route.domain.OperationResource;
+import com.mes.routing.route.domain.OperationStatus;
 import com.mes.routing.route.domain.QualityVariableRequirement;
 import com.mes.routing.route.domain.Route;
+import com.mes.routing.route.domain.RouteOperation;
 import com.mes.routing.route.domain.RouteStatus;
 import com.mes.routing.route.domain.SkillRequirement;
 import com.mes.routing.route.domain.StepFileReference;
@@ -94,17 +96,26 @@ public class OperationDetailService {
         this.lockGuard = lockGuard;
     }
 
-    /** Resolves the operation, asserting the route is in-org and DRAFT; returns the owning org id. */
+    /**
+     * Resolves the operation, asserting the lock is held and the operation is content-editable:
+     * either the route is DRAFT, or the route is APPROVED with this operation in an open revision
+     * (operationStatus DRAFT). Sequence/grouping changes are gated elsewhere and stay locked.
+     */
     private UUID requireDraftOperation(UUID orgId, UUID routeId, UUID opId) {
         Route route = routes.findByOrgIdAndId(orgId, routeId)
                 .orElseThrow(() -> new RoutingNotFoundException("Route not found: " + routeId));
-        if (route.getStatus() != RouteStatus.DRAFT) {
-            throw new RoutingConflictException("Operation detail is editable only while DRAFT (status "
-                    + route.getStatus() + ")");
+        RouteOperation op = operations.findByRouteIdAndId(routeId, opId)
+                .orElseThrow(() -> new RoutingNotFoundException("Operation not found: " + opId));
+        boolean routeDraft = route.getStatus() == RouteStatus.DRAFT;
+        boolean openOperationRevision = route.getStatus() == RouteStatus.APPROVED
+                && op.getOperationStatus() == OperationStatus.DRAFT;
+        if (!routeDraft && !openOperationRevision) {
+            throw new RoutingConflictException(
+                    "Operation detail is editable only while the route is DRAFT or the operation has an "
+                            + "open revision (route status " + route.getStatus()
+                            + ", operation status " + op.getOperationStatus() + ")");
         }
         lockGuard.requireHeld(route);
-        operations.findByRouteIdAndId(routeId, opId)
-                .orElseThrow(() -> new RoutingNotFoundException("Operation not found: " + opId));
         return route.getOrgId();
     }
 

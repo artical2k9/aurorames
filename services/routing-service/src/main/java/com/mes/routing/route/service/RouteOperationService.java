@@ -178,7 +178,8 @@ public class RouteOperationService {
         }
     }
 
-    private LabourType parseLabourType(String value) {
+    /** Null/blank → DIRECT; case-insensitive; invalid → 422. Shared with the operation-revision path. */
+    static LabourType parseLabourType(String value) {
         if (value == null || value.isBlank()) {
             return LabourType.DIRECT;
         }

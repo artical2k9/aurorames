@@ -184,6 +184,7 @@ export interface PatchOperationContentRequest {
   osp?: boolean;
   significantProcessTypeId?: string;
   supplierId?: string;
+  labourType?: LabourType;
   clocking?: boolean;
 }
 

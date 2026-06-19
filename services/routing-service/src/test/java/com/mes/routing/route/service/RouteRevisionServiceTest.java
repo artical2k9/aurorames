@@ -100,7 +100,7 @@ class RouteRevisionServiceTest {
         when(operations.findByRouteIdAndId(ROUTE, OP))
                 .thenReturn(Optional.of(op(OperationStatus.APPROVED, 1)));
         assertThatThrownBy(() -> service.patchOperationContent(ORG, ROUTE, OP,
-                new PatchOperationContentRequest("x", null, null, null, null, null)))
+                new PatchOperationContentRequest("x", null, null, null, null, null, null)))
                 .isInstanceOf(RoutingConflictException.class);
     }
 
@@ -111,10 +111,11 @@ class RouteRevisionServiceTest {
         when(operations.findByRouteIdAndId(ROUTE, OP)).thenReturn(Optional.of(op));
 
         service.patchOperationContent(ORG, ROUTE, OP,
-                new PatchOperationContentRequest("New desc", true, false, null, null, null));
+                new PatchOperationContentRequest("New desc", true, false, null, null, "INDIRECT", null));
 
         assertThat(op.getDescription()).isEqualTo("New desc");
         assertThat(op.isOptional()).isTrue();
+        assertThat(op.getLabourType()).isEqualTo(com.mes.routing.route.domain.LabourType.INDIRECT);
     }
 
     @Test

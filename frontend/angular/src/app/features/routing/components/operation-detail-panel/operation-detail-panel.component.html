@@ -45,12 +45,12 @@
             <div class="odp__wcs">
               @for (r of resources; track r.id) {
                 <span class="odp__chip">{{ workCentreName(r.workCentreId) }}
-                  @if (editable) { <button type="button" class="odp__chip-x" (click)="deleteResource(r.id)">✕</button> }
+                  @if (detailsEditable) { <button type="button" class="odp__chip-x" (click)="deleteResource(r.id)">✕</button> }
                 </span>
               }
               @if (!resources.length) { <span class="odp__muted">— none —</span> }
             </div>
-            @if (editable) {
+            @if (detailsEditable) {
               <div class="odp__add">
                 <select [(ngModel)]="resourceDraft.workCentreId">
                   <option [ngValue]="undefined">Add work centre…</option>
@@ -61,22 +61,27 @@
             }
           </div>
         </div>
-        <p class="odp__hint">Type (Normal/Parallel) is derived from the sequence number. Optional/OSP &
-          significant process are on the Attributes tab; grouping & steps are managed from the operations sidebar.</p>
+        @if (contentEditable) {
+          <p class="odp__hint">Operation revision open — content is editable across all tabs; sequence,
+            operation number and description stay locked. Submit and approve from the operations panel.</p>
+        } @else {
+          <p class="odp__hint">Type (Normal/Parallel) is derived from the sequence number. Optional/OSP &
+            significant process are on the Attributes tab; grouping & steps are managed from the operations sidebar.</p>
+        }
       }
 
       @case ('Attributes') {
         <div class="odp__toggles">
-          <label><p-toggleswitch [ngModel]="operation.optional" [disabled]="!editable"
+          <label><p-toggleswitch [ngModel]="operation.optional" [disabled]="!detailsEditable"
                   (ngModelChange)="patchOp({ optional: $event })" /> Optional</label>
-          <label><p-toggleswitch [ngModel]="operation.osp" [disabled]="!editable"
+          <label><p-toggleswitch [ngModel]="operation.osp" [disabled]="!detailsEditable"
                   (ngModelChange)="patchOp({ osp: $event })" /> OSP (outside processing)</label>
-          <label><p-toggleswitch [ngModel]="operation.clocking" [disabled]="!editable"
+          <label><p-toggleswitch [ngModel]="operation.clocking" [disabled]="!detailsEditable"
                   (ngModelChange)="patchOp({ clocking: $event })" /> Clocking</label>
         </div>
         <div class="odp__row2">
           <label class="odp__lbl">Labour Type
-            <select [ngModel]="operation.labourType" [disabled]="!editable"
+            <select [ngModel]="operation.labourType" [disabled]="!detailsEditable"
                     (ngModelChange)="setLabourType($event)">
               @for (type of labourTypes; track type.value) {
                 <option [value]="type.value">{{ type.label }}</option>
@@ -84,7 +89,7 @@
             </select>
           </label>
           <label class="odp__lbl">Significant Process
-            <select [ngModel]="operation.significantProcessTypeId ?? ''" [disabled]="!editable"
+            <select [ngModel]="operation.significantProcessTypeId ?? ''" [disabled]="!detailsEditable"
                     (ngModelChange)="patchOp({ significantProcessTypeId: $event || undefined })">
               <option value="">— None —</option>
               @for (sp of significantProcessTypes; track sp.id) { <option [value]="sp.id">{{ sp.name }}</option> }
@@ -92,7 +97,7 @@
           </label>
           @if (operation.osp) {
             <label class="odp__lbl">OSP Supplier
-              <select [ngModel]="operation.supplierId ?? ''" [disabled]="!editable"
+              <select [ngModel]="operation.supplierId ?? ''" [disabled]="!detailsEditable"
                       (ngModelChange)="patchOp({ supplierId: $event || undefined })">
                 <option value="">— Unassigned —</option>
                 @for (s of suppliers; track s.id) { <option [value]="s.id">{{ s.name }}</option> }
@@ -107,14 +112,14 @@
       @case ('Resources') {
         <h4>Work Centres / Equipment</h4>
         <table class="odp__tbl">
-          <tr><th>Work Centre</th>@if (editable) { <th></th> }</tr>
+          <tr><th>Work Centre</th>@if (detailsEditable) { <th></th> }</tr>
           @for (r of resources; track r.id) {
             <tr><td>{{ workCentreName(r.workCentreId) }}</td>
-              @if (editable) { <td><button class="odp__x" (click)="deleteResource(r.id)">✕</button></td> }</tr>
+              @if (detailsEditable) { <td><button class="odp__x" (click)="deleteResource(r.id)">✕</button></td> }</tr>
           }
           @if (!resources.length) { <tr><td colspan="2" class="odp__empty">None</td></tr> }
         </table>
-        @if (editable) {
+        @if (detailsEditable) {
           <div class="odp__add">
             <select [(ngModel)]="resourceDraft.workCentreId">
               <option [ngValue]="undefined">Select work centre…</option>
@@ -126,15 +131,15 @@
 
         <h4>Labour Plan</h4>
         <table class="odp__tbl">
-          <tr><th>Activity</th><th>Plan Type</th><th>Labour Code</th><th>Time</th><th>Basis</th>@if (editable) { <th></th> }</tr>
+          <tr><th>Activity</th><th>Plan Type</th><th>Labour Code</th><th>Time</th><th>Basis</th>@if (detailsEditable) { <th></th> }</tr>
           @for (l of labourPlan; track l.id) {
             <tr><td>{{ l.labourActivityType }}</td><td>{{ labourPlanTypeName(l.labourPlanTypeId) }}</td>
               <td>{{ labourCodeName(l.labourCodeId) }}</td><td>{{ l.timeValue }}</td><td>{{ l.basis }}</td>
-              @if (editable) { <td><button class="odp__x" (click)="deleteLabour(l.id)">✕</button></td> }</tr>
+              @if (detailsEditable) { <td><button class="odp__x" (click)="deleteLabour(l.id)">✕</button></td> }</tr>
           }
           @if (!labourPlan.length) { <tr><td colspan="6" class="odp__empty">None</td></tr> }
         </table>
-        @if (editable) {
+        @if (detailsEditable) {
           <div class="odp__add">
             <select [(ngModel)]="labourDraft.labourActivityType">
               @for (a of activityTypes; track a) { <option [ngValue]="a">{{ a }}</option> }
@@ -158,14 +163,14 @@
 
       @case ('BOM') {
         <table class="odp__tbl">
-          <tr><th>BOM Line</th><th>Mandatory</th>@if (editable) { <th></th> }</tr>
+          <tr><th>BOM Line</th><th>Mandatory</th>@if (detailsEditable) { <th></th> }</tr>
           @for (m of materials; track m.id) {
             <tr><td>{{ m.bomLineId }}</td><td>{{ m.mandatory ? 'Yes' : 'No' }}</td>
-              @if (editable) { <td><button class="odp__x" (click)="deleteMaterial(m.id)">✕</button></td> }</tr>
+              @if (detailsEditable) { <td><button class="odp__x" (click)="deleteMaterial(m.id)">✕</button></td> }</tr>
           }
           @if (!materials.length) { <tr><td colspan="3" class="odp__empty">None</td></tr> }
         </table>
-        @if (editable) {
+        @if (detailsEditable) {
           <div class="odp__add">
             <input pInputText placeholder="BOM line id" [(ngModel)]="materialDraft.bomLineId" />
             <label class="odp__inline"><input type="checkbox" [(ngModel)]="materialDraft.mandatory" /> Mandatory</label>
@@ -177,14 +182,14 @@
       @case ('Documents') {
         <h4>Work Instructions</h4>
         <table class="odp__tbl">
-          <tr><th>Work Instruction</th>@if (editable) { <th></th> }</tr>
+          <tr><th>Work Instruction</th>@if (detailsEditable) { <th></th> }</tr>
           @for (w of workInstructions; track w.id) {
             <tr><td>{{ w.workInstructionId }}</td>
-              @if (editable) { <td><button class="odp__x" (click)="deleteWorkInstruction(w.id)">✕</button></td> }</tr>
+              @if (detailsEditable) { <td><button class="odp__x" (click)="deleteWorkInstruction(w.id)">✕</button></td> }</tr>
           }
           @if (!workInstructions.length) { <tr><td colspan="2" class="odp__empty">None</td></tr> }
         </table>
-        @if (editable) {
+        @if (detailsEditable) {
           <div class="odp__add">
             <input pInputText placeholder="Work instruction id" [(ngModel)]="wiDraft.workInstructionId" />
             <p-button label="Add" size="small" [disabled]="!wiDraft.workInstructionId" (onClick)="addWorkInstruction()" />
@@ -192,14 +197,14 @@
         }
         <h4>STEP / NC Programs</h4>
         <table class="odp__tbl">
-          <tr><th>Reference</th>@if (editable) { <th></th> }</tr>
+          <tr><th>Reference</th>@if (detailsEditable) { <th></th> }</tr>
           @for (s of stepFiles; track s.id) {
             <tr><td>{{ s.reference }}</td>
-              @if (editable) { <td><button class="odp__x" (click)="deleteStepFile(s.id)">✕</button></td> }</tr>
+              @if (detailsEditable) { <td><button class="odp__x" (click)="deleteStepFile(s.id)">✕</button></td> }</tr>
           }
           @if (!stepFiles.length) { <tr><td colspan="2" class="odp__empty">None</td></tr> }
         </table>
-        @if (editable) {
+        @if (detailsEditable) {
           <div class="odp__add">
             <input pInputText placeholder="Program reference" [(ngModel)]="stepFileDraft.reference" />
             <p-button label="Add" size="small" [disabled]="!stepFileDraft.reference" (onClick)="addStepFile()" />
@@ -209,14 +214,14 @@
 
       @case ('Tools') {
         <table class="odp__tbl">
-          <tr><th>Gage / Tool Ref</th><th>Description</th>@if (editable) { <th></th> }</tr>
+          <tr><th>Gage / Tool Ref</th><th>Description</th>@if (detailsEditable) { <th></th> }</tr>
           @for (t of tooling; track t.id) {
             <tr><td>{{ t.gageOrToolRef }}</td><td>{{ t.description ?? '—' }}</td>
-              @if (editable) { <td><button class="odp__x" (click)="deleteTooling(t.id)">✕</button></td> }</tr>
+              @if (detailsEditable) { <td><button class="odp__x" (click)="deleteTooling(t.id)">✕</button></td> }</tr>
           }
           @if (!tooling.length) { <tr><td colspan="3" class="odp__empty">None</td></tr> }
         </table>
-        @if (editable) {
+        @if (detailsEditable) {
           <div class="odp__add">
             <input pInputText placeholder="Gage / tool ref" [(ngModel)]="toolingDraft.gageOrToolRef" />
             <input pInputText placeholder="Description" [(ngModel)]="toolingDraft.description" />
@@ -227,14 +232,14 @@
 
       @case ('Skills') {
         <table class="odp__tbl">
-          <tr><th>Skill</th>@if (editable) { <th></th> }</tr>
+          <tr><th>Skill</th>@if (detailsEditable) { <th></th> }</tr>
           @for (s of skills; track s.id) {
             <tr><td>{{ s.skillId }}</td>
-              @if (editable) { <td><button class="odp__x" (click)="deleteSkill(s.id)">✕</button></td> }</tr>
+              @if (detailsEditable) { <td><button class="odp__x" (click)="deleteSkill(s.id)">✕</button></td> }</tr>
           }
           @if (!skills.length) { <tr><td colspan="2" class="odp__empty">None</td></tr> }
         </table>
-        @if (editable) {
+        @if (detailsEditable) {
           <div class="odp__add">
             <input pInputText placeholder="Skill id" [(ngModel)]="skillDraft.skillId" />
             <p-button label="Add" size="small" [disabled]="!skillDraft.skillId" (onClick)="addSkill()" />
@@ -244,14 +249,14 @@
 
       @case ('Variables') {
         <table class="odp__tbl">
-          <tr><th>Inspection Characteristic</th>@if (editable) { <th></th> }</tr>
+          <tr><th>Inspection Characteristic</th>@if (detailsEditable) { <th></th> }</tr>
           @for (q of qualityVars; track q.id) {
             <tr><td>{{ q.inspectionCharacteristicId }}</td>
-              @if (editable) { <td><button class="odp__x" (click)="deleteQuality(q.id)">✕</button></td> }</tr>
+              @if (detailsEditable) { <td><button class="odp__x" (click)="deleteQuality(q.id)">✕</button></td> }</tr>
           }
           @if (!qualityVars.length) { <tr><td colspan="2" class="odp__empty">None</td></tr> }
         </table>
-        @if (editable) {
+        @if (detailsEditable) {
           <div class="odp__add">
             <input pInputText placeholder="Inspection characteristic id" [(ngModel)]="qualityDraft.inspectionCharacteristicId" />
             <p-button label="Add" size="small" [disabled]="!qualityDraft.inspectionCharacteristicId" (onClick)="addQuality()" />

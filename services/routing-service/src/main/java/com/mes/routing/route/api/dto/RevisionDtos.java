@@ -25,6 +25,7 @@ public final class RevisionDtos {
             Boolean osp,
             UUID significantProcessTypeId,
             UUID supplierId,
+            String labourType,
             Boolean clocking) {
     }
 }

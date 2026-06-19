@@ -16,7 +16,7 @@ import { RoutingApiService } from '../../services/routing-api.service';
 import { ReferenceDataApiService } from '../../services/reference-data-api.service';
 import { OperationGridEditorComponent } from '../../components/operation-grid-editor/operation-grid-editor.component';
 import {
-  RouteApprovalStatusDto, RouteDto, RouteStatus, RouteTypeDto, SignificantProcessTypeDto,
+  ApprovalHistoryDto, RouteApprovalStatusDto, RouteDto, RouteStatus, RouteTypeDto, SignificantProcessTypeDto,
 } from '../../models/routing.model';
 
 @Component({
@@ -100,7 +100,40 @@ import {
 
         <app-operation-grid-editor [routeId]="route.id"
                                    [editable]="canEdit()"
-                                   (changed)="refreshStatus()" />
+                                   [routeStatus]="route.status"
+                                   (changed)="onEditorChanged()" />
+
+        @if (history && history.revisions.length) {
+          <section class="rd__history">
+            <button type="button" class="rd__history-toggle" (click)="showHistory = !showHistory">
+              {{ showHistory ? '▾' : '▸' }} Approval history ({{ history.revisions.length }} revision(s))
+            </button>
+            @if (showHistory) {
+              @for (rev of history.revisions; track rev.routeRevision) {
+                <div class="rd__hrev">
+                  <h4>Route revision {{ rev.routeRevision }}</h4>
+                  @if (rev.routeApprovals.length) {
+                    <div class="rd__hgrp"><strong>Route approvals</strong>
+                      @for (a of rev.routeApprovals; track a.id) {
+                        <div class="rd__hrow">{{ a.meaning }} — {{ a.actor }}
+                          @if (a.significantProcessApprover) { <span class="rd__hsme">SME: {{ significantProcessName(a.significantProcessTypeId ?? '') }}</span> }
+                          <span class="rd__hwhen">{{ a.signedAt }}</span></div>
+                      }
+                    </div>
+                  }
+                  @if (rev.operationApprovals.length) {
+                    <div class="rd__hgrp"><strong>Operation approvals</strong>
+                      @for (a of rev.operationApprovals; track a.id) {
+                        <div class="rd__hrow">Op revision — {{ a.meaning }} — {{ a.actor }}
+                          <span class="rd__hwhen">{{ a.signedAt }}</span></div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            }
+          </section>
+        }
       </div>
 
       <!-- Approve dialog -->
@@ -161,6 +194,15 @@ import {
     .rd__form label { font-size: 0.8125rem; font-weight: 600; margin-top: 0.25rem; }
     .rd__select { padding: 0.4rem 0.5rem; border: 1px solid var(--p-inputtext-border-color); border-radius: 4px; }
     .rd__error { color: var(--p-red-500); }
+    .rd__history { margin-top: 1.25rem; border-top: 1px solid var(--p-content-border-color); padding-top: 0.75rem; }
+    .rd__history-toggle { border: none; background: transparent; cursor: pointer; font-size: 0.9rem;
+      font-weight: 600; color: var(--p-text-color); padding: 0.25rem 0; }
+    .rd__hrev { margin: 0.5rem 0 0.75rem; padding-left: 0.75rem; border-left: 2px solid var(--p-content-border-color); }
+    .rd__hrev h4 { margin: 0 0 0.35rem; font-size: 0.9rem; }
+    .rd__hgrp { margin-bottom: 0.4rem; font-size: 0.8125rem; }
+    .rd__hrow { color: var(--p-text-muted-color); margin: 0.15rem 0; }
+    .rd__hsme { color: var(--p-orange-500); margin: 0 0.4rem; }
+    .rd__hwhen { color: var(--p-text-muted-color); margin-left: 0.4rem; font-size: 0.7rem; }
   `],
 })
 export class RouteDetailComponent implements OnInit {
@@ -175,6 +217,8 @@ export class RouteDetailComponent implements OnInit {
 
   route: RouteDto | null = null;
   approvalStatus: RouteApprovalStatusDto | null = null;
+  history: ApprovalHistoryDto | null = null;
+  showHistory = false;
   routeTypes: RouteTypeDto[] = [];
   significantProcessTypes: SignificantProcessTypeDto[] = [];
 
@@ -212,6 +256,19 @@ export class RouteDetailComponent implements OnInit {
     this.api.approvalStatus(this.route.id).pipe(
       catchError(() => of(null)), takeUntilDestroyed(this.destroyRef),
     ).subscribe(s => { this.approvalStatus = s; this.cdr.detectChanges(); });
+    this.loadHistory();
+  }
+
+  /** Refresh the lock/status from the server too — an operation revision may have re-locked the route. */
+  onEditorChanged(): void {
+    if (this.route) this.load(this.route.id);
+  }
+
+  private loadHistory(): void {
+    if (!this.route) return;
+    this.api.approvalHistory(this.route.id).pipe(
+      catchError(() => of(null)), takeUntilDestroyed(this.destroyRef),
+    ).subscribe(h => { this.history = h; this.cdr.detectChanges(); });
   }
 
   // ── Edit lock (FR-031/032/033) ───────────────────────────────────────────

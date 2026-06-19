@@ -92,4 +92,26 @@ class OperationRevisionIT extends BaseIntegrationTest {
                 Map.of("description", "No revision started"));
         assertThat(r.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
+
+    @Test
+    void detailTabs_editableOnlyDuringOpenOperationRevision_andLabourTypeIsContent() {
+        String[] ro = approvedRouteAndOperation();
+        String opBase = "/api/v1/routes/" + ro[0] + "/operations/" + ro[1];
+
+        // On an approved route with no open revision, a detail-tab edit (Skills) is blocked.
+        ResponseEntity<Map> blocked = post(opBase + "/skills",
+                Map.of("skillId", UUID.randomUUID().toString()));
+        assertThat(blocked.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+
+        // Open an operation revision → the same detail-tab edit now succeeds.
+        post(opBase + "/revision", Map.of());
+        ResponseEntity<Map> added = post(opBase + "/skills",
+                Map.of("skillId", UUID.randomUUID().toString()));
+        assertThat(added.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        // labourType is a content-patch field on the operation revision.
+        ResponseEntity<Map> content = patch(opBase + "/content", Map.of("labourType", "INDIRECT"));
+        assertThat(content.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(content.getBody().get("labourType")).isEqualTo("INDIRECT");
+    }
 }

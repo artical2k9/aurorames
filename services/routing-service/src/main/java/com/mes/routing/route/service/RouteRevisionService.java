@@ -112,6 +112,9 @@ public class RouteRevisionService {
         if (req.supplierId() != null) {
             op.setSupplierId(req.supplierId());
         }
+        if (req.labourType() != null) {
+            op.setLabourType(RouteOperationService.parseLabourType(req.labourType()));
+        }
         if (req.clocking() != null) {
             op.setClocking(req.clocking());
         }

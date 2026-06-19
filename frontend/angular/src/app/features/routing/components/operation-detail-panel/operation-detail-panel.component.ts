@@ -13,7 +13,8 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { RoutingApiService } from '../../services/routing-api.service';
 import { ReferenceDataApiService } from '../../services/reference-data-api.service';
 import {
-  LabourActivityType, LabourPlanLineDto, LabourType, MaterialConsumptionDto, OperationDto, QualityVariableDto,
+  LabourActivityType, LabourPlanLineDto, LabourType, MaterialConsumptionDto, OperationDto,
+  PatchOperationContentRequest, QualityVariableDto,
   SignificantProcessTypeDto, SkillRequirementDto, StepFileReferenceDto, SupplierDto, ToolingRequirementDto,
   WorkInstructionLinkDto, WorkCentreDto, LabourCodeDto, LabourPlanTypeDto, OperationResourceDto,
 } from '../../models/routing.model';
@@ -43,8 +44,20 @@ export class OperationDetailPanelComponent implements OnChanges {
 
   @Input({ required: true }) routeId!: string;
   @Input({ required: true }) operation!: OperationDto;
+  /** Full DRAFT edit (route is DRAFT + lock held): everything editable, incl. Overview seq/op#/description. */
   @Input() editable = false;
+  /**
+   * Operation-revision content edit (route APPROVED, this operation's revision open): all tabs editable
+   * EXCEPT the Overview identity fields (seq/op#/description stay read-only); attribute saves use the
+   * content-patch endpoint.
+   */
+  @Input() contentEditable = false;
   @Output() readonly changed = new EventEmitter<void>();
+
+  /** Detail tabs (Attributes/Resources/BOM/Documents/Tools/Skills/Variables) are editable in both modes. */
+  get detailsEditable(): boolean {
+    return this.editable || this.contentEditable;
+  }
 
   readonly tabs: Tab[] = ['Overview', 'Attributes', 'Resources', 'BOM', 'Documents', 'Tools', 'Skills', 'Variables'];
   readonly activityTypes: LabourActivityType[] = ['SETUP', 'RUN', 'INSPECTION', 'TRANSPORT'];
@@ -180,8 +193,14 @@ export class OperationDetailPanelComponent implements OnChanges {
   }
 
   // ── Attributes (patch operation) ─────────────────────────────────────────────
+  // In content-edit mode (operation revision) attribute changes go through the content-patch
+  // endpoint, which permits these fields while the route is APPROVED; otherwise the normal
+  // operation patch (route DRAFT). The Overview seq/op# are never patched in content mode.
   patchOp(patch: Partial<OperationDto>): void {
-    this.api.patchOperation(this.routeId, this.operation.id, patch)
+    const call = (this.contentEditable && !this.editable)
+      ? this.api.patchOperationContent(this.routeId, this.operation.id, patch as PatchOperationContentRequest)
+      : this.api.patchOperation(this.routeId, this.operation.id, patch);
+    call
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: op => { this.operation = op; this.syncOverview(); this.changed.emit(); this.cdr.detectChanges(); },
         error: err => {
