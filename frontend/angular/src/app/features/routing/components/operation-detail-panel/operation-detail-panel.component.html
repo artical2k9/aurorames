@@ -75,6 +75,14 @@
                   (ngModelChange)="patchOp({ clocking: $event })" /> Clocking</label>
         </div>
         <div class="odp__row2">
+          <label class="odp__lbl">Labour Type
+            <select [ngModel]="operation.labourType" [disabled]="!editable"
+                    (ngModelChange)="setLabourType($event)">
+              @for (type of labourTypes; track type.value) {
+                <option [value]="type.value">{{ type.label }}</option>
+              }
+            </select>
+          </label>
           <label class="odp__lbl">Significant Process
             <select [ngModel]="operation.significantProcessTypeId ?? ''" [disabled]="!editable"
                     (ngModelChange)="patchOp({ significantProcessTypeId: $event || undefined })">
@@ -92,8 +100,8 @@
             </label>
           }
         </div>
-        <p class="odp__hint">OSP requires an OSP-type labour line (Resources tab) before it can be saved.
-          Labour Type (Direct/Indirect) lands with FR-013a.</p>
+        <p class="odp__hint">Direct labour charges against the operation labour code; Indirect labour is
+          carried for downstream central cost-centre posting. OSP requires an OSP-type labour line.</p>
       }
 
       @case ('Resources') {

@@ -13,7 +13,7 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { RoutingApiService } from '../../services/routing-api.service';
 import { ReferenceDataApiService } from '../../services/reference-data-api.service';
 import {
-  LabourActivityType, LabourPlanLineDto, MaterialConsumptionDto, OperationDto, QualityVariableDto,
+  LabourActivityType, LabourPlanLineDto, LabourType, MaterialConsumptionDto, OperationDto, QualityVariableDto,
   SignificantProcessTypeDto, SkillRequirementDto, StepFileReferenceDto, SupplierDto, ToolingRequirementDto,
   WorkInstructionLinkDto, WorkCentreDto, LabourCodeDto, LabourPlanTypeDto, OperationResourceDto,
 } from '../../models/routing.model';
@@ -48,6 +48,10 @@ export class OperationDetailPanelComponent implements OnChanges {
 
   readonly tabs: Tab[] = ['Overview', 'Attributes', 'Resources', 'BOM', 'Documents', 'Tools', 'Skills', 'Variables'];
   readonly activityTypes: LabourActivityType[] = ['SETUP', 'RUN', 'INSPECTION', 'TRANSPORT'];
+  readonly labourTypes: { value: LabourType; label: string }[] = [
+    { value: 'DIRECT', label: 'Direct' },
+    { value: 'INDIRECT', label: 'Indirect' },
+  ];
   active: Tab = 'Overview';
 
   // reference data
@@ -186,6 +190,10 @@ export class OperationDetailPanelComponent implements OnChanges {
           this.cdr.detectChanges();
         },
       });
+  }
+
+  setLabourType(value: LabourType | string): void {
+    this.patchOp({ labourType: value === 'INDIRECT' ? 'INDIRECT' : 'DIRECT' });
   }
 
   // ── generic add/delete helpers ───────────────────────────────────────────────

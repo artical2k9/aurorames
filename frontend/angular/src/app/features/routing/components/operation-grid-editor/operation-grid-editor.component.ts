@@ -438,6 +438,7 @@ export class OperationGridEditorComponent implements OnInit {
       description: op.description,
       optional: op.optional,
       significantProcessTypeId: op.significantProcessTypeId,
+      labourType: op.labourType,
       clocking: op.clocking,
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => this.afterChange(),

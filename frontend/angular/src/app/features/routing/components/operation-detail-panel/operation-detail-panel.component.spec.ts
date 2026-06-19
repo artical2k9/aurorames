@@ -9,7 +9,8 @@ import { OperationDto } from '../../models/routing.model';
 
 const OP: OperationDto = {
   id: 'op-1', operationNumber: 10, sequenceNumber: 10, derivedType: 'NORMAL',
-  optional: false, osp: false, clocking: true, operationRevision: 1, operationStatus: 'DRAFT',
+  optional: false, osp: false, clocking: true, labourType: 'DIRECT',
+  operationRevision: 1, operationStatus: 'DRAFT',
 };
 
 describe('OperationDetailPanelComponent', () => {
@@ -69,6 +70,11 @@ describe('OperationDetailPanelComponent', () => {
   it('patchOp sends the partial operation update', () => {
     component.patchOp({ optional: true });
     expect(api.patchOperation).toHaveBeenCalledWith('route-1', 'op-1', { optional: true });
+  });
+
+  it('patchOp sends labour type changes', () => {
+    component.setLabourType('INDIRECT');
+    expect(api.patchOperation).toHaveBeenCalledWith('route-1', 'op-1', { labourType: 'INDIRECT' });
   });
 
   it('addResource posts the selected work centre then clears the draft', () => {

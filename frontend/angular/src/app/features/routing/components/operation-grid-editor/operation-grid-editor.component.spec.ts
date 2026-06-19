@@ -10,7 +10,8 @@ import { OperationDto } from '../../models/routing.model';
 function op(partial: Partial<OperationDto>): OperationDto {
   return {
     id: 'op', operationNumber: 10, sequenceNumber: 10, derivedType: 'NORMAL',
-    optional: false, osp: false, clocking: true, operationRevision: 1, operationStatus: 'DRAFT',
+    optional: false, osp: false, clocking: true, labourType: 'DIRECT',
+    operationRevision: 1, operationStatus: 'DRAFT',
     ...partial,
   };
 }
@@ -131,10 +132,12 @@ describe('OperationGridEditorComponent', () => {
   });
 
   it('duplicate copies the operation header onto a new operation number', () => {
-    component.operations = [op({ id: 'a', operationNumber: 10, sequenceNumber: 10, optional: true })];
+    component.operations = [op({
+      id: 'a', operationNumber: 10, sequenceNumber: 10, optional: true, labourType: 'INDIRECT',
+    })];
     component.duplicate(component.operations[0]);
     expect(mockApi.addOperation).toHaveBeenCalledWith('route-1', expect.objectContaining({
-      operationNumber: 20, sequenceNumber: 10, optional: true,
+      operationNumber: 20, sequenceNumber: 10, optional: true, labourType: 'INDIRECT',
     }));
   });
 

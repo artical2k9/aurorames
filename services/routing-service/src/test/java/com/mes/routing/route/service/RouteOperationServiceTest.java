@@ -72,7 +72,7 @@ class RouteOperationServiceTest {
     }
 
     private CreateOperationRequest op(int number, int seq) {
-        return new CreateOperationRequest(number, seq, "Op", false, false, null, null, null);
+        return new CreateOperationRequest(number, seq, "Op", false, false, null, null, null, null);
     }
 
     @Test
@@ -125,7 +125,7 @@ class RouteOperationServiceTest {
         when(operations.existsByRouteIdAndOperationNumber(ROUTE, 10)).thenReturn(false);
         when(significantProcessTypes.findByOrgIdAndId(ORG, sptId)).thenReturn(Optional.empty());
 
-        CreateOperationRequest req = new CreateOperationRequest(10, 10, "Op", false, false, sptId, null, null);
+        CreateOperationRequest req = new CreateOperationRequest(10, 10, "Op", false, false, sptId, null, null, null);
         assertThatThrownBy(() -> service.add(ORG, ROUTE, req)).isInstanceOf(RoutingNotFoundException.class);
     }
 
@@ -136,7 +136,7 @@ class RouteOperationServiceTest {
         when(operations.existsByRouteIdAndOperationNumber(ROUTE, 10)).thenReturn(false);
         when(suppliers.findByOrgIdAndId(ORG, supId)).thenReturn(Optional.empty());
 
-        CreateOperationRequest req = new CreateOperationRequest(10, 10, "Op", false, true, null, supId, null);
+        CreateOperationRequest req = new CreateOperationRequest(10, 10, "Op", false, true, null, supId, null, null);
         assertThatThrownBy(() -> service.add(ORG, ROUTE, req)).isInstanceOf(RoutingNotFoundException.class);
     }
 
@@ -154,7 +154,7 @@ class RouteOperationServiceTest {
         operationHasOspResource();
 
         OperationDto dto = service.add(ORG, ROUTE,
-                new CreateOperationRequest(10, 10, "Op", true, true, sptId, supId, false));
+                new CreateOperationRequest(10, 10, "Op", true, true, sptId, supId, null, false));
 
         assertThat(dto.optional()).isTrue();
         assertThat(dto.osp()).isTrue();
@@ -167,7 +167,7 @@ class RouteOperationServiceTest {
         when(operations.save(any(RouteOperation.class))).thenAnswer(inv -> inv.getArgument(0));
 
         assertThatThrownBy(() -> service.add(ORG, ROUTE,
-                new CreateOperationRequest(10, 10, "Op", false, true, null, null, null)))
+                new CreateOperationRequest(10, 10, "Op", false, true, null, null, null, null)))
                 .isInstanceOf(RoutingValidationException.class);
     }
 
@@ -186,7 +186,7 @@ class RouteOperationServiceTest {
         operationHasOspResource();
 
         OperationDto dto = service.patch(ORG, ROUTE, opId,
-                new PatchOperationRequest(null, null, null, null, true, null, null, null));
+                new PatchOperationRequest(null, null, null, null, true, null, null, null, null));
 
         assertThat(dto.osp()).isTrue();
     }
@@ -223,11 +223,58 @@ class RouteOperationServiceTest {
         when(operations.countByRouteIdAndSequenceNumber(ROUTE, 20)).thenReturn(1);
 
         OperationDto dto = service.patch(ORG, ROUTE, opId,
-                new PatchOperationRequest(15, 20, "New", true, false, null, null, false));
+                new PatchOperationRequest(15, 20, "New", true, false, null, null, null, false));
 
         assertThat(dto.operationNumber()).isEqualTo(15);
         assertThat(dto.sequenceNumber()).isEqualTo(20);
         assertThat(dto.optional()).isTrue();
+    }
+
+    @Test
+    void add_withoutLabourType_defaultsDirect() {
+        when(routes.findByOrgIdAndId(ORG, ROUTE)).thenReturn(Optional.of(route(RouteStatus.DRAFT)));
+        when(operations.existsByRouteIdAndOperationNumber(ROUTE, 10)).thenReturn(false);
+        when(operations.save(any(RouteOperation.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(operations.countByRouteIdAndSequenceNumber(ROUTE, 10)).thenReturn(1);
+
+        OperationDto dto = service.add(ORG, ROUTE, op(10, 10));
+
+        assertThat(dto.labourType()).isEqualTo("DIRECT");
+    }
+
+    @Test
+    void patch_updatesLabourType() {
+        RouteOperation o = new RouteOperation();
+        o.setOrgId(ORG);
+        o.setRouteId(ROUTE);
+        o.setOperationNumber(10);
+        o.setSequenceNumber(10);
+        UUID opId = UUID.randomUUID();
+        when(routes.findByOrgIdAndId(ORG, ROUTE)).thenReturn(Optional.of(route(RouteStatus.DRAFT)));
+        when(operations.findByRouteIdAndId(ROUTE, opId)).thenReturn(Optional.of(o));
+        when(operations.save(any(RouteOperation.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(operations.countByRouteIdAndSequenceNumber(ROUTE, 10)).thenReturn(1);
+
+        OperationDto dto = service.patch(ORG, ROUTE, opId,
+                new PatchOperationRequest(null, null, null, null, null, null, null, "INDIRECT", null));
+
+        assertThat(dto.labourType()).isEqualTo("INDIRECT");
+    }
+
+    @Test
+    void patch_invalidLabourType_throwsValidation() {
+        RouteOperation o = new RouteOperation();
+        o.setOrgId(ORG);
+        o.setRouteId(ROUTE);
+        o.setOperationNumber(10);
+        o.setSequenceNumber(10);
+        UUID opId = UUID.randomUUID();
+        when(routes.findByOrgIdAndId(ORG, ROUTE)).thenReturn(Optional.of(route(RouteStatus.DRAFT)));
+        when(operations.findByRouteIdAndId(ROUTE, opId)).thenReturn(Optional.of(o));
+
+        assertThatThrownBy(() -> service.patch(ORG, ROUTE, opId,
+                new PatchOperationRequest(null, null, null, null, null, null, null, "CAPITALISED", null)))
+                .isInstanceOf(RoutingValidationException.class);
     }
 
     @Test
@@ -240,7 +287,7 @@ class RouteOperationServiceTest {
         when(operations.existsByRouteIdAndOperationNumber(ROUTE, 20)).thenReturn(true);
 
         assertThatThrownBy(() -> service.patch(ORG, ROUTE, opId,
-                new PatchOperationRequest(20, null, null, null, null, null, null, null)))
+                new PatchOperationRequest(20, null, null, null, null, null, null, null, null)))
                 .isInstanceOf(RoutingConflictException.class);
     }
 
@@ -251,7 +298,7 @@ class RouteOperationServiceTest {
         when(operations.findByRouteIdAndId(ROUTE, opId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.patch(ORG, ROUTE, opId,
-                new PatchOperationRequest(null, null, "x", null, null, null, null, null)))
+                new PatchOperationRequest(null, null, "x", null, null, null, null, null, null)))
                 .isInstanceOf(RoutingNotFoundException.class);
     }
 

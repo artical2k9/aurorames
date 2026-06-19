@@ -59,6 +59,7 @@ public final class RouteDtos {
             boolean osp,
             UUID significantProcessTypeId,
             UUID supplierId,
+            String labourType,
             Boolean clocking) {
     }
 
@@ -70,6 +71,7 @@ public final class RouteDtos {
             Boolean osp,
             UUID significantProcessTypeId,
             UUID supplierId,
+            String labourType,
             Boolean clocking) {
     }
 
@@ -85,6 +87,7 @@ public final class RouteDtos {
             UUID supplierId,
             UUID groupId,
             boolean clocking,
+            String labourType,
             int operationRevision,
             String operationStatus) {
     }

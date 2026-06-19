@@ -35,12 +35,12 @@ Single feature branch `009-manufacturing-routing`; PRs target `Develop`. Backend
 
 **Purpose**: Scaffold the new `routing-service` and wire infra.
 
-- [ ] T001 Create `services/routing-service/build.gradle` mirroring engineering-service (lib-common-security, lib-common-audit, mes-udf-lib, web/data-jpa/validation/actuator, flyway, spring-kafka, postgresql, hypersistence-utils, jackson jsr310, springdoc; test: spring-boot-starter-test, testcontainers junit/postgresql/kafka, spring-kafka-test, archunit, lib-common-security testFixtures)
-- [ ] T002 Register `:services:routing-service` in root `settings.gradle`
-- [ ] T003 [P] Create `RoutingServiceApplication` + base `application.yml` (port 8100, schema `routing`, Flyway, JPA validate, Envers config, Kafka consumer/producer, KC resource-server) in `services/routing-service/src/main/...`
-- [ ] T004 [P] Add `sonar.sources`/`sonar.tests` entries for `services/routing-service` to `sonar-project.properties` (CLAUDE.md checklist)
-- [ ] T005 Add `processTestResources` copy of iam-service migrations to `iam-bootstrap/` (privilege table priming, pattern from engineering-service)
-- [ ] T006 [P] Add `routing-service` to `docker/compose-infra.yml` (port 8100, depends_on postgres/kafka/keycloak healthy — NOT admin-service per ERR-MES-086) and `ROUTING_DB_USER`/`ROUTING_DB_PASSWORD` in the **postgres** service env block + `.env` + `.env.example` (ERR-MES-085)
+- [x] T001 Create `services/routing-service/build.gradle` mirroring engineering-service (lib-common-security, lib-common-audit, mes-udf-lib, web/data-jpa/validation/actuator, flyway, spring-kafka, postgresql, hypersistence-utils, jackson jsr310, springdoc; test: spring-boot-starter-test, testcontainers junit/postgresql/kafka, spring-kafka-test, archunit, lib-common-security testFixtures)
+- [x] T002 Register `:services:routing-service` in root `settings.gradle`
+- [x] T003 [P] Create `RoutingServiceApplication` + base `application.yml` (port 8100, schema `routing`, Flyway, JPA validate, Envers config, Kafka consumer/producer, KC resource-server) in `services/routing-service/src/main/...`
+- [x] T004 [P] Add `sonar.sources`/`sonar.tests` entries for `services/routing-service` to `sonar-project.properties` (CLAUDE.md checklist)
+- [x] T005 Add `processTestResources` copy of iam-service migrations to `iam-bootstrap/` (privilege table priming, pattern from engineering-service)
+- [x] T006 [P] Add `routing-service` to `docker/compose-infra.yml` (port 8100, depends_on postgres/kafka/keycloak healthy — NOT admin-service per ERR-MES-086) and `ROUTING_DB_USER`/`ROUTING_DB_PASSWORD` in the **postgres** service env block + `.env` + `.env.example` (ERR-MES-085)
 
 ---
 
@@ -48,13 +48,13 @@ Single feature branch `009-manufacturing-routing`; PRs target `Develop`. Backend
 
 **⚠️ CRITICAL**: Must complete before any user story.
 
-- [ ] T007 Create `V001__routing_baseline.sql` Flyway migration: `routing` schema + audit columns convention + Envers `_aud`/`revinfo` tables (ERR-MES-061); reference-data tables (work_centre, labour_code, labour_plan_type, route_type) with NOT NULL audit columns seeded `'migration'`/`NOW()` (ERR-MES-077)
-- [ ] T008 [P] `BaseIntegrationTest` (Testcontainers PostgreSQL + EmbeddedKafka + KC test JWT decoder + PrivilegeCache stub) in `src/test/.../integration/` — extend BaseIntegrationTest directly (ERR-MES-080); jwk-set-uri to Testcontainers issuer, never issuer-uri="" (ERR-MES-068)
-- [ ] T009 [P] `AppConfig` with `AuditorAware<String>` bean (ERR-MES-062) and OpenAPI config
-- [ ] T010 `SecurityConfig` (resource server, exclude shared `MESSecurityAutoConfiguration` per ERR-MES-038, no `@ConditionalOnMissingBean` in @Import config per ERR-MES-069)
-- [ ] T011 Privilege manifest registration on `ApplicationReadyEvent` for `routing:route:view|manage|approve`, `routing:operation:approve`, `routing:settings:view|manage` (auto-grants SYSTEM_ADMIN, ERR-MES-075)
-- [ ] T012 [P] `GlobalExceptionHandler` + `RoutingConflictException`/`RoutingNotFoundException` (no inline catch in controllers, ERR-MES-073)
-- [ ] T013 Add gateway routes `Path=/api/v1/routes/**` and `Path=/api/v1/routing/**` → `ROUTING_SERVICE_URL` in `services/gateway-service/src/main/resources/application.yml` (domain-specific predicates, §XI)
+- [x] T007 Create `V001__routing_baseline.sql` Flyway migration: `routing` schema + audit columns convention + Envers `_aud`/`revinfo` tables (ERR-MES-061); reference-data tables (work_centre, labour_code, labour_plan_type, route_type) with NOT NULL audit columns seeded `'migration'`/`NOW()` (ERR-MES-077)
+- [x] T008 [P] `BaseIntegrationTest` (Testcontainers PostgreSQL + EmbeddedKafka + KC test JWT decoder + PrivilegeCache stub) in `src/test/.../integration/` — extend BaseIntegrationTest directly (ERR-MES-080); jwk-set-uri to Testcontainers issuer, never issuer-uri="" (ERR-MES-068)
+- [x] T009 [P] `AppConfig` with `AuditorAware<String>` bean (ERR-MES-062) and OpenAPI config
+- [x] T010 `SecurityConfig` (resource server, exclude shared `MESSecurityAutoConfiguration` per ERR-MES-038, no `@ConditionalOnMissingBean` in @Import config per ERR-MES-069)
+- [x] T011 Privilege manifest registration on `ApplicationReadyEvent` for `routing:route:view|manage|approve`, `routing:operation:approve`, `routing:settings:view|manage` (auto-grants SYSTEM_ADMIN, ERR-MES-075)
+- [x] T012 [P] `GlobalExceptionHandler` + `RoutingConflictException`/`RoutingNotFoundException` (no inline catch in controllers, ERR-MES-073)
+- [x] T013 Add gateway routes `Path=/api/v1/routes/**` and `Path=/api/v1/routing/**` → `ROUTING_SERVICE_URL` in `services/gateway-service/src/main/resources/application.yml` (domain-specific predicates, §XI)
 
 **Checkpoint**: Service boots, migrates, authenticates.
 
@@ -66,15 +66,15 @@ Single feature branch `009-manufacturing-routing`; PRs target `Develop`. Backend
 **Independent Test**: Create a work centre, labour code and alternate route type; confirm selectable; seeded Standard + in-use entries protected from deletion; org-scoped.
 
 ### Tests (write first, confirm failing)
-- [ ] T014 [P] [US10] IT `ReferenceDataIT` — CRUD + org-scope + seeded-protected + in-use-delete-409 for work-centres/labour-codes/labour-plan-types/route-types/**significant-process-types**/**suppliers** in `src/test/.../integration/`
-- [ ] T015 [P] [US10] Unit tests for reference-data services (validation, deactivate-vs-delete, exactly-one isStandard, significant-process requiredApproverRole) in `src/test/.../referencedata/`
+- [x] T014 [P] [US10] IT `ReferenceDataIT` — CRUD + org-scope + seeded-protected + in-use-delete-409 for work-centres/labour-codes/labour-plan-types/route-types/**significant-process-types**/**suppliers** in `src/test/.../integration/`
+- [x] T015 [P] [US10] Unit tests for reference-data services (validation, deactivate-vs-delete, exactly-one isStandard, significant-process requiredApproverRole) in `src/test/.../referencedata/`
 
 ### Implementation
-- [ ] T016 [P] [US10] Entities WorkCentre, LabourCode, LabourPlanType, RouteType, **SignificantProcessType (code, name, requiredApproverRole)**, **Supplier (code, name)** (`@Audited`, org-scoped) in `referencedata/domain/`
-- [ ] T017 [P] [US10] Repositories (org-scoped finders) in `referencedata/repository/`
-- [ ] T018 [US10] `ReferenceDataService` (CRUD, uniqueness, deactivate-on-in-use, seeded protection; exactly-one isStandard; significant-process requiredApproverRole) in `referencedata/service/`
-- [ ] T019 [US10] DTOs + `ReferenceDataController` (`/api/v1/routing/{work-centres|labour-codes|labour-plan-types|route-types|significant-process-types|suppliers}`) in `referencedata/api/`
-- [ ] T020 [US10] Seed migration rows: route_type Standard (protected), labour_plan_type Machine/People/OSP in V001/V002
+- [x] T016 [P] [US10] Entities WorkCentre, LabourCode, LabourPlanType, RouteType, **SignificantProcessType (code, name, requiredApproverRole)**, **Supplier (code, name)** (`@Audited`, org-scoped) in `referencedata/domain/`
+- [x] T017 [P] [US10] Repositories (org-scoped finders) in `referencedata/repository/`
+- [x] T018 [US10] `ReferenceDataService` (CRUD, uniqueness, deactivate-on-in-use, seeded protection; exactly-one isStandard; significant-process requiredApproverRole) in `referencedata/service/`
+- [x] T019 [US10] DTOs + `ReferenceDataController` (`/api/v1/routing/{work-centres|labour-codes|labour-plan-types|route-types|significant-process-types|suppliers}`) in `referencedata/api/`
+- [x] T020 [US10] Seed migration rows: route_type Standard (protected), labour_plan_type Machine/People/OSP in V001/V002
 
 **Checkpoint**: Reference data manageable via API; PR 1 complete.
 
@@ -88,15 +88,15 @@ Single feature branch `009-manufacturing-routing`; PRs target `Develop`. Backend
 **Independent Test**: Create a Standard route; second Standard for same part/rev → 409; alternate type accepted; org-isolated.
 
 ### Tests (write first, confirm failing)
-- [ ] T021 [P] [US1] IT `RouteHeaderIT` — create/list/get/patch, one-Standard-per-part/rev 409, alternate accepted, org isolation, reason-for-revision required
-- [ ] T022 [P] [US1] Unit tests `RouteService` header logic
+- [x] T021 [P] [US1] IT `RouteHeaderIT` — create/list/get/patch, one-Standard-per-part/rev 409, alternate accepted, org isolation, reason-for-revision required
+- [x] T022 [P] [US1] Unit tests `RouteService` header logic
 
 ### Implementation
-- [ ] T023 [P] [US1] `Route` entity (status, revision, pinned bomRevisionId/inspectionPlanRevisionId, routeTypeId, customFields) in `route/domain/`
-- [ ] T024 [P] [US1] `RouteRepository` (org-scoped; existsStandardForPart) in `route/repository/`
-- [ ] T025 [US1] `RouteService.create/get/list/patch` with one-Standard constraint + pinned-revision rules in `route/service/`
-- [ ] T026 [US1] DTOs + `RouteController` (`POST/GET/PATCH /api/v1/routes`, `/revisions`, `/draft`); GET returns `bomRevisionSuperseded`/`inspectionPlanRevisionSuperseded` flags in `route/api/`
-- [ ] T026a [P] [US1] IT + consumer: upstream `*.revision.superseded` Kafka consumer (idempotent) sets the superseded flags on affected routes without auto-updating the pinned revision (FR-004f) in `kafka/` (EmbeddedKafka test)
+- [x] T023 [P] [US1] `Route` entity (status, revision, pinned bomRevisionId/inspectionPlanRevisionId, routeTypeId, customFields) in `route/domain/`
+- [x] T024 [P] [US1] `RouteRepository` (org-scoped; existsStandardForPart) in `route/repository/`
+- [x] T025 [US1] `RouteService.create/get/list/patch` with one-Standard constraint + pinned-revision rules in `route/service/`
+- [x] T026 [US1] DTOs + `RouteController` (`POST/GET/PATCH /api/v1/routes`, `/revisions`, `/draft`); GET returns `bomRevisionSuperseded`/`inspectionPlanRevisionSuperseded` flags in `route/api/`
+- [x] T026a [P] [US1] IT + consumer: upstream `*.revision.superseded` Kafka consumer (idempotent) sets the superseded flags on affected routes without auto-updating the pinned revision (FR-004f) in `kafka/` (EmbeddedKafka test)
 
 **Checkpoint**: Draft routes create/list/get with type constraints; stale-reference indicator driven by the supersede consumer.
 
@@ -108,13 +108,13 @@ Single feature branch `009-manufacturing-routing`; PRs target `Develop`. Backend
 **Independent Test**: Add ops 10/20/30; duplicate operation number rejected; reorder/renumber/delete in draft.
 
 ### Tests (write first)
-- [ ] T027 [P] [US2] IT `RouteOperationIT` — add/list/reorder/delete, duplicate-operation-number 409, derived-type ordering
-- [ ] T028 [P] [US2] Unit tests operation sequencing/derived-type logic
+- [x] T027 [P] [US2] IT `RouteOperationIT` — add/list/reorder/delete, duplicate-operation-number 409, derived-type ordering
+- [x] T028 [P] [US2] Unit tests operation sequencing/derived-type logic
 
 ### Implementation
-- [ ] T029 [P] [US2] `RouteOperation` entity (operationNumber, sequenceNumber, optional/osp toggles, `significantProcessTypeId?`, `supplierId?` (OSP), groupId, clocking, operationRevision) in `route/domain/`
-- [ ] T030 [US2] `RouteOperationService` add/edit/resequence/delete + derived **Normal**/Parallel computation; operation DTO exposes derived type + ME-set membership (FR-009b) in `route/service/`
-- [ ] T031 [US2] Operation endpoints under `RouteController` (`/operations`) in `route/api/`
+- [x] T029 [P] [US2] `RouteOperation` entity (operationNumber, sequenceNumber, optional/osp toggles, `significantProcessTypeId?`, `supplierId?` (OSP), groupId, clocking, operationRevision) in `route/domain/`
+- [x] T030 [US2] `RouteOperationService` add/edit/resequence/delete + derived **Normal**/Parallel computation; operation DTO exposes derived type + ME-set membership (FR-009b) in `route/service/`
+- [x] T031 [US2] Operation endpoints under `RouteController` (`/operations`) in `route/api/`
 
 **Checkpoint**: Routes hold ordered Normal operations.
 
@@ -128,15 +128,15 @@ Single feature branch `009-manufacturing-routing`; PRs target `Develop`. Backend
 **Independent Test**: Full profile persists; references validated against owning services/Settings master.
 
 ### Tests (write first)
-- [ ] T032 [P] [US3] IT `OperationDetailIT` — labour plan (Setup/Run/Inspection/Transport × basis), material mandatory, skill ref, work-centre ref, significant-process flag
-- [ ] T033 [P] [US3] Unit tests labour-plan/basis + reference-validation logic
+- [x] T032 [P] [US3] IT `OperationDetailIT` — labour plan (Setup/Run/Inspection/Transport × basis), material mandatory, skill ref, work-centre ref, significant-process flag
+- [x] T033 [P] [US3] Unit tests labour-plan/basis + reference-validation logic
 
 ### Implementation
-- [ ] T034 [P] [US3] Entities OperationResource, LabourPlanLine (`labourActivityType` ∈ Setup/Run/Inspection/Transport + `labourPlanTypeId` Machine/People/OSP + basis), MaterialConsumption, QualityVariableRequirement, ToolingRequirement, SkillRequirement, WorkInstructionLink, StepFileReference in `route/domain/`
-- [ ] T035 [P] [US3] Repositories for the above in `route/repository/`
-- [ ] T036 [US3] `OperationDetailService` (CRUD per detail type; validate workCentreId/labourCodeId/significantProcessTypeId/supplierId against Settings; validate bomLineId/inspectionCharacteristicId/skillId/workInstructionId via owning-service read clients; OSP classification when an OSP-type labour plan line is present) in `route/service/`
+- [x] T034 [P] [US3] Entities OperationResource, LabourPlanLine (`labourActivityType` ∈ Setup/Run/Inspection/Transport + `labourPlanTypeId` Machine/People/OSP + basis), MaterialConsumption, QualityVariableRequirement, ToolingRequirement, SkillRequirement, WorkInstructionLink, StepFileReference in `route/domain/`
+- [x] T035 [P] [US3] Repositories for the above in `route/repository/`
+- [x] T036 [US3] `OperationDetailService` (CRUD per detail type; validate workCentreId/labourCodeId/significantProcessTypeId/supplierId against Settings; OSP classification when an OSP-type labour plan line is present; external owning-service validation tracked by T037/T108) in `route/service/`
 - [ ] T037 [P] [US3] Read-client wrappers for inventory(BOM line)/quality(characteristic)/labour(skill)/engineering(work-instruction) in `route/client/` (no cross-schema queries, §XI)
-- [ ] T038 [US3] Detail endpoints under `RouteController` (`/operations/{opId}/{resources|labour-plan|materials|quality-variables|tooling|skills|work-instruction|step-file}`)
+- [x] T038 [US3] Detail endpoints under `RouteController` (`/operations/{opId}/{resources|labour-plan|materials|quality-variables|tooling|skills|work-instruction|step-file}`)
 
 **Checkpoint**: Operations are execution-ready.
 
@@ -355,15 +355,16 @@ Tests written and FAILING first → entities → repositories → services → e
 Captured from the design review (wireframes in Penpot, Aurora MES / Shell page). Sequenced after the dark+light wireframes are signed off. The route editor is being reworked to a **left operations sidebar + tabbed operation-detail** layout (Overview · Attributes · Resources · BOM · Documents · Properties · Variables · Tools · Skills).
 
 ### Route locking & concurrency (FR-031/032/033)
-- [ ] T095 [P] Unit + IT: acquire/release lock, holder-only edit, force-unlock privilege, read-only for non-holders
-- [ ] T096 `RouteLock` state on route (lockHolder, lockedAt) + acquire/release/force-unlock service; gate every mutating route/operation endpoint on lock ownership
-- [ ] T097 Register `routing:route:unlock` privilege (auto-grant SYSTEM_ADMIN, ERR-MES-075) + audit force-unlock
+- [x] T095 [P] Unit + IT: acquire/release lock, holder-only edit, force-unlock privilege, read-only for non-holders
+- [x] T096 `RouteLock` state on route (lockHolder, lockedAt) + acquire/release/force-unlock service; gate every mutating route/operation endpoint on lock ownership
+- [x] T097 Register `routing:route:unlock` privilege (auto-grant SYSTEM_ADMIN, ERR-MES-075) + audit force-unlock
 - [x] T098 Frontend: header lock toggle wired (acquire/release), read-only rendering for non-holders, force-unlock action for privileged users
 
 ### Operation detail in the tabbed editor (gaps 1–5, 7)
 - [x] T099 Rework `route-detail` into sidebar (add/duplicate/delete/search ops) + tabbed detail editor matching the wireframes
 - [x] T100 Overview tab = inline-editable Seq · Op# · Description · Work Centre row (replace modal with in-grid add)
-- [ ] T101 Attributes tab: behaviour, **Labour Type Direct/Indirect (FR-013a)**, Optional/OSP/Mutual-Excl. toggle switches, significant-process select
+- [x] T101 Attributes tab: **Labour Type Direct/Indirect (FR-013a)**, Optional/OSP toggles, clocking toggle, significant-process select
+- [ ] T101a Attributes tab remaining refinement: behaviour/Mutual-Excl. controls if the design review still requires these outside the existing ME dialog/sidebar flow
 - [x] T102 Resources tab: labour-plan editor (Labour Plan Type × Setup/Run/Inspection/Transport + basis) + work centres — closes the OSP dead-end (gap 2)
 - [x] T103 BOM / Documents / Tools / Skills tabs: material consumption, WI+STEP, tooling, skill requirements editors
 - [x] T104 Variables tab: quality variables editor incl. per-characteristic **Req. Skill(s)** column

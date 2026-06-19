@@ -50,6 +50,10 @@ public class RouteOperation extends OrgAuditedEntity {
     @Column(name = "clocking", nullable = false)
     private boolean clocking = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "labour_type", nullable = false, length = 20)
+    private LabourType labourType = LabourType.DIRECT;
+
     @Column(name = "operation_revision", nullable = false)
     private int operationRevision = 0;
 
@@ -138,6 +142,14 @@ public class RouteOperation extends OrgAuditedEntity {
 
     public void setClocking(boolean clocking) {
         this.clocking = clocking;
+    }
+
+    public LabourType getLabourType() {
+        return labourType;
+    }
+
+    public void setLabourType(LabourType labourType) {
+        this.labourType = labourType == null ? LabourType.DIRECT : labourType;
     }
 
     public int getOperationRevision() {

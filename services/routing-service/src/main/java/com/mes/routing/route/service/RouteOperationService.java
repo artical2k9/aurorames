@@ -7,6 +7,7 @@ import com.mes.routing.route.api.dto.RouteDtos.CreateOperationRequest;
 import com.mes.routing.route.api.dto.RouteDtos.OperationDto;
 import com.mes.routing.route.api.dto.RouteDtos.PatchOperationRequest;
 import com.mes.routing.route.domain.LabourPlanLine;
+import com.mes.routing.route.domain.LabourType;
 import com.mes.routing.route.domain.Route;
 import com.mes.routing.route.domain.RouteOperation;
 import com.mes.routing.route.domain.RouteStatus;
@@ -90,6 +91,7 @@ public class RouteOperationService {
         op.setOsp(req.osp());
         op.setSignificantProcessTypeId(req.significantProcessTypeId());
         op.setSupplierId(req.supplierId());
+        op.setLabourType(parseLabourType(req.labourType()));
         op.setClocking(req.clocking() == null || req.clocking());
         RouteOperation saved = operations.save(op);
         requireOspLabourResource(saved);
@@ -126,6 +128,9 @@ public class RouteOperationService {
         }
         if (req.supplierId() != null) {
             op.setSupplierId(req.supplierId());
+        }
+        if (req.labourType() != null) {
+            op.setLabourType(parseLabourType(req.labourType()));
         }
         if (req.clocking() != null) {
             op.setClocking(req.clocking());
@@ -173,6 +178,17 @@ public class RouteOperationService {
         }
     }
 
+    private LabourType parseLabourType(String value) {
+        if (value == null || value.isBlank()) {
+            return LabourType.DIRECT;
+        }
+        try {
+            return LabourType.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new RoutingValidationException("Labour type must be DIRECT or INDIRECT");
+        }
+    }
+
     private Route requireRoute(UUID orgId, UUID routeId) {
         return routes.findByOrgIdAndId(orgId, routeId)
                 .orElseThrow(() -> new RoutingNotFoundException("Route not found: " + routeId));
@@ -195,6 +211,8 @@ public class RouteOperationService {
         return new OperationDto(op.getId(), op.getOperationNumber(), op.getSequenceNumber(),
                 op.getDescription(), derived, op.isOptional(), op.isOsp(),
                 op.getSignificantProcessTypeId(), op.getSupplierId(), op.getGroupId(),
-                op.isClocking(), op.getOperationRevision(), op.getOperationStatus().name());
+                op.isClocking(), (op.getLabourType() == null ? LabourType.DIRECT : op.getLabourType()).name(),
+                op.getOperationRevision(),
+                op.getOperationStatus().name());
     }
 }

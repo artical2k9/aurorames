@@ -78,6 +78,21 @@ class RouteOperationIT extends BaseIntegrationTest {
     }
 
     @Test
+    void labourTypeDefaultsDirectAndCanBePatchedIndirect() {
+        String route = createRoute();
+        Map created = addOp(route, 10, 10).getBody();
+        String opId = (String) created.get("id");
+        assertThat(created.get("labourType")).isEqualTo("DIRECT");
+
+        ResponseEntity<Map> patched = restTemplate.exchange(
+                "/api/v1/routes/" + route + "/operations/" + opId, HttpMethod.PATCH,
+                jsonRequest(admin(), Map.of("labourType", "INDIRECT")), Map.class);
+
+        assertThat(patched.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(patched.getBody().get("labourType")).isEqualTo("INDIRECT");
+    }
+
+    @Test
     void deleteOperationRemovesIt() {
         String route = createRoute();
         String opId = (String) addOp(route, 10, 10).getBody().get("id");

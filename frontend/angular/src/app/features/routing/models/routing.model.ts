@@ -6,6 +6,7 @@ export interface Page<T> {
 export type RouteStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
 export type OperationStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED';
 export type DerivedType = 'NORMAL' | 'PARALLEL';
+export type LabourType = 'DIRECT' | 'INDIRECT';
 export type LabourActivityType = 'SETUP' | 'RUN' | 'INSPECTION' | 'TRANSPORT';
 export type Basis = 'PER_ITEM' | 'PER_LOT';
 export type MutuallyExclusiveLevel = 'OPERATION' | 'GROUP' | 'STEP';
@@ -63,6 +64,7 @@ export interface OperationDto {
   supplierId?: string;
   groupId?: string;
   clocking: boolean;
+  labourType: LabourType;
   operationRevision: number;
   operationStatus: OperationStatus;
 }
@@ -75,6 +77,7 @@ export interface CreateOperationRequest {
   osp?: boolean;
   significantProcessTypeId?: string;
   supplierId?: string;
+  labourType?: LabourType;
   clocking?: boolean;
 }
 
